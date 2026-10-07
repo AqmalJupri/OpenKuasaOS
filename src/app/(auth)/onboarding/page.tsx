@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { COUNTRIES } from '@/config/countries';
 
 const TOTAL = 6;
 
@@ -46,14 +47,6 @@ const TOOLS = [
   'TikTok',
   'Salesforce',
   'Other',
-];
-
-// Step 5 is inferred (not in the reference) — a light "goals" step.
-const GOALS = [
-  'More qualified leads',
-  'Higher close rate',
-  'Save time on admin',
-  'Healthier cash flow',
 ];
 
 const INDUSTRIES = [
@@ -114,7 +107,7 @@ export default function OnboardingPage() {
   });
   const [focus, setFocus] = useState<string[]>([]);
   const [tools, setTools] = useState<string[]>([]);
-  const [goals, setGoals] = useState<string[]>([]);
+  const [location, setLocation] = useState({ country: '', state: '' });
 
   const pct = Math.round((step / TOTAL) * 100);
 
@@ -267,18 +260,40 @@ export default function OnboardingPage() {
 
           {step === 5 && (
             <Step
-              title="What are your goals right now?"
-              subtitle="We'll prioritise the features that move these numbers first."
+              title="Where is your business based?"
+              subtitle="We'll set up tax, e-Invois, and currency defaults for your region."
             >
-              <div className="grid grid-cols-2 gap-3">
-                {GOALS.map((g) => (
-                  <SelectCard
-                    key={g}
-                    label={g}
-                    selected={goals.includes(g)}
-                    onClick={() => setGoals((list) => toggle(list, g))}
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Country *</Label>
+                  <Select
+                    value={location.country}
+                    onValueChange={(v) =>
+                      setLocation({ country: v, state: '' })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>State / Region *</Label>
+                  <Input
+                    value={location.state}
+                    onChange={(e) =>
+                      setLocation({ ...location, state: e.target.value })
+                    }
+                    placeholder="State, province, or region"
                   />
-                ))}
+                </div>
               </div>
             </Step>
           )}
