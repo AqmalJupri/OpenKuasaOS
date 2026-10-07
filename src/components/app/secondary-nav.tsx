@@ -60,8 +60,8 @@ export function SecondaryNav({
       <div className="flex items-center justify-between border-t px-3 py-2">
         <div className="flex gap-1">
           <Link
-            href="/settings"
-            aria-label="Settings"
+            href="/account"
+            aria-label="Account"
             className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             <Settings className="size-4" />
