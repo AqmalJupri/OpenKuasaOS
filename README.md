@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenKuasa OS
+
+A rebuild of the Kuasa OS web surface on a modern stack.
+
+## Stack
+
+- **Next.js 16** (App Router, Turbopack) + **React 19**
+- **TypeScript**, **Tailwind CSS v4**
+- **shadcn/ui** (Radix primitives, `radix-nova` preset)
+- **Supabase** (`@supabase/ssr`) for data, auth, and tenancy
 
 ## Getting Started
 
-First, run the development server:
+Requires Node 20+ and [pnpm](https://pnpm.io).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file in the project root with your Supabase project's
+values (Supabase dashboard → Project Settings → API):
 
-## Learn More
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+```
 
-To learn more about Next.js, take a look at the following resources:
+Until these are set, the app runs normally but the Supabase auth middleware is a
+no-op — see `src/lib/supabase/middleware.ts`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supabase helpers
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/lib/supabase/client.ts` — browser client (Client Components)
+- `src/lib/supabase/server.ts` — server client (Server Components, Route Handlers, Server Actions)
+- `src/lib/supabase/middleware.ts` + `src/middleware.ts` — session refresh
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm dev      # start the dev server
+pnpm build    # production build
+pnpm start    # run the production build
+pnpm lint     # eslint
+```
