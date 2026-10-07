@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { LayoutGrid, LogOut } from 'lucide-react';
 import { Logo } from '@/components/brand/logo';
 import { AccountSidebar } from '@/components/account/account-sidebar';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { UserMenu } from '@/components/app/user-menu';
 
 export default function AccountLayout({
   children,
@@ -32,11 +32,7 @@ export default function AccountLayout({
           >
             <LogOut className="size-5" />
           </Link>
-          <Avatar className="size-8">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-              JD
-            </AvatarFallback>
-          </Avatar>
+          <UserMenu name="Jon" />
         </div>
       </header>
 
