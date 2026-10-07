@@ -54,6 +54,17 @@ import ReviewScoresScreen from '@/screens/people/review-scores';
 import TrainingScreen from '@/screens/people/training';
 import HrSettingsScreen from '@/screens/people/settings';
 
+// Lekir (hire / HIRA Recruit)
+import HireAssistantScreen from '@/screens/hire/assistant';
+import RecruitDashboardScreen from '@/screens/hire/dashboard';
+import JobsScreen from '@/screens/hire/jobs';
+import CandidatesScreen from '@/screens/hire/candidates';
+import ApplicationsScreen from '@/screens/hire/applications';
+import InterviewsScreen from '@/screens/hire/interviews';
+import TalentPoolScreen from '@/screens/hire/talent-pool';
+import CareersPageScreen from '@/screens/hire/careers-page';
+import HireSettingsScreen from '@/screens/hire/settings';
+
 /**
  * Built-out screens, keyed by `${productKey}/${itemSlug}`.
  * Anything not here falls back to a generic placeholder.
@@ -117,4 +128,15 @@ export const SCREENS: Record<string, ComponentType> = {
   'people/review-scores': ReviewScoresScreen,
   'people/training': TrainingScreen,
   'people/settings': HrSettingsScreen,
+
+  // Lekir (HIRA Recruit)
+  'hire/assistant': HireAssistantScreen,
+  'hire/dashboard': RecruitDashboardScreen,
+  'hire/jobs': JobsScreen,
+  'hire/candidates': CandidatesScreen,
+  'hire/applications': ApplicationsScreen,
+  'hire/interviews': InterviewsScreen,
+  'hire/talent-pool': TalentPoolScreen,
+  'hire/careers-page': CareersPageScreen,
+  'hire/settings': HireSettingsScreen,
 };
