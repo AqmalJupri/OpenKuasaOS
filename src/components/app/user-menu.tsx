@@ -16,10 +16,10 @@ const ITEMS = [
   { label: 'Account & Billing', href: '/account/subscriptions' },
   { label: 'Role Permission', href: '/account/team' },
   { label: 'Change Password', href: '/account/security' },
-  { label: 'Product Changelog', href: '#' },
-  { label: 'Contact Support', href: '#' },
-  { label: 'Tutorials Docs', href: '#' },
-  { label: 'Features Request', href: '#' },
+  { label: 'Product Changelog', href: '/account/changelog' },
+  { label: 'Contact Support', href: '/account/support' },
+  { label: 'Tutorials Docs', href: '/account/docs' },
+  { label: 'Features Request', href: '/account/feedback' },
 ];
 
 export function UserMenu({ name = 'Jon' }: { name?: string }) {
@@ -71,7 +71,7 @@ export function UserMenu({ name = 'Jon' }: { name?: string }) {
             Sign out
           </Link>
           <Link
-            href="#"
+            href="/privacy"
             className="text-muted-foreground hover:text-foreground hover:underline"
           >
             Privacy policy
