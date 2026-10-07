@@ -1,0 +1,83 @@
+'use client';
+
+import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const ITEMS = [
+  { label: 'Pricing & Features', href: '/account/plan' },
+  { label: 'Account & Billing', href: '/account/subscriptions' },
+  { label: 'Role Permission', href: '/account/team' },
+  { label: 'Change Password', href: '/account/security' },
+  { label: 'Product Changelog', href: '#' },
+  { label: 'Contact Support', href: '#' },
+  { label: 'Tutorials Docs', href: '#' },
+  { label: 'Features Request', href: '#' },
+];
+
+export function UserMenu({ name = 'Jon' }: { name?: string }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border bg-background py-1 pl-1 pr-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Avatar className="size-7">
+          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+            {name[0]}
+          </AvatarFallback>
+        </Avatar>
+        <span className="hidden sm:inline">{name}</span>
+        <ChevronDown className="size-4 text-muted-foreground" />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64 p-0">
+        {/* header */}
+        <Link
+          href="/account/profile"
+          className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-accent"
+        >
+          <Avatar className="size-11">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+              JD
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate font-bold leading-tight">Jon D</p>
+            <p className="text-sm font-medium text-primary">
+              Profile &amp; Preferences
+            </p>
+          </div>
+        </Link>
+
+        <DropdownMenuSeparator className="my-0" />
+
+        <div className="py-1">
+          {ITEMS.map((item) => (
+            <DropdownMenuItem key={item.label} asChild className="px-3 py-2">
+              <Link href={item.href}>{item.label}</Link>
+            </DropdownMenuItem>
+          ))}
+        </div>
+
+        <DropdownMenuSeparator className="my-0" />
+
+        <div className="flex items-center justify-between px-3 py-2.5 text-sm font-medium">
+          <Link href="/login" className="text-primary hover:underline">
+            Sign out
+          </Link>
+          <Link
+            href="#"
+            className="text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Privacy policy
+          </Link>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

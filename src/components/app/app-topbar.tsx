@@ -2,8 +2,8 @@
 
 import { Search, Bell, CircleHelp, Coins, PanelLeftOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { UserMenu } from '@/components/app/user-menu';
 
 export function AppTopbar({ onExpand }: { onExpand?: () => void }) {
   return (
@@ -40,11 +40,7 @@ export function AppTopbar({ onExpand }: { onExpand?: () => void }) {
         <Button variant="ghost" size="icon" aria-label="Notifications">
           <Bell className="size-5" />
         </Button>
-        <Avatar className="size-8">
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-            JD
-          </AvatarFallback>
-        </Avatar>
+        <UserMenu name="Jon" />
       </div>
     </header>
   );
