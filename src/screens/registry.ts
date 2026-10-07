@@ -25,6 +25,35 @@ import BillingsScreen from '@/screens/crm/billings';
 import PluginsScreen from '@/screens/crm/plugins';
 import CrmSettingsScreen from '@/screens/crm/settings';
 
+// Lekiu (people / HIRA)
+import HrAssistantScreen from '@/screens/people/assistant';
+import DashboardScreen from '@/screens/people/dashboard';
+import AnnouncementsScreen from '@/screens/people/announcements';
+import MyAttendanceScreen from '@/screens/people/my-attendance';
+import MyGoalsScreen from '@/screens/people/my-goals';
+import MyDocumentsScreen from '@/screens/people/my-documents';
+import RecordsScreen from '@/screens/people/records';
+import LeaveScreen from '@/screens/people/leave';
+import TimeOffScreen from '@/screens/people/time-off';
+import ClaimsScreen from '@/screens/people/claims';
+import OtClaimsScreen from '@/screens/people/ot-claims';
+import EmployeesScreen from '@/screens/people/employees';
+import ApproveLeaveScreen from '@/screens/people/approve-leave';
+import ApproveClaimsScreen from '@/screens/people/approve-claims';
+import ApproveOvertimeScreen from '@/screens/people/approve-overtime';
+import ApproveTimeOffScreen from '@/screens/people/approve-time-off';
+import PublicHolidaysScreen from '@/screens/people/public-holidays';
+import LettersScreen from '@/screens/people/letters';
+import TimesheetScreen from '@/screens/people/timesheet';
+import ShiftCalendarScreen from '@/screens/people/shift-calendar';
+import OvertimeScreen from '@/screens/people/overtime';
+import PayrollScreen from '@/screens/people/payroll';
+import PaymentVouchersScreen from '@/screens/people/payment-vouchers';
+import ScorecardScreen from '@/screens/people/scorecard';
+import ReviewScoresScreen from '@/screens/people/review-scores';
+import TrainingScreen from '@/screens/people/training';
+import HrSettingsScreen from '@/screens/people/settings';
+
 /**
  * Built-out screens, keyed by `${productKey}/${itemSlug}`.
  * Anything not here falls back to a generic placeholder.
@@ -42,7 +71,7 @@ export const SCREENS: Record<string, ComponentType> = {
   'reach/ad-settings': AdSettingsScreen,
   'reach/health-check': HealthCheckScreen,
 
-  // Kasturi (ARA Manage) — generic data screens reuse the Jebat components
+  // Kasturi (ARA Manage)
   'crm/assistant': CrmAssistantScreen,
   'crm/agents': CrmAgentsScreen,
   'crm/contacts': ContactsScreen,
@@ -58,4 +87,34 @@ export const SCREENS: Record<string, ComponentType> = {
   'crm/reports': ReportsScreen,
   'crm/plugins': PluginsScreen,
   'crm/settings': CrmSettingsScreen,
+
+  // Lekiu (HIRA Team)
+  'people/assistant': HrAssistantScreen,
+  'people/dashboard': DashboardScreen,
+  'people/calendar': CalendarScreen,
+  'people/announcements': AnnouncementsScreen,
+  'people/my-attendance': MyAttendanceScreen,
+  'people/my-goals': MyGoalsScreen,
+  'people/my-documents': MyDocumentsScreen,
+  'people/records': RecordsScreen,
+  'people/leave': LeaveScreen,
+  'people/time-off': TimeOffScreen,
+  'people/claims': ClaimsScreen,
+  'people/ot-claims': OtClaimsScreen,
+  'people/employees': EmployeesScreen,
+  'people/approve-leave': ApproveLeaveScreen,
+  'people/approve-claims': ApproveClaimsScreen,
+  'people/approve-overtime': ApproveOvertimeScreen,
+  'people/approve-time-off': ApproveTimeOffScreen,
+  'people/public-holidays': PublicHolidaysScreen,
+  'people/letters': LettersScreen,
+  'people/timesheet': TimesheetScreen,
+  'people/shift-calendar': ShiftCalendarScreen,
+  'people/overtime': OvertimeScreen,
+  'people/payroll': PayrollScreen,
+  'people/payment-vouchers': PaymentVouchersScreen,
+  'people/scorecard': ScorecardScreen,
+  'people/review-scores': ReviewScoresScreen,
+  'people/training': TrainingScreen,
+  'people/settings': HrSettingsScreen,
 };
