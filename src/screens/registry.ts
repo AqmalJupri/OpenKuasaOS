@@ -65,6 +65,34 @@ import TalentPoolScreen from '@/screens/hire/talent-pool';
 import CareersPageScreen from '@/screens/hire/careers-page';
 import HireSettingsScreen from '@/screens/hire/settings';
 
+// Bendahara (finance / Safa)
+import FinAssistantScreen from '@/screens/finance/assistant';
+import FinAgentsScreen from '@/screens/finance/agents';
+import FinDashboardScreen from '@/screens/finance/dashboard';
+import CashReceiptsScreen from '@/screens/finance/cash-receipts';
+import FinPaymentVouchersScreen from '@/screens/finance/payment-vouchers';
+import InvoicesScreen from '@/screens/finance/invoices';
+import QuotationsScreen from '@/screens/finance/quotations';
+import CreditNotesScreen from '@/screens/finance/credit-notes';
+import PaymentsInScreen from '@/screens/finance/payments-in';
+import RefundsScreen from '@/screens/finance/refunds';
+import ExpensesScreen from '@/screens/finance/expenses';
+import ReceiptsInboxScreen from '@/screens/finance/receipts-inbox';
+import SupplierBillsScreen from '@/screens/finance/supplier-bills';
+import PaymentsOutScreen from '@/screens/finance/payments-out';
+import BankingScreen from '@/screens/finance/banking';
+import EInvoiceScreen from '@/screens/finance/e-invoice';
+import SstReportScreen from '@/screens/finance/sst-report';
+import AuditTrailScreen from '@/screens/finance/audit-trail';
+import CustomersSuppliersScreen from '@/screens/finance/customers-suppliers';
+import ProductsScreen from '@/screens/finance/products';
+import FinReportsScreen from '@/screens/finance/reports';
+import JournalsScreen from '@/screens/finance/journals';
+import ChartOfAccountsScreen from '@/screens/finance/chart-of-accounts';
+import ContraEntriesScreen from '@/screens/finance/contra-entries';
+import FxRevaluationScreen from '@/screens/finance/fx-revaluation';
+import FinSettingsScreen from '@/screens/finance/settings';
+
 /**
  * Built-out screens, keyed by `${productKey}/${itemSlug}`.
  * Anything not here falls back to a generic placeholder.
@@ -139,4 +167,32 @@ export const SCREENS: Record<string, ComponentType> = {
   'hire/talent-pool': TalentPoolScreen,
   'hire/careers-page': CareersPageScreen,
   'hire/settings': HireSettingsScreen,
+
+  // Bendahara (Safa — Accounting & e-Invois)
+  'finance/assistant': FinAssistantScreen,
+  'finance/agents': FinAgentsScreen,
+  'finance/dashboard': FinDashboardScreen,
+  'finance/cash-receipts': CashReceiptsScreen,
+  'finance/payment-vouchers': FinPaymentVouchersScreen,
+  'finance/invoices': InvoicesScreen,
+  'finance/quotations': QuotationsScreen,
+  'finance/credit-notes': CreditNotesScreen,
+  'finance/payments-in': PaymentsInScreen,
+  'finance/refunds': RefundsScreen,
+  'finance/expenses': ExpensesScreen,
+  'finance/receipts-inbox': ReceiptsInboxScreen,
+  'finance/supplier-bills': SupplierBillsScreen,
+  'finance/payments-out': PaymentsOutScreen,
+  'finance/banking': BankingScreen,
+  'finance/e-invoice': EInvoiceScreen,
+  'finance/sst-report': SstReportScreen,
+  'finance/audit-trail': AuditTrailScreen,
+  'finance/customers-suppliers': CustomersSuppliersScreen,
+  'finance/products': ProductsScreen,
+  'finance/reports': FinReportsScreen,
+  'finance/journals': JournalsScreen,
+  'finance/chart-of-accounts': ChartOfAccountsScreen,
+  'finance/contra-entries': ContraEntriesScreen,
+  'finance/fx-revaluation': FxRevaluationScreen,
+  'finance/settings': FinSettingsScreen,
 };
