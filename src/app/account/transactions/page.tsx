@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,9 +55,15 @@ export default function TransactionsPage() {
           </h1>
           <p className="text-sm text-muted-foreground">Your billing history.</p>
         </div>
-        <Button variant="outline" size="sm">
-          Export
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            Export
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download />
+            Download all
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
@@ -82,6 +89,9 @@ export default function TransactionsPage() {
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Method</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,6 +119,12 @@ export default function TransactionsPage() {
                     >
                       {t.status}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">
+                      <Download />
+                      Invoice
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
