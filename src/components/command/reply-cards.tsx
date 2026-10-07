@@ -3,11 +3,21 @@ import {
   Receipt,
   CircleCheck,
   ArrowUpRight,
+  Users,
+  Banknote,
+  Clock,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type CardType = 'overview' | 'leads' | 'priorities' | 'invoices';
+export type CardType =
+  | 'overview'
+  | 'leads'
+  | 'priorities'
+  | 'invoices'
+  | 'pipeline'
+  | 'team'
+  | 'ads';
 
 export function ReplyCard({ type }: { type: CardType }) {
   switch (type) {
@@ -19,6 +29,12 @@ export function ReplyCard({ type }: { type: CardType }) {
       return <PrioritiesCard />;
     case 'invoices':
       return <InvoicesCard />;
+    case 'pipeline':
+      return <PipelineCard />;
+    case 'team':
+      return <TeamCard />;
+    case 'ads':
+      return <AdsCard />;
   }
 }
 
@@ -214,6 +230,162 @@ function InvoicesCard() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ---------- Deals pipeline ---------- */
+
+const STAGES = [
+  { label: 'New Lead', count: 2, value: 17400 },
+  { label: 'Contacted', count: 2, value: 12400 },
+  { label: 'Qualified', count: 2, value: 19200 },
+  { label: 'Proposal Sent', count: 1, value: 7200 },
+  { label: 'Won', count: 3, value: 42000 },
+];
+
+function PipelineCard() {
+  const open = STAGES.filter((s) => s.label !== 'Won').reduce(
+    (a, s) => a + s.value,
+    0,
+  );
+  const max = Math.max(...STAGES.map((s) => s.value));
+  return (
+    <div className={SHELL}>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-sm font-semibold">Sales pipeline</p>
+          <p className="text-xs text-muted-foreground">7 open deals</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold tracking-tight">
+            RM {open.toLocaleString()}
+          </p>
+          <p className="text-xs text-muted-foreground">open value</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2.5">
+        {STAGES.map((s) => (
+          <div key={s.label} className="flex items-center gap-3">
+            <span className="w-28 shrink-0 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{s.label}</span> ·{' '}
+              {s.count}
+            </span>
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  'h-full rounded-full',
+                  s.label === 'Won' ? 'bg-primary' : 'bg-primary/40',
+                )}
+                style={{ width: `${(s.value / max) * 100}%` }}
+              />
+            </div>
+            <span className="w-20 shrink-0 text-right text-xs font-medium">
+              RM {s.value.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Team & payroll ---------- */
+
+const TEAM_STATS: { icon: LucideIcon; label: string; value: string }[] = [
+  { icon: Users, label: 'Headcount', value: '24' },
+  { icon: CircleCheck, label: 'Pending', value: '3' },
+  { icon: Banknote, label: 'Next payroll', value: 'RM 86,400' },
+];
+
+const APPROVALS: { icon: LucideIcon; text: string; sub: string }[] = [
+  {
+    icon: CircleCheck,
+    text: '2 leave requests',
+    sub: 'Aisyah Rahim, Faiz Hakim',
+  },
+  { icon: Receipt, text: '1 expense claim · RM 340', sub: 'Ahmad Zaki' },
+];
+
+function TeamCard() {
+  return (
+    <div className={SHELL}>
+      <p className="text-sm font-semibold">Team &amp; payroll</p>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        {TEAM_STATS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="rounded-lg bg-muted/50 p-3">
+              <Icon className="size-4 text-primary" />
+              <p className="mt-1 text-base font-bold tracking-tight">
+                {s.value}
+              </p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 space-y-2">
+        {APPROVALS.map((a) => {
+          const Icon = a.icon;
+          return (
+            <div key={a.text} className="flex items-center gap-3">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Icon className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{a.text}</p>
+                <p className="text-xs text-muted-foreground">{a.sub}</p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+              >
+                Review
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Clock className="size-3.5 shrink-0" />
+        Payroll runs 28 Oct · EPF, SOCSO &amp; PCB included
+      </p>
+    </div>
+  );
+}
+
+/* ---------- Ad performance ---------- */
+
+const AD_STATS = [
+  { label: 'Spend', value: 'RM 4,820' },
+  { label: 'Leads', value: '184' },
+  { label: 'Cost / lead', value: 'RM 26' },
+  { label: 'ROAS', value: '3.4×' },
+];
+
+function AdsCard() {
+  return (
+    <div className={SHELL}>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">Ad performance · October</p>
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+          <TrendingUp className="size-3.5" />
+          ROAS 3.4×
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {AD_STATS.map((s) => (
+          <div key={s.label} className="rounded-lg bg-muted/50 p-3">
+            <p className="text-lg font-bold tracking-tight">{s.value}</p>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Meta Ads is driving the most leads at RM 22 each; WhatsApp click-to-chat
+        is your cheapest channel.
+      </p>
     </div>
   );
 }
