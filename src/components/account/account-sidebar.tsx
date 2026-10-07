@@ -6,14 +6,18 @@ import {
   Home,
   UserRound,
   Lock,
+  Bell,
   Building2,
   Users,
   Briefcase,
+  ScrollText,
   CreditCard,
   KeyRound,
   Puzzle,
+  Wallet,
   FileText,
   LayoutGrid,
+  Code2,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,6 +33,7 @@ const SECTIONS: { label: string; items: Item[] }[] = [
     items: [
       { label: 'My profile', href: '/account/profile', icon: UserRound },
       { label: 'Security', href: '/account/security', icon: Lock },
+      { label: 'Notifications', href: '/account/notifications', icon: Bell },
     ],
   },
   {
@@ -37,6 +42,7 @@ const SECTIONS: { label: string; items: Item[] }[] = [
       { label: 'Company details', href: '/account/company', icon: Building2 },
       { label: 'Team', href: '/account/team', icon: Users },
       { label: 'Client accounts', href: '/account/clients', icon: Briefcase },
+      { label: 'Activity log', href: '/account/activity', icon: ScrollText },
     ],
   },
   {
@@ -45,6 +51,7 @@ const SECTIONS: { label: string; items: Item[] }[] = [
       { label: 'My subscriptions', href: '/account/subscriptions', icon: CreditCard },
       { label: 'Change plan', href: '/account/plan', icon: KeyRound },
       { label: 'Add-ons', href: '/account/add-ons', icon: Puzzle },
+      { label: 'Payment methods', href: '/account/payment-methods', icon: Wallet },
       { label: 'Transaction records', href: '/account/transactions', icon: FileText },
     ],
   },
@@ -52,6 +59,7 @@ const SECTIONS: { label: string; items: Item[] }[] = [
     label: 'Apps',
     items: [
       { label: 'Connected apps', href: '/account/connected-apps', icon: LayoutGrid },
+      { label: 'Developers', href: '/account/developers', icon: Code2 },
     ],
   },
 ];
