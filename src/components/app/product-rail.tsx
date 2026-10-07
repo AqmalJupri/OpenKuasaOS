@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Settings, LogOut, type LucideIcon } from 'lucide-react';
-import { MODULES } from '@/config/modules';
+import { PRODUCTS } from '@/config/nav';
 import { Logo } from '@/components/brand/logo';
 import {
   Tooltip,
@@ -12,15 +11,19 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-type RailLinkProps = {
+function RailLink({
+  href,
+  label,
+  sublabel,
+  icon: Icon,
+  active,
+}: {
   href: string;
   label: string;
   sublabel?: string;
   icon: LucideIcon;
   active?: boolean;
-};
-
-function RailLink({ href, label, sublabel, icon: Icon, active }: RailLinkProps) {
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -47,9 +50,7 @@ function RailLink({ href, label, sublabel, icon: Icon, active }: RailLinkProps) 
   );
 }
 
-export function AppSidebar() {
-  const pathname = usePathname();
-
+export function ProductRail({ activeKey }: { activeKey: string | null }) {
   return (
     <aside className="flex h-full w-16 shrink-0 flex-col items-center border-r bg-sidebar py-3">
       <Link href="/command" aria-label="OpenKuasa home" className="mb-3">
@@ -57,14 +58,14 @@ export function AppSidebar() {
       </Link>
 
       <nav className="flex flex-1 flex-col items-center gap-1">
-        {MODULES.map((m) => (
+        {PRODUCTS.map((p) => (
           <RailLink
-            key={m.key}
-            href={m.href}
-            label={m.name}
-            sublabel={m.tagline}
-            icon={m.icon}
-            active={pathname.startsWith(m.href)}
+            key={p.key}
+            href={`/${p.key}`}
+            label={p.name}
+            sublabel={p.tagline}
+            icon={p.icon}
+            active={activeKey === p.key}
           />
         ))}
       </nav>
@@ -74,7 +75,7 @@ export function AppSidebar() {
           href="/settings"
           label="Settings"
           icon={Settings}
-          active={pathname.startsWith('/settings')}
+          active={activeKey === 'settings'}
         />
         <RailLink href="/login" label="Sign out" icon={LogOut} />
       </div>

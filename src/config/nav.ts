@@ -1,0 +1,393 @@
+import {
+  Compass,
+  Megaphone,
+  SquareKanban,
+  Users,
+  UserPlus,
+  Landmark,
+  Sparkles,
+  Bot,
+  Wand2,
+  Images,
+  PieChart,
+  ClipboardList,
+  CalendarDays,
+  SlidersHorizontal,
+  ShieldCheck,
+  TrendingUp,
+  MessageSquare,
+  Zap,
+  MonitorSmartphone,
+  Calendar,
+  CreditCard,
+  BarChart3,
+  Plug,
+  Settings,
+  LayoutDashboard,
+  Clock,
+  Target,
+  FileText,
+  Archive,
+  CircleCheck,
+  Heart,
+  CalendarClock,
+  Banknote,
+  Receipt,
+  Star,
+  GraduationCap,
+  Briefcase,
+  Inbox,
+  Building2,
+  ArrowLeftRight,
+  BookOpen,
+  ListTree,
+  Package,
+  BadgeCheck,
+  ScrollText,
+  CircleDollarSign,
+  RotateCcw,
+  ArrowUpRight,
+  Coins,
+  type LucideIcon,
+} from 'lucide-react';
+
+export type NavItem = { label: string; slug: string; icon: LucideIcon };
+export type NavSection = { label: string; items: NavItem[] };
+
+export type Product = {
+  /** route segment / stable key */
+  key: string;
+  /** Hang codename shown in the UI */
+  name: string;
+  /** original Kuasa product, kept for reference */
+  kuasa: string;
+  tagline: string;
+  icon: LucideIcon;
+  /** empty sections => full-width module with no secondary panel */
+  sections: NavSection[];
+};
+
+export const PRODUCTS: Product[] = [
+  {
+    key: 'command',
+    name: 'Tuah',
+    kuasa: 'AI CEO',
+    tagline: 'Command your business',
+    icon: Compass,
+    sections: [],
+  },
+  {
+    key: 'reach',
+    name: 'Jebat',
+    kuasa: 'Kuasa ARA · Ads',
+    tagline: 'Win new leads with AI ads',
+    icon: Megaphone,
+    sections: [
+      {
+        label: 'Overview',
+        items: [
+          { label: 'CMO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'AI Agents', slug: 'agents', icon: Bot },
+        ],
+      },
+      {
+        label: 'Ads',
+        items: [
+          { label: 'Ad Studio', slug: 'ad-studio', icon: Wand2 },
+          { label: 'Creative Bank', slug: 'creative-bank', icon: Images },
+          { label: 'Reports', slug: 'reports', icon: PieChart },
+        ],
+      },
+      {
+        label: 'Leads',
+        items: [
+          { label: 'Contacts', slug: 'contacts', icon: Users },
+          { label: 'Lead Forms', slug: 'lead-forms', icon: ClipboardList },
+        ],
+      },
+      {
+        label: 'Schedule',
+        items: [
+          { label: 'Appointments', slug: 'appointments', icon: CalendarDays },
+        ],
+      },
+      {
+        label: 'Configuration',
+        items: [
+          { label: 'Ad Settings', slug: 'ad-settings', icon: SlidersHorizontal },
+          { label: 'Health Check', slug: 'health-check', icon: ShieldCheck },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'crm',
+    name: 'Kasturi',
+    kuasa: 'Kuasa ARA · CRM',
+    tagline: 'Manage & close your pipeline',
+    icon: SquareKanban,
+    sections: [
+      {
+        label: 'Overview',
+        items: [
+          { label: 'CMO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'AI Agents', slug: 'agents', icon: Bot },
+        ],
+      },
+      {
+        label: 'Leads',
+        items: [
+          { label: 'Contacts', slug: 'contacts', icon: Users },
+          { label: 'Deals', slug: 'deals', icon: TrendingUp },
+          { label: 'Lead Forms', slug: 'lead-forms', icon: ClipboardList },
+        ],
+      },
+      {
+        label: 'Engage',
+        items: [
+          { label: 'Broadcast', slug: 'broadcast', icon: Megaphone },
+          { label: 'AI Chatbot', slug: 'chatbot', icon: MessageSquare },
+          { label: 'Automations', slug: 'automations', icon: Zap },
+          { label: 'Landing Page', slug: 'landing-page', icon: MonitorSmartphone },
+        ],
+      },
+      {
+        label: 'Schedule',
+        items: [
+          { label: 'Appointments', slug: 'appointments', icon: CalendarDays },
+          { label: 'Calendar', slug: 'calendar', icon: Calendar },
+        ],
+      },
+      {
+        label: 'Finance',
+        items: [{ label: 'Billings', slug: 'billings', icon: CreditCard }],
+      },
+      {
+        label: 'Analytics',
+        items: [{ label: 'Reports', slug: 'reports', icon: BarChart3 }],
+      },
+      {
+        label: 'Configuration',
+        items: [
+          { label: 'Plugins', slug: 'plugins', icon: Plug },
+          { label: 'Settings', slug: 'settings', icon: Settings },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'people',
+    name: 'Lekiu',
+    kuasa: 'Kuasa HIRA · Team',
+    tagline: 'Build & manage your team',
+    icon: Users,
+    sections: [
+      {
+        label: 'General',
+        items: [
+          { label: 'CHRO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+          { label: 'Calendar', slug: 'calendar', icon: Calendar },
+          { label: 'Announcements', slug: 'announcements', icon: Megaphone },
+          { label: 'My Attendance', slug: 'my-attendance', icon: Clock },
+          { label: 'My Goals', slug: 'my-goals', icon: Target },
+          { label: 'My Documents', slug: 'my-documents', icon: FileText },
+          { label: 'Records', slug: 'records', icon: Archive },
+        ],
+      },
+      {
+        label: 'Applications',
+        items: [
+          { label: 'Leave', slug: 'leave', icon: CircleCheck },
+          { label: 'Time-Off', slug: 'time-off', icon: CircleCheck },
+          { label: 'Financial Claims', slug: 'claims', icon: CircleCheck },
+          { label: 'OT Claims', slug: 'ot-claims', icon: CircleCheck },
+        ],
+      },
+      {
+        label: 'Management',
+        items: [{ label: 'Employees', slug: 'employees', icon: Users }],
+      },
+      {
+        label: 'Approvals',
+        items: [
+          { label: 'Leave', slug: 'approve-leave', icon: CircleCheck },
+          { label: 'Financial Claims', slug: 'approve-claims', icon: CircleCheck },
+          { label: 'Overtime', slug: 'approve-overtime', icon: CircleCheck },
+          { label: 'Time-Off', slug: 'approve-time-off', icon: CircleCheck },
+          { label: 'Public Holidays', slug: 'public-holidays', icon: Heart },
+          { label: 'Letters', slug: 'letters', icon: FileText },
+        ],
+      },
+      {
+        label: 'Attendance',
+        items: [
+          { label: 'Timesheet', slug: 'timesheet', icon: Clock },
+          { label: 'Shift Calendar', slug: 'shift-calendar', icon: CalendarClock },
+          { label: 'Overtime', slug: 'overtime', icon: Clock },
+        ],
+      },
+      {
+        label: 'Payroll',
+        items: [
+          { label: 'Payroll', slug: 'payroll', icon: Banknote },
+          { label: 'Payment Vouchers', slug: 'payment-vouchers', icon: Receipt },
+        ],
+      },
+      {
+        label: 'Performance',
+        items: [
+          { label: 'Scorecard', slug: 'scorecard', icon: Star },
+          { label: 'Review Scores', slug: 'review-scores', icon: Star },
+          { label: 'Training', slug: 'training', icon: GraduationCap },
+        ],
+      },
+      {
+        label: 'Configuration',
+        items: [{ label: 'Settings', slug: 'settings', icon: Settings }],
+      },
+    ],
+  },
+  {
+    key: 'hire',
+    name: 'Lekir',
+    kuasa: 'Kuasa HIRA · Recruit',
+    tagline: 'Recruit & hire your next team',
+    icon: UserPlus,
+    sections: [
+      {
+        label: 'Overview',
+        items: [
+          { label: 'Recruiter Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: 'Pipeline',
+        items: [
+          { label: 'Jobs', slug: 'jobs', icon: Briefcase },
+          { label: 'Candidates', slug: 'candidates', icon: Users },
+          { label: 'Applications', slug: 'applications', icon: ClipboardList },
+          { label: 'Interviews', slug: 'interviews', icon: CalendarDays },
+        ],
+      },
+      {
+        label: 'Sourcing',
+        items: [
+          { label: 'Talent Pool', slug: 'talent-pool', icon: UserPlus },
+          { label: 'Careers Page', slug: 'careers-page', icon: MonitorSmartphone },
+        ],
+      },
+      {
+        label: 'Configuration',
+        items: [{ label: 'Settings', slug: 'settings', icon: Settings }],
+      },
+    ],
+  },
+  {
+    key: 'finance',
+    name: 'Bendahara',
+    kuasa: 'Kuasa Safa',
+    tagline: 'Accounting & e-Invois LHDN',
+    icon: Landmark,
+    sections: [
+      {
+        label: 'Overview',
+        items: [
+          { label: 'CFO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'AI Agents', slug: 'agents', icon: Bot },
+          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: 'Cash Book',
+        items: [
+          { label: 'Cash Receipts', slug: 'cash-receipts', icon: Receipt },
+          { label: 'Payment Vouchers', slug: 'payment-vouchers', icon: Receipt },
+        ],
+      },
+      {
+        label: 'Sales',
+        items: [
+          { label: 'Invoices', slug: 'invoices', icon: FileText },
+          { label: 'Quotations', slug: 'quotations', icon: ClipboardList },
+          { label: 'Credit Notes', slug: 'credit-notes', icon: RotateCcw },
+          { label: 'Payments In', slug: 'payments-in', icon: CircleDollarSign },
+          { label: 'Refunds', slug: 'refunds', icon: ArrowLeftRight },
+        ],
+      },
+      {
+        label: 'Purchases',
+        items: [
+          { label: 'Expenses', slug: 'expenses', icon: CreditCard },
+          { label: 'Receipts Inbox', slug: 'receipts-inbox', icon: Inbox },
+          { label: 'Supplier Bills', slug: 'supplier-bills', icon: Building2 },
+          { label: 'Payments Out', slug: 'payments-out', icon: ArrowUpRight },
+          { label: 'Banking', slug: 'banking', icon: Landmark },
+        ],
+      },
+      {
+        label: 'Compliance',
+        items: [
+          { label: 'e-Invoice LHDN', slug: 'e-invoice', icon: BadgeCheck },
+          { label: 'SST Report', slug: 'sst-report', icon: ScrollText },
+          { label: 'Audit Trail', slug: 'audit-trail', icon: FileText },
+        ],
+      },
+      {
+        label: 'Records',
+        items: [
+          {
+            label: 'Customers & Suppliers',
+            slug: 'customers-suppliers',
+            icon: Users,
+          },
+          { label: 'Products', slug: 'products', icon: Package },
+        ],
+      },
+      {
+        label: 'Analytics',
+        items: [
+          { label: 'Reports', slug: 'reports', icon: BarChart3 },
+          { label: 'Journals', slug: 'journals', icon: BookOpen },
+          { label: 'Chart of Accounts', slug: 'chart-of-accounts', icon: ListTree },
+          { label: 'Contra Entries', slug: 'contra-entries', icon: ArrowLeftRight },
+          { label: 'FX Revaluation', slug: 'fx-revaluation', icon: Coins },
+        ],
+      },
+      {
+        label: 'Configuration',
+        items: [
+          { label: 'Accounting Settings', slug: 'settings', icon: Settings },
+        ],
+      },
+    ],
+  },
+];
+
+/** The cross-app AI assistant. */
+export const ASSISTANT = {
+  name: 'Taming Sari',
+  short: 'Sari',
+  tagline: 'Ask anything',
+} as const;
+
+export function getProduct(key: string | undefined): Product | undefined {
+  return PRODUCTS.find((p) => p.key === key);
+}
+
+/** First navigable item of a product (its default landing item). */
+export function firstItem(product: Product): NavItem | undefined {
+  return product.sections[0]?.items[0];
+}
+
+export function findItem(
+  product: Product,
+  slug: string | undefined,
+): NavItem | undefined {
+  for (const section of product.sections) {
+    const hit = section.items.find((i) => i.slug === slug);
+    if (hit) return hit;
+  }
+  return undefined;
+}
