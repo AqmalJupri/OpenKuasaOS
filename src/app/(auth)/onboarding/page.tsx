@@ -1,0 +1,341 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { SplitLayout } from '@/components/brand/split-layout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+const TOTAL = 6;
+
+const ROLES = [
+  'Owner',
+  'Manager',
+  'Student',
+  'Freelancer',
+  'Executive Team',
+  'Employee',
+  'Intern',
+  'Other',
+];
+
+const FOCUS = [
+  'Automate marketing',
+  'Generate leads',
+  'Grow and manage sales pipeline',
+  'Scale customer support',
+  'Build a website or landing pages',
+  'Send bills and collect payments',
+];
+
+const TOOLS = [
+  'WhatsApp Official',
+  'Wordpress',
+  'HubSpot',
+  'Meta Ads',
+  'TikTok',
+  'Salesforce',
+  'Other',
+];
+
+// Step 5 is inferred (not in the reference) — a light "goals" step.
+const GOALS = [
+  'More qualified leads',
+  'Higher close rate',
+  'Save time on admin',
+  'Healthier cash flow',
+];
+
+const INDUSTRIES = [
+  'Technology',
+  'Retail & e-commerce',
+  'Professional services',
+  'Manufacturing',
+  'Food & beverage',
+  'Healthcare',
+  'Education',
+  'Other',
+];
+
+const SIZES = ['Just me', '2–5', '6–20', '21–50', '51–200', '200+'];
+
+function SelectCard({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        'rounded-xl border bg-card px-5 py-4 text-left text-sm font-semibold text-foreground transition hover:border-primary/50',
+        selected
+          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          : 'border-border',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function toggle(list: string[], value: string) {
+  return list.includes(value)
+    ? list.filter((v) => v !== value)
+    : [...list, value];
+}
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+
+  const [role, setRole] = useState<string | null>(null);
+  const [company, setCompany] = useState({
+    name: '',
+    industry: '',
+    size: '',
+    website: '',
+  });
+  const [focus, setFocus] = useState<string[]>([]);
+  const [tools, setTools] = useState<string[]>([]);
+  const [goals, setGoals] = useState<string[]>([]);
+
+  const pct = Math.round((step / TOTAL) * 100);
+
+  const next = () => setStep((s) => Math.min(s + 1, TOTAL));
+  const back = () => setStep((s) => Math.max(s - 1, 1));
+
+  return (
+    <SplitLayout
+      contentClassName="max-w-xl"
+      heading="Tailor your experience"
+      subheading="Let's set up your workspace to perfectly match your business needs and workflow."
+      footer={
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Step {step} of {TOTAL}
+            </span>
+            <span className="text-sm font-bold text-primary">{pct}%</span>
+          </div>
+          <Progress value={pct} />
+        </div>
+      }
+    >
+      <div className="flex min-h-[26rem] flex-col">
+        <div className="flex-1">
+          {step === 1 && (
+            <Step
+              title="Which best describes your role?"
+              subtitle="This helps us surface the right tools and tips for you."
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {ROLES.map((r) => (
+                  <SelectCard
+                    key={r}
+                    label={r}
+                    selected={role === r}
+                    onClick={() => setRole(r)}
+                  />
+                ))}
+              </div>
+            </Step>
+          )}
+
+          {step === 2 && (
+            <Step title="Tell us about your company">
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">Company name *</Label>
+                  <Input
+                    id="company-name"
+                    value={company.name}
+                    onChange={(e) =>
+                      setCompany({ ...company, name: e.target.value })
+                    }
+                    placeholder="Acme Sdn Bhd"
+                  />
+                </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Industry *</Label>
+                    <Select
+                      value={company.industry}
+                      onValueChange={(v) =>
+                        setCompany({ ...company, industry: v })
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDUSTRIES.map((i) => (
+                          <SelectItem key={i} value={i}>
+                            {i}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Company size *</Label>
+                    <Select
+                      value={company.size}
+                      onValueChange={(v) =>
+                        setCompany({ ...company, size: v })
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SIZES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-site">Company website (optional)</Label>
+                  <Input
+                    id="company-site"
+                    value={company.website}
+                    onChange={(e) =>
+                      setCompany({ ...company, website: e.target.value })
+                    }
+                    placeholder="e.g. openkuasa.com"
+                  />
+                </div>
+              </div>
+            </Step>
+          )}
+
+          {step === 3 && (
+            <Step
+              title="What would you like to focus on first?"
+              subtitle="You can select more than one. We'll tailor your experience accordingly."
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {FOCUS.map((f) => (
+                  <SelectCard
+                    key={f}
+                    label={f}
+                    selected={focus.includes(f)}
+                    onClick={() => setFocus((list) => toggle(list, f))}
+                  />
+                ))}
+              </div>
+            </Step>
+          )}
+
+          {step === 4 && (
+            <Step
+              title="What tools do you use?"
+              subtitle="Select current tools to help us find the best integrations."
+            >
+              <div className="grid grid-cols-3 gap-3">
+                {TOOLS.map((t) => (
+                  <SelectCard
+                    key={t}
+                    label={t}
+                    selected={tools.includes(t)}
+                    onClick={() => setTools((list) => toggle(list, t))}
+                  />
+                ))}
+              </div>
+            </Step>
+          )}
+
+          {step === 5 && (
+            <Step
+              title="What are your goals right now?"
+              subtitle="We'll prioritise the features that move these numbers first."
+            >
+              <div className="grid grid-cols-2 gap-3">
+                {GOALS.map((g) => (
+                  <SelectCard
+                    key={g}
+                    label={g}
+                    selected={goals.includes(g)}
+                    onClick={() => setGoals((list) => toggle(list, g))}
+                  />
+                ))}
+              </div>
+            </Step>
+          )}
+
+          {step === 6 && (
+            <Step
+              title="Setup complete!"
+              subtitle="Everything is ready. We've prepared some sample data for you."
+            >
+              <Button size="lg" onClick={() => router.push('/command')}>
+                Go to Dashboard
+              </Button>
+            </Step>
+          )}
+        </div>
+
+        {step < TOTAL ? (
+          <div className="mt-8 flex items-center justify-between border-t pt-6">
+            {step > 1 ? (
+              <button
+                type="button"
+                onClick={back}
+                className="text-sm font-semibold uppercase tracking-wide text-muted-foreground transition hover:text-foreground"
+              >
+                Back
+              </button>
+            ) : (
+              <span />
+            )}
+            <Button size="lg" onClick={next}>
+              Continue
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </SplitLayout>
+  );
+}
+
+function Step({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+        {subtitle ? (
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        ) : null}
+      </div>
+      {children}
+    </div>
+  );
+}
