@@ -1,0 +1,193 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { ChevronDown, Menu, X, ArrowRight } from 'lucide-react';
+import { Logo } from '@/components/brand/logo';
+import { Button } from '@/components/ui/button';
+import { MEGA_MENU, NAV_LINKS } from '@/config/marketing';
+import { cn } from '@/lib/utils';
+
+export function MarketingHeader() {
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/90 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="flex items-center gap-8">
+          <Link href="/" aria-label="OpenKuasa home">
+            <Logo wordmark="Kuasa" wordmarkClassName="text-white text-xl" />
+          </Link>
+
+          <nav className="hidden items-center gap-6 text-sm text-white/75 lg:flex">
+            <Link href="/" className="transition-colors hover:text-white">
+              Home
+            </Link>
+
+            {/* Products — mega-menu trigger */}
+            <div
+              className="relative"
+              onMouseEnter={() => setMegaOpen(true)}
+              onMouseLeave={() => setMegaOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setMegaOpen((v) => !v)}
+                className="flex items-center gap-1 transition-colors hover:text-white"
+                aria-expanded={megaOpen}
+              >
+                Products
+                <ChevronDown
+                  className={cn(
+                    'size-4 transition-transform',
+                    megaOpen && 'rotate-180',
+                  )}
+                />
+              </button>
+            </div>
+
+            {NAV_LINKS.filter((l) => l.label !== 'Home').map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                className="transition-colors hover:text-white"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="hidden items-center gap-4 lg:flex">
+          <Link
+            href="/login"
+            className="text-sm font-medium text-white/75 transition-colors hover:text-white"
+          >
+            Login
+          </Link>
+          <Button asChild className="rounded-full">
+            <Link href="/onboarding">Get Started</Link>
+          </Button>
+        </div>
+
+        {/* mobile toggle */}
+        <button
+          type="button"
+          className="text-white lg:hidden"
+          aria-label="Toggle menu"
+          onClick={() => setMobileOpen((v) => !v)}
+        >
+          {mobileOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+        </button>
+      </div>
+
+      {/* Mega-menu panel (desktop) */}
+      <div
+        className={cn(
+          'absolute inset-x-0 top-full hidden border-b border-black/10 bg-background text-foreground shadow-xl lg:block',
+          megaOpen ? 'block' : 'lg:hidden',
+        )}
+        onMouseEnter={() => setMegaOpen(true)}
+        onMouseLeave={() => setMegaOpen(false)}
+      >
+        <div className="mx-auto grid max-w-7xl grid-cols-4 gap-8 px-6 py-10">
+          {MEGA_MENU.map((col) => {
+            const Icon = col.icon;
+            return (
+              <div key={col.name}>
+                <div className="flex items-center gap-2.5">
+                  <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-[18px]" />
+                  </span>
+                  <div>
+                    <p className="font-bold leading-tight">{col.name}</p>
+                    <p className="text-xs text-muted-foreground">{col.tagline}</p>
+                  </div>
+                </div>
+                <ul className="mt-4 space-y-3">
+                  {col.items.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={col.href}
+                        className="group block"
+                        onClick={() => setMegaOpen(false)}
+                      >
+                        <span className="text-sm font-medium group-hover:text-primary">
+                          {item.label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {item.desc}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={col.href}
+                  onClick={() => setMegaOpen(false)}
+                  className="mt-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+                >
+                  Explore all apps
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {mobileOpen ? (
+        <div className="border-t border-white/10 bg-[#0a0a0a] px-6 py-4 lg:hidden">
+          <nav className="flex flex-col gap-1 text-sm text-white/80">
+            <Link href="/" className="py-2" onClick={() => setMobileOpen(false)}>
+              Home
+            </Link>
+            <p className="pt-3 text-xs font-semibold uppercase tracking-widest text-white/40">
+              Products
+            </p>
+            {MEGA_MENU.map((col) => (
+              <Link
+                key={col.name}
+                href={col.href}
+                className="py-2 pl-1"
+                onClick={() => setMobileOpen(false)}
+              >
+                {col.name}{' '}
+                <span className="text-white/40">· {col.tagline}</span>
+              </Link>
+            ))}
+            <div className="my-2 h-px bg-white/10" />
+            {NAV_LINKS.filter((l) => l.label !== 'Home').map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                className="py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                {l.label}
+              </Link>
+            ))}
+            <div className="mt-3 flex items-center gap-3">
+              <Button
+                asChild
+                variant="outline"
+                className="flex-1 rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/login" onClick={() => setMobileOpen(false)}>
+                  Login
+                </Link>
+              </Button>
+              <Button asChild className="flex-1 rounded-full">
+                <Link href="/onboarding" onClick={() => setMobileOpen(false)}>
+                  Get Started
+                </Link>
+              </Button>
+            </div>
+          </nav>
+        </div>
+      ) : null}
+    </header>
+  );
+}
