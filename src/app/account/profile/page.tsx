@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,14 +31,22 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle>Profile photo</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center gap-4">
-            <Avatar className="size-16">
-              <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
-                JD
-              </AvatarFallback>
-            </Avatar>
+          <CardContent className="flex flex-wrap items-center gap-4">
+            <div className="group relative size-16 shrink-0">
+              <Avatar className="size-16">
+                <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
+                  JD
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/40 text-white group-hover:flex">
+                <Camera className="size-5" />
+              </div>
+            </div>
             <Button variant="outline" size="sm">
               Change photo
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              Remove
             </Button>
             <span className="text-sm text-muted-foreground">
               JPG or PNG, max 2MB
