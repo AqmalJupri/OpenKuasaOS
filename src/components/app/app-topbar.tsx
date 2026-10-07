@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Bell, CircleHelp, Coins, PanelLeftOpen } from 'lucide-react';
+import { Search, Bell, CircleHelp, Coins, PanelLeftOpen, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/components/app/user-menu';
@@ -28,15 +28,33 @@ const NOTIFICATIONS = [
   { title: 'Payroll run for October completed', time: '1d ago' },
 ];
 
-export function AppTopbar({ onExpand }: { onExpand?: () => void }) {
+export function AppTopbar({
+  onExpand,
+  onOpenNav,
+}: {
+  onExpand?: () => void;
+  onOpenNav?: () => void;
+}) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
-      {onExpand ? (
+      {onOpenNav ? (
         <Button
           variant="ghost"
           size="icon"
           aria-label="Open navigation"
+          onClick={onOpenNav}
+          className="md:hidden"
+        >
+          <Menu className="size-5" />
+        </Button>
+      ) : null}
+      {onExpand ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Expand navigation"
           onClick={onExpand}
+          className="hidden md:inline-flex"
         >
           <PanelLeftOpen className="size-5" />
         </Button>
