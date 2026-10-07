@@ -1,7 +1,7 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
-import { ASSISTANT } from '@/config/modules';
+import { ASSISTANT } from '@/config/nav';
 
 /**
  * Taming Sari — the cross-app AI assistant. Floating entry point on every
