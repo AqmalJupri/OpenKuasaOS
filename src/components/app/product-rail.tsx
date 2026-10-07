@@ -72,10 +72,10 @@ export function ProductRail({ activeKey }: { activeKey: string | null }) {
 
       <div className="flex flex-col items-center gap-1">
         <RailLink
-          href="/settings"
-          label="Settings"
+          href="/account"
+          label="Account"
           icon={Settings}
-          active={activeKey === 'settings'}
+          active={activeKey === 'account'}
         />
         <RailLink href="/login" label="Sign out" icon={LogOut} />
       </div>
