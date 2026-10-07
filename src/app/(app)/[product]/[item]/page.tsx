@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { PlaceholderPage } from '@/components/app/placeholder-page';
 import { getProduct, findItem } from '@/config/nav';
+import { SCREENS } from '@/screens/registry';
 
 export default async function ItemPage({
   params,
@@ -13,6 +14,9 @@ export default async function ItemPage({
 
   const item = findItem(product, slug);
   if (!item) notFound();
+
+  const Screen = SCREENS[`${key}/${slug}`];
+  if (Screen) return <Screen />;
 
   return (
     <PlaceholderPage title={item.label} subtitle={product.name} icon={item.icon} />
