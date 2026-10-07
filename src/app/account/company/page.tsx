@@ -1,3 +1,4 @@
+import { AlertTriangle, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 const INDUSTRIES = [
   { value: 'tech', label: 'Technology' },
@@ -135,6 +137,43 @@ export default function CompanyPage() {
         <div className="flex justify-end">
           <Button>Save changes</Button>
         </div>
+
+        <Card className="border-red-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="size-5" />
+              Danger zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">Export workspace data</p>
+                <p className="text-sm text-muted-foreground">
+                  Download all your data as a ZIP.
+                </p>
+              </div>
+              <Button variant="outline" size="sm">
+                <Download />
+                Export
+              </Button>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">Delete workspace</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently remove Rimba Ventures Sdn Bhd and all its data.
+                  This cannot be undone.
+                </p>
+              </div>
+              <Button variant="destructive" size="sm">
+                <Trash2 />
+                Delete workspace
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
