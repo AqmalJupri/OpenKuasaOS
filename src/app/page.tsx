@@ -1,69 +1,114 @@
-import Image from "next/image";
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { Logo } from '@/components/brand/logo';
+import { Button } from '@/components/ui/button';
 
-export default function Home() {
+const NAV = ['Home', 'Products', 'Pricing', 'Marketplace', 'Tutorials', 'Contact'];
+
+const STATS = [
+  { label: 'Empowering', value: '104,786', note: 'businesses' },
+  { label: 'Managing', value: '102M+', note: 'contacts' },
+  { label: 'Serving', value: '45', note: 'industries' },
+  { label: 'Established', value: '2019', note: '' },
+];
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="relative min-h-dvh overflow-hidden bg-[#06110d] text-white">
+      {/* backdrop */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(100% 70% at 50% 110%, oklch(0.55 0.13 164 / 0.55) 0%, transparent 60%)',
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.15] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:26px_26px]" />
+
+      <div className="relative">
+        {/* announcement */}
+        <div className="border-b border-white/10 bg-black/20">
+          <p className="mx-auto max-w-7xl px-6 py-2.5 text-center text-sm text-white/70">
+            Launch offer — up to 50% off for the first 1,000 teams.{' '}
+            <Link href="#" className="font-semibold text-white hover:underline">
+              See pricing →
+            </Link>
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {/* nav */}
+        <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+          <Logo wordmarkClassName="text-white" />
+          <nav className="hidden items-center gap-7 text-sm text-white/80 lg:flex">
+            {NAV.map((item) => (
+              <Link key={item} href="#" className="transition hover:text-white">
+                {item}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-white/80 transition hover:text-white"
+            >
+              Login
+            </Link>
+            <Button asChild className="rounded-full">
+              <Link href="/onboarding">Get started</Link>
+            </Button>
+          </div>
+        </header>
+
+        {/* hero */}
+        <main className="mx-auto max-w-7xl px-6">
+          <section className="flex flex-col items-center py-24 text-center sm:py-32">
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
+              <span className="size-1.5 rounded-full bg-primary" />
+              Powered by Taming Sari AI
+            </span>
+            <h1 className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
+              Hello, Entrepreneurs.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg text-white/70">
+              Say hello to your AI-powered business operating system — marketing,
+              sales, people, and finance in one place.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="#">About OpenKuasa</Link>
+              </Button>
+              <Button asChild size="lg" className="rounded-full">
+                <Link href="/onboarding">
+                  Get started
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
+          </section>
+
+          {/* stats */}
+          <section className="grid grid-cols-2 gap-8 border-t border-white/10 py-14 lg:grid-cols-4">
+            {STATS.map((s) => (
+              <div key={s.label} className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/50">
+                  {s.label}
+                </p>
+                <p className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
+                  {s.value}
+                </p>
+                {s.note ? (
+                  <p className="mt-1 text-sm text-white/50">{s.note}</p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
