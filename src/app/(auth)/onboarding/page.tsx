@@ -245,7 +245,7 @@ export default function OnboardingPage() {
               title="What tools do you use?"
               subtitle="Select current tools to help us find the best integrations."
             >
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {TOOLS.map((t) => (
                   <SelectCard
                     key={t}
