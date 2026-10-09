@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Logo } from '@/components/brand/logo';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { DemoButton } from '@/components/auth/demo-button';
+import { GoogleNotEnabledButton } from '@/components/auth/google-not-enabled-button';
+import { LoginForm } from '@/components/auth/login-form';
 
 export const metadata: Metadata = {
   title: 'Sign in · OpenKuasa OS',
@@ -25,12 +25,10 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <Button variant="outline" className="w-full" size="lg" asChild>
-              <Link href="/command">
-                <GoogleMark />
-                Sign in with Google
-              </Link>
-            </Button>
+            <GoogleNotEnabledButton>
+              <GoogleMark />
+              Sign in with Google
+            </GoogleNotEnabledButton>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -43,49 +41,11 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <form className="space-y-4" action="/command">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email / Username</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="you@company.com"
-                  autoComplete="email"
-                />
-              </div>
+            <LoginForm />
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-input accent-primary"
-                  />
-                  Remember me
-                </label>
-                <Link
-                  href="#"
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              <Button type="submit" className="w-full" size="lg">
-                Sign in
-              </Button>
-            </form>
+            {process.env.NEXT_PUBLIC_DEMO_ENABLED === '1' ? (
+              <DemoButton />
+            ) : null}
 
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{' '}
