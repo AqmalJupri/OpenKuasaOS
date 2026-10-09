@@ -28,6 +28,8 @@ import {
 } from '@/components/charts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -228,9 +230,14 @@ function StatusPill({ status }: { status: string | null }) {
 type ContactsScreenProps = {
   contacts?: Contact[];
   totalContacts?: number;
+  createContactAction?: (formData: FormData) => void | Promise<void>;
 };
 
-export default function ContactsScreen({ contacts, totalContacts }: ContactsScreenProps = {}) {
+export default function ContactsScreen({
+  contacts,
+  totalContacts,
+  createContactAction,
+}: ContactsScreenProps = {}) {
   const rows = contacts ?? CONTACTS;
   const total = totalContacts ?? TOTAL_CONTACTS;
   const [selected, setSelected] = useState<string[]>([]);
@@ -264,6 +271,79 @@ export default function ContactsScreen({ contacts, totalContacts }: ContactsScre
       />
 
       <BentoGrid>
+        {createContactAction ? (
+          <BentoCard
+            title="Add contact"
+            subtitle="Create a Kasturi contact for this workspace"
+            icon={Plus}
+            className="col-span-2 md:col-span-12"
+          >
+            <form action={createContactAction} className="grid gap-3 md:grid-cols-12">
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input id="firstName" name="firstName" placeholder="Aisyah" required />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" name="lastName" placeholder="Rahim" />
+              </div>
+              <div className="space-y-1.5 md:col-span-3">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="aisyah@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" name="phone" placeholder="+60123456789" />
+              </div>
+              <div className="space-y-1.5 md:col-span-3">
+                <Label htmlFor="company">Company</Label>
+                <Input id="company" name="company" placeholder="Rimba Ventures" />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" name="country" defaultValue="MY" />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="status">Status</Label>
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue="new"
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="qualified">Qualified</option>
+                  <option value="customer">Customer</option>
+                </select>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="leadScore">Lead score</Label>
+                <Input
+                  id="leadScore"
+                  name="leadScore"
+                  type="number"
+                  min="0"
+                  max="100"
+                  defaultValue="0"
+                />
+              </div>
+              <div className="flex items-end md:col-span-6">
+                <Button type="submit" className="w-full md:w-auto">
+                  <Plus className="size-4" />
+                  Save contact
+                </Button>
+              </div>
+            </form>
+          </BentoCard>
+        ) : null}
+
         {/* KPI row */}
         <BentoCard tone="primary" className="col-span-1 md:col-span-3">
           <BentoStat

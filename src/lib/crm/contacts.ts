@@ -17,6 +17,18 @@ export type CrmContactsResult = {
   total: number;
 };
 
+export type CrmContactInsert = {
+  org_id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string;
+  phone: string | null;
+  company_name: string | null;
+  country: string;
+  status: string;
+  lead_score: number;
+};
+
 type CrmContactRow = {
   id: string;
   email: string | null;
@@ -53,6 +65,19 @@ export type CrmContactsClient = {
   };
 };
 
+export type CrmContactInsertClient = {
+  from: (table: 'crm_contacts') => {
+    insert: (payload: CrmContactInsert) => {
+      select: (columns: string) => {
+        single: () => PromiseLike<{
+          data: unknown | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
 const CONTACT_COLUMNS = [
   'id',
   'email',
@@ -66,6 +91,28 @@ const CONTACT_COLUMNS = [
   'owner_name',
   'last_interaction_at',
 ].join(',');
+
+const STATUSES = new Set(['new', 'contacted', 'qualified', 'customer']);
+
+function readString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? '').trim();
+}
+
+function optionalString(value: string) {
+  return value.length > 0 ? value : null;
+}
+
+function normalizeStatus(value: string) {
+  const status = value.trim().toLowerCase().replaceAll(' ', '_');
+  return STATUSES.has(status) ? status : 'new';
+}
+
+function normalizeScore(value: string) {
+  if (!value) return 0;
+  const score = Number(value);
+  if (!Number.isFinite(score)) return 0;
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
 
 function titleCase(value: string | null) {
   if (!value) return null;
@@ -84,6 +131,35 @@ function formatDate(value: string | null) {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(value));
+}
+
+export function parseCrmContactForm(
+  formData: FormData,
+  orgId: string,
+): CrmContactInsert {
+  const firstName = readString(formData, 'firstName');
+  const lastName = readString(formData, 'lastName');
+  const email = readString(formData, 'email').toLowerCase();
+  const phone = readString(formData, 'phone');
+  const company = readString(formData, 'company');
+  const country = readString(formData, 'country').toUpperCase() || 'MY';
+  const status = readString(formData, 'status');
+  const leadScore = readString(formData, 'leadScore');
+
+  if (!firstName) throw new Error('Enter a first name.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid email.');
+
+  return {
+    org_id: orgId,
+    first_name: firstName,
+    last_name: optionalString(lastName),
+    email,
+    phone: optionalString(phone),
+    company_name: optionalString(company),
+    country,
+    status: normalizeStatus(status),
+    lead_score: normalizeScore(leadScore),
+  };
 }
 
 export function mapCrmContact(row: CrmContactRow): CrmContact {
@@ -120,4 +196,18 @@ export async function listCrmContacts(
     contacts: ((data ?? []) as unknown as CrmContactRow[]).map(mapCrmContact),
     total: count ?? data?.length ?? 0,
   };
+}
+
+export async function createCrmContact(
+  client: CrmContactInsertClient,
+  payload: CrmContactInsert,
+): Promise<CrmContact> {
+  const { data, error } = await client
+    .from('crm_contacts')
+    .insert(payload)
+    .select(CONTACT_COLUMNS)
+    .single();
+
+  if (error) throw error;
+  return mapCrmContact(data as CrmContactRow);
 }
