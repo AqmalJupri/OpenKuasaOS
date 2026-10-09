@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { LayoutGrid, LogOut, Menu } from 'lucide-react';
@@ -15,11 +15,13 @@ export default function AccountLayout({
 }) {
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
   // Close the mobile drawer whenever the route changes.
-  useEffect(() => {
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setNavOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden">
