@@ -88,7 +88,7 @@ export const MEGA_MENU: MegaColumn[] = [
 export type ProductCard = {
   key: string;
   name: string;
-  kuasa: string;
+  category: string;
   tagline: string;
   blurb: string;
   href: string;
@@ -101,7 +101,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'command',
     name: 'Tuah',
-    kuasa: 'AI command center',
+    category: 'AI command center',
     tagline: 'Command your business',
     blurb: 'An AI leadership team that briefs you daily and answers in plain language.',
     href: '/command',
@@ -111,7 +111,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'reach',
     name: 'Jebat',
-    kuasa: 'Ads · Kuasa ARA',
+    category: 'Ads',
     tagline: 'Win new leads with AI ads',
     blurb: 'Launch, optimise and report on ad campaigns without an agency.',
     href: '/reach',
@@ -121,7 +121,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'crm',
     name: 'Kasturi',
-    kuasa: 'CRM · Kuasa ARA',
+    category: 'CRM',
     tagline: 'Manage & close your pipeline',
     blurb: 'Deals, broadcasts and automations that move leads to paid.',
     href: '/crm',
@@ -131,7 +131,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'people',
     name: 'Lekiu',
-    kuasa: 'Team · Kuasa HIRA',
+    category: 'Team',
     tagline: 'Build & manage your team',
     blurb: 'Attendance, leave, payroll and performance in one HR system.',
     href: '/people',
@@ -141,7 +141,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'hire',
     name: 'Lekir',
-    kuasa: 'Recruit · Kuasa HIRA',
+    category: 'Recruit',
     tagline: 'Recruit & hire your next team',
     blurb: 'Jobs, candidates and interviews with AI assessment built in.',
     href: '/hire',
@@ -151,7 +151,7 @@ export const PRODUCT_CARDS: ProductCard[] = [
   {
     key: 'finance',
     name: 'Bendahara',
-    kuasa: 'Kuasa Safa',
+    category: 'Accounting',
     tagline: 'Accounting & e-Invois LHDN',
     blurb: 'Invoicing, expenses and compliant e-Invoicing straight to LHDN.',
     href: '/finance',
@@ -160,55 +160,5 @@ export const PRODUCT_CARDS: ProductCard[] = [
   },
 ];
 
-export type PricingTier = {
-  name: string;
-  blurb: string;
-  price: string;
-  original: string;
-  popular?: boolean;
-  features: string[];
-};
-
-/** Launch pricing — 50% off, in MYR. */
-export const PRICING_TIERS: PricingTier[] = [
-  {
-    name: 'Lite',
-    blurb: 'For one person running the business.',
-    price: 'RM 199',
-    original: 'RM 398',
-    features: [
-      '4,500 contacts',
-      '30,000 AI credits / month',
-      '1 team member',
-      '1 employee',
-      '1 client account',
-    ],
-  },
-  {
-    name: 'Plus',
-    blurb: 'For a growing team.',
-    price: 'RM 499',
-    original: 'RM 998',
-    popular: true,
-    features: [
-      '10,000 contacts',
-      '75,000 AI credits / month',
-      '3 team members',
-      '3 employees',
-      '1 client account',
-    ],
-  },
-  {
-    name: 'Max',
-    blurb: 'For agencies and multi-brand companies.',
-    price: 'RM 999',
-    original: 'RM 1,998',
-    features: [
-      '30,000 contacts',
-      '150,000 AI credits / month',
-      '15 team members',
-      '15 employees',
-      '3 client accounts',
-    ],
-  },
-];
+/** Source repository. */
+export const REPO_URL = 'https://github.com/OpenKuasa/OpenKuasaOS';
