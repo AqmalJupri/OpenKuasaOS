@@ -6,7 +6,9 @@
  * (self-animates on hover), falling back to the static lucide icon for the
  * few names the animated library doesn't cover.
  */
-import type { ComponentType } from 'react';
+import { forwardRef } from 'react';
+import type { ForwardRefExoticComponent, RefAttributes } from 'react';
+import type { IconHandle } from '@animateicons/react';
 import {
   ActivityIcon,
   ArchiveIcon,
@@ -113,7 +115,9 @@ import {
   Scale,
 } from 'lucide-react';
 
-type IconComp = ComponentType<{ size?: number; className?: string }>;
+type IconComp = ForwardRefExoticComponent<
+  { size?: number; className?: string } & RefAttributes<IconHandle>
+>;
 
 const MAP: Record<string, IconComp> = {
   'Activity': ActivityIcon as unknown as IconComp,
@@ -220,20 +224,25 @@ const MAP: Record<string, IconComp> = {
   'Zap': ZapIcon as unknown as IconComp,
 };
 
+const FALLBACK = new Set<string>(['Scale']);
+
 /**
  * Renders the animated version of a lucide icon by its `displayName`.
- * Pass `name={SomeLucideIcon.displayName}`. Returns null for unknown names.
+ * Pass `name={SomeLucideIcon.displayName}`. Attach the `ref` from the library's
+ * `useIconHover()` so a parent element's hover can trigger the animation.
+ * Returns null for unknown names.
  */
-export function AnimatedIcon({
-  name,
-  size = 16,
-  className,
-}: {
-  name?: string;
-  size?: number;
-  className?: string;
-}) {
+export const AnimatedIcon = forwardRef<
+  IconHandle,
+  { name?: string; size?: number; className?: string }
+>(function AnimatedIcon({ name, size = 16, className }, ref) {
   const C = name ? MAP[name] : undefined;
   if (!C) return null;
-  return <C size={size} className={className} />;
-}
+  return (
+    <C
+      ref={name && !FALLBACK.has(name) ? ref : undefined}
+      size={size}
+      className={className}
+    />
+  );
+});
