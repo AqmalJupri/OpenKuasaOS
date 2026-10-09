@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useActionState, useState } from 'react';
 import { SplitLayout } from '@/components/brand/split-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { COUNTRIES } from '@/config/countries';
+import { signUpAction, type AuthState } from '@/app/(auth)/actions';
 
 const TOTAL = 6;
 
@@ -95,7 +95,10 @@ function toggle(list: string[], value: string) {
 }
 
 export default function OnboardingPage() {
-  const router = useRouter();
+  const [signUpState, signUpFormAction, signingUp] = useActionState<
+    AuthState,
+    FormData
+  >(signUpAction, undefined);
   const [step, setStep] = useState(1);
 
   const [role, setRole] = useState<string | null>(null);
@@ -300,12 +303,52 @@ export default function OnboardingPage() {
 
           {step === 6 && (
             <Step
-              title="Setup complete!"
-              subtitle="Everything is ready. We've prepared some sample data for you."
+              title="Create your account"
+              subtitle="Last step. Set your login and we'll create your workspace."
             >
-              <Button size="lg" onClick={() => router.push('/command')}>
-                Go to Dashboard
-              </Button>
+              <form action={signUpFormAction} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="org-name">Business name *</Label>
+                  <Input
+                    id="org-name"
+                    name="orgName"
+                    defaultValue={company.name}
+                    placeholder="Acme Sdn Bhd"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email *</Label>
+                  <Input
+                    id="signup-email"
+                    name="email"
+                    type="email"
+                    placeholder="you@company.com"
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password *</Label>
+                  <Input
+                    id="signup-password"
+                    name="password"
+                    type="password"
+                    placeholder="At least 8 characters"
+                    autoComplete="new-password"
+                    minLength={8}
+                    required
+                  />
+                </div>
+                {signUpState?.error ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {signUpState.error}
+                  </p>
+                ) : null}
+                <Button type="submit" size="lg" disabled={signingUp}>
+                  {signingUp ? 'Creating workspace…' : 'Create account'}
+                </Button>
+              </form>
             </Step>
           )}
         </div>
