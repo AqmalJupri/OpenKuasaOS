@@ -9,11 +9,9 @@ import {
   Bot,
   Wand2,
   Images,
-  PieChart,
   ClipboardList,
   CalendarDays,
   SlidersHorizontal,
-  ShieldCheck,
   TrendingUp,
   MessageSquare,
   Zap,
@@ -91,7 +89,6 @@ export const PRODUCTS: Product[] = [
         items: [
           { label: 'Ad Studio', slug: 'ad-studio', icon: Wand2 },
           { label: 'Creative Bank', slug: 'creative-bank', icon: Images },
-          { label: 'Reports', slug: 'reports', icon: PieChart },
         ],
       },
       {
@@ -108,10 +105,9 @@ export const PRODUCTS: Product[] = [
         ],
       },
       {
-        label: 'Configuration',
+        label: 'Setup',
         items: [
           { label: 'Ad Settings', slug: 'ad-settings', icon: SlidersHorizontal },
-          { label: 'Health Check', slug: 'health-check', icon: ShieldCheck },
         ],
       },
     ],
