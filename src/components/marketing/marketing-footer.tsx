@@ -29,7 +29,6 @@ const COLUMNS: Col[] = [
     title: 'Resources',
     links: [
       { label: 'Pricing', href: '/pricing' },
-      { label: 'How credits work', href: '#credits' },
       { label: 'Help Center', href: '/account/docs' },
       { label: 'Changelog', href: '/account/changelog' },
       { label: 'Feature Requests', href: '/account/feedback' },
@@ -72,9 +71,9 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-7xl px-6 py-16">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div>
-            <Logo wordmark="Kuasa" wordmarkClassName="text-white text-2xl" />
+            <Logo wordmarkClassName="text-white text-2xl" />
             <p className="mt-4 max-w-xs text-sm text-white/55">
-              The AI-powered operating system for growing businesses.
+              The community-built, open-source operating system for growing businesses.
             </p>
             <div className="mt-5 flex gap-2.5">
               {SOCIALS.map((s) => (
@@ -124,7 +123,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center">
-          <p>© 2026 Kuasa · OpenKuasa Sdn Bhd (1298025-P). All rights reserved.</p>
+          <p>© 2026 OpenKuasa contributors · Independent open-source project, not affiliated with Kuasa.ai.</p>
           <span className="inline-flex items-center gap-2">
             <span className="size-2 rounded-full bg-primary" />
             All systems operational

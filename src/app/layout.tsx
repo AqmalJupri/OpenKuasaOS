@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OpenKuasa OS",
-  description: "The AI-powered operating system for your business.",
+  description: "The community-built, open-source operating system for your business.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

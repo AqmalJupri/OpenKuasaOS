@@ -13,7 +13,7 @@ const SECTIONS: Section[] = [
     rows: [
       { label: 'Full name', value: 'Jon D' },
       { label: 'Employee no', value: 'EMP-000' },
-      { label: 'Email', value: 'jon@kuasa.ai' },
+      { label: 'Email', value: 'jon@openkuasa.com' },
       { label: 'Phone', value: '+60 12-345 6789' },
     ],
   },

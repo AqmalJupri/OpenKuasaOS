@@ -14,7 +14,7 @@ type SplitLayoutProps = {
 
 /**
  * Two-pane auth/onboarding layout: a light brand panel on the left and the
- * working content on the right. Mirrors Kuasa's "Tailor your experience" shell.
+ * working content on the right.
  */
 export function SplitLayout({
   heading,

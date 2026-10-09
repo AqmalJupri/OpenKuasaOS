@@ -49,7 +49,7 @@ export default function SettingsScreen() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="workspace-name">Workspace name</Label>
-                <Input id="workspace-name" defaultValue="Kuasa Sdn Bhd" />
+                <Input id="workspace-name" defaultValue="Rimba Ventures Sdn Bhd" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="timezone">Timezone</Label>

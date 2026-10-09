@@ -4,28 +4,42 @@ import {
   Check,
   Store,
   Users2,
-  Coins,
+  Code2,
   Plug,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarketingHeader } from '@/components/marketing/marketing-header';
 import { MarketingFooter } from '@/components/marketing/marketing-footer';
-import { PRODUCT_CARDS, PRICING_TIERS } from '@/config/marketing';
-import { cn } from '@/lib/utils';
+import { PRODUCT_CARDS, REPO_URL } from '@/config/marketing';
 
 const STATS = [
-  { value: '12,400+', label: 'businesses' },
-  { value: '102M+', label: 'contacts managed' },
-  { value: '45', label: 'industries' },
-  { value: '99.9%', label: 'uptime' },
+  { value: '6', label: 'products' },
+  { value: '83', label: 'screens' },
+  { value: '100%', label: 'open source' },
+  { value: 'AGPL-3.0', label: 'licensed' },
 ];
 
 const VALUE_PROPS = [
   { icon: Store, title: 'Marketplace Apps', desc: 'Extend with add-ons' },
   { icon: Users2, title: 'Client Accounts', desc: 'Run books for clients' },
-  { icon: Coins, title: 'AI Credits', desc: 'One balance, every tool' },
+  { icon: Code2, title: 'Open Source', desc: 'AGPL-3.0, yours to change' },
   { icon: Plug, title: 'Integrations', desc: 'WhatsApp, Meta, FPX & more' },
+];
+
+const FREE_POINTS = [
+  {
+    title: 'RM 0, forever',
+    desc: 'All six products with no limits on contacts, team members or client accounts.',
+  },
+  {
+    title: 'Hosted option coming',
+    desc: 'Prefer not to run servers? A paid hosted version is planned, built on the same open-source code.',
+  },
+  {
+    title: 'Community-built',
+    desc: 'Written by volunteer contributors, in the open. Read the code and help shape it.',
+  },
 ];
 
 export default function LandingPage() {
@@ -50,7 +64,7 @@ export default function LandingPage() {
             className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
           >
             <span className="size-1.5 rounded-full bg-primary" />
-            Launch offer — 50% off every plan
+            Free and open source — self-host it yourself
             <ArrowRight className="size-3.5" />
           </Link>
 
@@ -78,7 +92,9 @@ export default function LandingPage() {
               variant="outline"
               className="rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
-              <Link href="/account/support">Talk to us</Link>
+              <a href={REPO_URL} target="_blank" rel="noreferrer">
+                View on GitHub
+              </a>
             </Button>
           </div>
 
@@ -126,7 +142,7 @@ export default function LandingPage() {
                   </span>
                   <div>
                     <p className="text-lg font-bold leading-tight">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.kuasa}</p>
+                    <p className="text-xs text-muted-foreground">{p.category}</p>
                   </div>
                 </div>
                 <p className="mt-4 font-semibold">{p.tagline}</p>
@@ -186,68 +202,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing teaser */}
+      {/* Free to self-host */}
       <section id="pricing" className="mx-auto max-w-7xl px-6 py-20 sm:py-28">
         <div className="mx-auto max-w-2xl text-center">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
             <Sparkles className="size-3.5" />
-            Launch promo · 50% off
+            Open source · AGPL-3.0
           </p>
           <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Pricing on your terms
+            Free to self-host
           </h2>
           <p className="mt-4 text-muted-foreground">
-            The plans differ on four numbers — contacts, AI credits, team members
-            and client accounts. Every product and feature is included on every
-            plan.
+            Every product and feature is included, and it runs on
+            infrastructure you control. A paid hosted version is coming for
+            teams who would rather not run it themselves.
           </p>
         </div>
 
         <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {PRICING_TIERS.map((tier) => (
+          {FREE_POINTS.map((point) => (
             <div
-              key={tier.name}
-              className={cn(
-                'flex flex-col rounded-2xl border bg-card p-7 shadow-sm',
-                tier.popular && 'border-primary ring-1 ring-primary',
-              )}
+              key={point.title}
+              className="flex flex-col rounded-2xl border bg-card p-7 shadow-sm"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">{tier.name}</h3>
-                {tier.popular ? (
-                  <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground">
-                    Most popular
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{tier.blurb}</p>
-              <div className="mt-5 flex items-end gap-2">
-                <span className="text-4xl font-bold tracking-tight">
-                  {tier.price}
-                </span>
-                <span className="pb-1 text-sm text-muted-foreground">
-                  / month
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                <span className="line-through">{tier.original}</span> billed
-                monthly
-              </p>
-              <Button
-                asChild
-                className="mt-5 w-full rounded-full"
-                variant={tier.popular ? 'default' : 'outline'}
-              >
-                <Link href="/onboarding">Subscribe now</Link>
-              </Button>
-              <ul className="mt-6 space-y-2.5">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 shrink-0 text-primary" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
+              <h3 className="text-lg font-bold">{point.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{point.desc}</p>
             </div>
           ))}
         </div>
@@ -257,7 +236,7 @@ export default function LandingPage() {
             href="/pricing"
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
-            See full pricing, feature comparison & FAQ
+            See your options
             <ArrowRight className="size-4" />
           </Link>
         </div>
@@ -286,7 +265,9 @@ export default function LandingPage() {
               variant="outline"
               className="rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             >
-              <Link href="/account/support">Talk to us</Link>
+              <a href={REPO_URL} target="_blank" rel="noreferrer">
+                View on GitHub
+              </a>
             </Button>
           </div>
         </div>
