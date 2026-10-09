@@ -1,7 +1,10 @@
-import { notFound } from 'next/navigation';
-import { PlaceholderPage } from '@/components/app/placeholder-page';
+import { notFound, redirect } from 'next/navigation';
 import { getProduct, firstItem } from '@/config/nav';
 
+/**
+ * A product root (e.g. `/reach`) has no page of its own — send it to the
+ * product's first nav item (its Overview dashboard). Applies to every module.
+ */
 export default async function ProductPage({
   params,
 }: {
@@ -12,11 +15,6 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const item = firstItem(product);
-  return (
-    <PlaceholderPage
-      title={item?.label ?? product.name}
-      subtitle={product.tagline}
-      icon={item?.icon ?? product.icon}
-    />
-  );
+  if (item) redirect(`/${key}/${item.slug}`);
+  notFound();
 }
