@@ -13,18 +13,18 @@ that means for your contributions.
 
 ### Original work only
 
-OpenKuasa is an independent project. It is not affiliated with Kuasa.ai and does
-not represent it. To keep it that way:
+OpenKuasa is an independent project, not affiliated with or representing any
+other company or product. To keep it that way:
 
-- **Do not copy from Kuasa.ai** or any other proprietary product. That means no
-  source code, marketing or interface text, pricing, designs, screenshots,
-  logos, icons, images or data.
-- **Do not use Kuasa.ai's names or branding** in the product. The interface,
-  sample data and marketing pages must never present OpenKuasa as Kuasa.ai or
-  suggest a connection to it. The only place Kuasa.ai is named is where the docs
-  say what OpenKuasa is an alternative to.
-- **Do not contribute anything you obtained under an agreement** with Kuasa.ai
-  (as a customer, employee, contractor or partner) that restricts its use.
+- **Do not copy from any proprietary product.** That means no source code,
+  marketing or interface text, pricing, designs, screenshots, logos, icons,
+  images or data.
+- **Do not use another company's names or branding** in the product. The
+  interface, sample data and marketing pages must never present OpenKuasa as
+  another product or suggest a connection to one.
+- **Do not contribute anything you obtained under an agreement** with another
+  company (as a customer, employee, contractor or partner) that restricts its
+  use.
 - **Do not make claims that aren't true** — no invented customer numbers,
   testimonials, certifications or company details.
 
@@ -63,8 +63,8 @@ this repository, you agree to the following:
 4. **Your work, your right to share it.** You confirm the contribution is your
    original work, or that you have the right to submit it under these terms.
    If your employer has rights to work you create, you confirm you have their
-   permission. You confirm it contains nothing copied from Kuasa.ai or any other
-   proprietary product.
+   permission. You confirm it contains nothing copied from any proprietary
+   product.
 5. **No warranty.** Your contribution is provided as is. You are not required
    to support it.
 

@@ -5,7 +5,7 @@
 ## Checklist
 
 - [ ] `pnpm lint` and `pnpm build` pass
-- [ ] This is my own original work and contains nothing copied from Kuasa.ai or any other proprietary product
+- [ ] This is my own original work and contains nothing copied from any proprietary product
 
 ## Contributor License Agreement
 

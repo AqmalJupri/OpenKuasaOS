@@ -1,9 +1,9 @@
 # OpenKuasa OS
 
-**The open-source, community-built alternative to [Kuasa.ai](https://kuasa.ai).**
-One self-hostable business OS for Malaysian SMEs — ads, CRM, HR, recruitment and
-accounting, with an AI command center on top — built in the open on Next.js,
-React and Supabase.
+**The open-source business OS for Malaysian SMEs — one self-hostable app
+instead of a stack of separate CRM, HR, payroll and accounting subscriptions.**
+Ads, CRM, HR, recruitment and accounting in one place, with an AI command center
+on top — built in the open on Next.js, React and Supabase.
 
 OpenKuasa is crowd-sourced: it is developed in the open by its maintainers and
 volunteer contributors.
@@ -17,20 +17,16 @@ which stays open source under AGPL-3.0.
 </p>
 
 > [!IMPORTANT]
-> **OpenKuasa is an independent, community-run project. It is not affiliated
-> with, endorsed by, sponsored by, or connected to Kuasa.ai or its owners in any
-> way, and it does not represent or speak for Kuasa.ai.**
+> **OpenKuasa is an independent, community-run project.** It is not affiliated
+> with, endorsed by, or connected to any other company or product, and it speaks
+> only for its own contributors.
 >
-> - All code in this repository was written independently. It contains no
->   Kuasa.ai source code, assets or customer data.
-> - "Kuasa", "Kuasa ARA", "Kuasa HIRA", "Kuasa Safa" and related names belong to
->   their respective owners. They appear here only to describe what this
->   project is an alternative to.
-> - Kuasa.ai is not responsible or liable for this project, and OpenKuasa is not
->   responsible or liable for Kuasa.ai's products or services.
-> - This is not a Kuasa.ai product. If you are a Kuasa.ai customer, contact
->   Kuasa.ai for support — not this repository.
-> - The software is provided "as is", without warranty of any kind. You use it
+> - Everything in this repository was written from scratch by the community. It
+>   contains no third-party source code, proprietary assets or customer data.
+> - Any third-party product or company names that come up belong to their
+>   respective owners, and are used only to describe the kind of software this is
+>   an alternative to.
+> - The software is provided "as is", without warranty of any kind — self-host it
 >   at your own risk.
 
 ## What's inside
@@ -40,12 +36,12 @@ of Melaka. **83 module screens** are built so far.
 
 | Module | What it does | Alternative to | Route | Screens |
 | --- | --- | --- | --- | --- |
-| **Tuah** | AI command center — chat with your whole business | AI CEO | `/command` | chat |
-| **Jebat** | Ads — ad studio, creative bank, lead forms, reports | Kuasa ARA · Ads | `/reach` | 10 |
-| **Kasturi** | CRM — contacts, deals kanban, broadcast, chatbot, automations | Kuasa ARA · CRM | `/crm` | 11 |
-| **Lekiu** | Team — employees, attendance, leave, claims, payroll, performance | Kuasa HIRA · Team | `/people` | 27 |
-| **Lekir** | Recruit — jobs, candidates, applications, interviews, talent pool | Kuasa HIRA · Recruit | `/hire` | 9 |
-| **Bendahara** | Finance — invoicing, expenses, banking, e-Invoice, SST, ledgers | Kuasa Safa | `/finance` | 26 |
+| **Tuah** | AI command center — chat with your whole business | AI business copilots | `/command` | chat |
+| **Jebat** | Ads — ad studio, creative bank, lead forms, reports | ad platforms & agencies | `/reach` | 10 |
+| **Kasturi** | CRM — contacts, deals kanban, broadcast, chatbot, automations | CRM tools | `/crm` | 11 |
+| **Lekiu** | Team — employees, attendance, leave, claims, payroll, performance | HR & payroll suites | `/people` | 27 |
+| **Lekir** | Recruit — jobs, candidates, applications, interviews, talent pool | recruiting (ATS) | `/hire` | 9 |
+| **Bendahara** | Finance — invoicing, expenses, banking, e-Invoice, SST, ledgers | accounting software | `/finance` | 26 |
 | **Taming Sari** | "Sari", the assistant available from every screen | — | everywhere | — |
 
 The full menu for each module lives in `src/config/nav.ts`.
@@ -113,8 +109,7 @@ docs, translations, bug reports and ideas are all welcome. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started.
 
 One rule matters above all: **contribute only your own original work.** Never
-copy code, text, designs, screenshots or assets from Kuasa.ai or any other
-proprietary product.
+copy code, text, designs, screenshots or assets from any proprietary product.
 
 Contributions are accepted under a Contributor License Agreement, set out in
 `CONTRIBUTING.md`. You keep your copyright, and everything accepted into this
@@ -175,4 +170,4 @@ you run a modified version as a network service, you must make your source
 available to its users under the same license.
 
 The license covers this project's code only. It grants no rights to any
-Kuasa.ai names, marks or products.
+third-party names, marks or products.
