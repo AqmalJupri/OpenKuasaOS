@@ -44,7 +44,7 @@ export const MEGA_MENU: MegaColumn[] = [
   {
     name: 'Jebat & Kasturi',
     tagline: 'Get, manage & close leads',
-    href: '/reach',
+    href: '/reach/assistant',
     icon: Megaphone,
     items: [
       { label: 'Ad Studio', desc: 'AI ads that launch and optimise' },
@@ -58,7 +58,7 @@ export const MEGA_MENU: MegaColumn[] = [
   {
     name: 'Lekiu & Lekir',
     tagline: 'Hire, manage & pay your team',
-    href: '/people',
+    href: '/people/assistant',
     icon: Users,
     items: [
       { label: 'Employees', desc: 'Records, documents and self-service' },
@@ -72,7 +72,7 @@ export const MEGA_MENU: MegaColumn[] = [
   {
     name: 'Bendahara',
     tagline: 'Accounting with e-invoicing',
-    href: '/finance',
+    href: '/finance/assistant',
     icon: Landmark,
     items: [
       { label: 'Invoicing', desc: 'Quote, invoice and get paid' },

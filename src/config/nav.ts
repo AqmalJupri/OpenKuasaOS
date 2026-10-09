@@ -368,6 +368,18 @@ export function firstItem(product: Product): NavItem | undefined {
   return product.sections[0]?.items[0];
 }
 
+/**
+ * Canonical href for a product's dashboard. Modules with a secondary panel
+ * resolve straight to their first item (e.g. `/reach/assistant`); a module with
+ * no sections (Tuah) is its own full-width route (`/command`). Linking here
+ * avoids the product-root redirect, so no-JS clients (crawlers, link unfurlers)
+ * land on the dashboard instead of a soft-404.
+ */
+export function productHref(product: Product): string {
+  const first = firstItem(product);
+  return first ? `/${product.key}/${first.slug}` : `/${product.key}`;
+}
+
 export function findItem(
   product: Product,
   slug: string | undefined,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Settings, LogOut, type LucideIcon } from 'lucide-react';
-import { PRODUCTS } from '@/config/nav';
+import { PRODUCTS, productHref } from '@/config/nav';
 import { Logo } from '@/components/brand/logo';
 import {
   Tooltip,
@@ -69,7 +69,7 @@ export function ProductRail({ activeKey }: { activeKey: string | null }) {
         {PRODUCTS.map((p) => (
           <RailLink
             key={p.key}
-            href={`/${p.key}`}
+            href={productHref(p)}
             label={p.name}
             sublabel={p.tagline}
             icon={p.icon}
