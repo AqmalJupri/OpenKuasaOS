@@ -31,13 +31,13 @@ type AuditEntry = {
 };
 
 const ENTRIES: AuditEntry[] = [
-  { id: '1', timestamp: '07 Oct 14:20', user: 'Jon D', action: 'Created', entity: 'INV-1042', details: 'Invoice RM 1,240 for Aisyah Trading' },
+  { id: '1', timestamp: '07 Oct 14:20', user: 'Saudara', action: 'Created', entity: 'INV-1042', details: 'Invoice RM 1,240 for Aisyah Trading' },
   { id: '2', timestamp: '07 Oct 11:05', user: 'Aisyah', action: 'Updated', entity: 'EXP-320', details: 'Amount RM 180 → RM 200' },
   { id: '3', timestamp: '06 Oct 16:40', user: 'Faiz', action: 'Deleted', entity: 'QT-214', details: 'Draft quotation removed' },
-  { id: '4', timestamp: '06 Oct 10:12', user: 'Jon D', action: 'Created', entity: 'BILL-088', details: 'Bill RM 2,300 from Lim Hardware' },
+  { id: '4', timestamp: '06 Oct 10:12', user: 'Saudara', action: 'Created', entity: 'BILL-088', details: 'Bill RM 2,300 from Lim Hardware' },
   { id: '5', timestamp: '05 Oct 17:30', user: 'Aisyah', action: 'Updated', entity: 'INV-1038', details: 'Customer TIN corrected for LHDN resubmission' },
   { id: '6', timestamp: '05 Oct 09:48', user: 'Faiz', action: 'Created', entity: 'EXP-321', details: 'Expense RM 95 — TNB electricity' },
-  { id: '7', timestamp: '04 Oct 15:22', user: 'Jon D', action: 'Updated', entity: 'PRD-010', details: 'Price RM 80 → RM 85' },
+  { id: '7', timestamp: '04 Oct 15:22', user: 'Saudara', action: 'Updated', entity: 'PRD-010', details: 'Price RM 80 → RM 85' },
   { id: '8', timestamp: '03 Oct 13:07', user: 'Aisyah', action: 'Deleted', entity: 'EXP-317', details: 'Duplicate expense entry removed' },
 ];
 
@@ -63,7 +63,7 @@ export default function AuditTrailScreen() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All users</SelectItem>
-            <SelectItem value="jon">Jon D</SelectItem>
+            <SelectItem value="jon">Saudara</SelectItem>
             <SelectItem value="aisyah">Aisyah</SelectItem>
             <SelectItem value="faiz">Faiz</SelectItem>
           </SelectContent>

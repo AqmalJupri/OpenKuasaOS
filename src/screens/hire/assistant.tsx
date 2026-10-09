@@ -26,7 +26,7 @@ export default function AssistantScreen() {
           <Sparkles className="size-8" />
         </div>
         <h1 className="text-center text-3xl font-bold tracking-tight">
-          Who should we hire next, Jon?
+          Who should we hire next, Saudara?
         </h1>
         <p className="mt-2 mb-8 text-center text-sm text-muted-foreground">
           I&apos;m Lekir, your recruiter — careful and thorough about every

@@ -22,7 +22,7 @@ const ITEMS = [
   { label: 'Features Request', href: '/account/feedback' },
 ];
 
-export function UserMenu({ name = 'Jon' }: { name?: string }) {
+export function UserMenu({ name = 'Saudara' }: { name?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-full border bg-background py-1 pl-1 pr-2.5 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -47,7 +47,7 @@ export function UserMenu({ name = 'Jon' }: { name?: string }) {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate font-bold leading-tight">Jon D</p>
+            <p className="truncate font-bold leading-tight">Saudara</p>
             <p className="text-sm font-medium text-primary">
               Profile &amp; Preferences
             </p>

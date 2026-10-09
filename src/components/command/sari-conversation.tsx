@@ -194,7 +194,7 @@ export function SariConversation({
                     compact ? 'text-xl' : 'text-3xl',
                   )}
                 >
-                  How can I help, Jon?
+                  How can I help, Saudara?
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                   I’m Tuah, powered by {ASSISTANT.name}

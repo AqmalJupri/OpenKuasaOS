@@ -61,7 +61,7 @@ export default function ProfilePage() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="full-name">Full name</Label>
-              <Input id="full-name" defaultValue="Jon D" />
+              <Input id="full-name" defaultValue="Saudara" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

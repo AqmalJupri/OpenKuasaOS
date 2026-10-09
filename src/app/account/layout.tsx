@@ -54,7 +54,7 @@ export default function AccountLayout({
           >
             <LogOut className="size-5" />
           </Link>
-          <UserMenu name="Jon" />
+          <UserMenu name="Saudara" />
         </div>
       </header>
 

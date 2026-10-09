@@ -26,7 +26,7 @@ export default function AssistantScreen() {
           <Sparkles className="size-8" />
         </div>
         <h1 className="text-center text-3xl font-bold tracking-tight">
-          How are the books looking, Jon?
+          How are the books looking, Saudara?
         </h1>
         <p className="mt-2 mb-8 text-center text-sm text-muted-foreground">
           I&apos;m Bendahara, your CFO — prudent guardian of the treasury.

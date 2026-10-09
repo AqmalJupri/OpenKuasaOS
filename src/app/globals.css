@@ -133,3 +133,25 @@
     @apply font-sans;
   }
 }
+
+/* Ambient icon motion — subtle, used sparingly on signature icons. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.9) rotate(-6deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(6deg);
+  }
+}
+.animate-twinkle {
+  animation: twinkle 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-twinkle {
+    animation: none;
+  }
+}
