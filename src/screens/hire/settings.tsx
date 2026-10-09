@@ -1,15 +1,19 @@
-import { GripVertical } from 'lucide-react';
+import {
+  Bell,
+  ClipboardList,
+  GripVertical,
+  Mail,
+  Pencil,
+  Plug,
+  Plus,
+  Users,
+  Workflow,
+} from 'lucide-react';
 import { ScreenContainer } from '@/components/screen/screen-container';
 import { PageHeader } from '@/components/screen/page-header';
+import { BentoGrid, BentoCard } from '@/components/bento/bento';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
@@ -23,11 +27,72 @@ const STAGES = [
   { name: 'Hired', count: 4 },
 ];
 
+type Integration = {
+  id: string;
+  chip: string;
+  name: string;
+  detail: string;
+  connected: boolean;
+};
+
+const INTEGRATIONS: Integration[] = [
+  {
+    id: 'jobstreet',
+    chip: 'J',
+    name: 'JobStreet',
+    detail: 'Auto-publish roles to JobStreet Malaysia',
+    connected: true,
+  },
+  {
+    id: 'linkedin',
+    chip: 'in',
+    name: 'LinkedIn Jobs',
+    detail: 'Cross-post roles and sync applicants',
+    connected: true,
+  },
+  {
+    id: 'hiredly',
+    chip: 'H',
+    name: 'Hiredly',
+    detail: 'Cross-post roles to Hiredly Malaysia',
+    connected: false,
+  },
+];
+
+type Template = { id: string; name: string; subject: string; edited: string };
+
+const TEMPLATES: Template[] = [
+  {
+    id: 'applied',
+    name: 'Application received',
+    subject: 'Terima kasih for applying to Rimba Ventures',
+    edited: '2 days ago',
+  },
+  {
+    id: 'interview',
+    name: 'Interview invitation',
+    subject: 'Interview invitation — Rimba Ventures',
+    edited: '1 week ago',
+  },
+  {
+    id: 'offer',
+    name: 'Offer letter',
+    subject: 'Your offer from Rimba Ventures Sdn Bhd',
+    edited: '3 weeks ago',
+  },
+  {
+    id: 'rejection',
+    name: 'Not selected',
+    subject: 'Update on your application',
+    edited: '1 month ago',
+  },
+];
+
 const FORM_FIELDS: ToggleRow[] = [
   { id: 'req-resume', label: 'Require resume/CV', checked: true },
   { id: 'req-cover', label: 'Require cover letter', checked: false },
   { id: 'ask-portfolio', label: 'Ask for portfolio URL', checked: true },
-  { id: 'ask-salary', label: 'Ask for expected salary', checked: true },
+  { id: 'ask-salary', label: 'Ask for expected salary (RM)', checked: true },
 ];
 
 const NOTIFICATIONS: ToggleRow[] = [
@@ -40,6 +105,7 @@ const TEAM = [
   { name: 'Saudara', role: 'Admin' },
   { name: 'Ahmad Zaki', role: 'Hiring Manager' },
   { name: 'Faiz Hakim', role: 'Interviewer' },
+  { name: 'Nurul Huda', role: 'Recruiter' },
 ];
 
 function ToggleItem({ row }: { row: ToggleRow }) {
@@ -56,89 +122,177 @@ function ToggleItem({ row }: { row: ToggleRow }) {
 export default function SettingsScreen() {
   return (
     <ScreenContainer>
-      <PageHeader title="Settings" subtitle="Recruiting preferences." />
-      <div className="max-w-3xl space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Hiring Pipeline</CardTitle>
-            <CardDescription>Stages candidates move through.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              {STAGES.map((s) => (
-                <div
-                  key={s.name}
-                  className="flex items-center justify-between rounded-lg border p-2.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="size-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{s.name}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{s.count}</span>
+      <PageHeader
+        className="mb-4"
+        title="Settings"
+        subtitle="Recruiting preferences for Rimba Ventures, Saudara."
+      />
+
+      <BentoGrid>
+        {/* Hiring pipeline */}
+        <BentoCard
+          title="Hiring pipeline"
+          subtitle="Stages candidates move through"
+          icon={Workflow}
+          className="col-span-2 md:col-span-6"
+        >
+          <div className="space-y-2">
+            {STAGES.map((s) => (
+              <div
+                key={s.name}
+                className="flex items-center justify-between rounded-lg border bg-background/50 p-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <GripVertical className="size-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{s.name}</span>
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" size="sm">
-              Add stage
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Application Form</CardTitle>
-            <CardDescription>What candidates must provide.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {FORM_FIELDS.map((row) => (
-              <ToggleItem key={row.id} row={row} />
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {s.count}
+                </span>
+              </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+          <Button variant="outline" size="sm" className="mt-3">
+            <Plus className="size-4" />
+            Add stage
+          </Button>
+        </BentoCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Choose what you get notified about.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {NOTIFICATIONS.map((row) => (
-              <ToggleItem key={row.id} row={row} />
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Hiring Team</CardTitle>
-            <CardDescription>People involved in your hiring process.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              {TEAM.map((m) => (
-                <div
-                  key={m.name}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-2.5"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {m.name.charAt(0)}
+        {/* Job board integrations */}
+        <BentoCard
+          title="Job board integrations"
+          subtitle="Where your roles get posted"
+          icon={Plug}
+          className="col-span-2 md:col-span-6"
+        >
+          <div className="space-y-2">
+            {INTEGRATIONS.map((it) => (
+              <div
+                key={it.id}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-background/50 p-2.5"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-sm font-bold text-muted-foreground">
+                    {it.chip}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{it.name}</p>
+                      <Badge variant={it.connected ? 'secondary' : 'outline'}>
+                        {it.connected ? 'Connected' : 'Not connected'}
+                      </Badge>
                     </div>
-                    <span className="text-sm font-medium">{m.name}</span>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {it.detail}
+                    </p>
                   </div>
-                  <Badge variant="secondary">{m.role}</Badge>
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" size="sm">
-              Invite member
-            </Button>
-          </CardContent>
-        </Card>
+                <div className="flex shrink-0 items-center gap-3">
+                  {it.connected ? (
+                    <Switch
+                      id={`int-${it.id}`}
+                      defaultChecked
+                      aria-label={`Toggle ${it.name}`}
+                    />
+                  ) : (
+                    <Button variant="outline" size="sm">
+                      Connect
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
 
-        <div className="flex justify-end">
-          <Button>Save changes</Button>
-        </div>
+        {/* Email templates */}
+        <BentoCard
+          title="Email templates"
+          subtitle="Automated candidate messages"
+          icon={Mail}
+          className="col-span-2 md:col-span-6"
+        >
+          <div className="space-y-2">
+            {TEMPLATES.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-background/50 p-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{t.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {t.subject}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="hidden text-xs text-muted-foreground sm:inline">
+                    Edited {t.edited}
+                  </span>
+                  <Button variant="ghost" size="icon" aria-label={`Edit ${t.name}`}>
+                    <Pencil className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </BentoCard>
+
+        {/* Hiring team */}
+        <BentoCard
+          title="Hiring team"
+          subtitle="Managers and interviewers"
+          icon={Users}
+          className="col-span-2 md:col-span-6"
+        >
+          <div className="space-y-2">
+            {TEAM.map((m) => (
+              <div
+                key={m.name}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-background/50 p-2.5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    {m.name.charAt(0)}
+                  </div>
+                  <span className="text-sm font-medium">{m.name}</span>
+                </div>
+                <Badge variant="secondary">{m.role}</Badge>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="mt-3">
+            <Plus className="size-4" />
+            Invite member
+          </Button>
+        </BentoCard>
+
+        {/* Application form */}
+        <BentoCard
+          title="Application form"
+          subtitle="What candidates must provide"
+          icon={ClipboardList}
+          className="col-span-2 md:col-span-6"
+        >
+          {FORM_FIELDS.map((row) => (
+            <ToggleItem key={row.id} row={row} />
+          ))}
+        </BentoCard>
+
+        {/* Notifications */}
+        <BentoCard
+          title="Notifications"
+          subtitle="Choose what you get notified about"
+          icon={Bell}
+          className="col-span-2 md:col-span-6"
+        >
+          {NOTIFICATIONS.map((row) => (
+            <ToggleItem key={row.id} row={row} />
+          ))}
+        </BentoCard>
+      </BentoGrid>
+
+      <div className="mt-4 flex justify-end">
+        <Button>Save changes</Button>
       </div>
     </ScreenContainer>
   );

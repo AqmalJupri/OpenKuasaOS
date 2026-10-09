@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude code
 .claude/settings.local.json
+
+# local MCP server config (personal tooling, not shipped)
+.mcp.json
