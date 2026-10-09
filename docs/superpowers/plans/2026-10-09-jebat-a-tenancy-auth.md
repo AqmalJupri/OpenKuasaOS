@@ -309,6 +309,11 @@ git commit -m "feat(tenancy): org-creation + demo-join functions and demo org se
 
 ## Task 4: Session middleware
 
+> **RESOLVED during execution:** Next.js 16 renamed `middleware` → **proxy**, and
+> `src/proxy.ts` already wires `updateSession` with the matcher. No `middleware.ts`
+> is created (it would be deprecated and conflict), so this task is satisfied by the
+> existing `src/proxy.ts`. The steps below are kept for historical context.
+
 **Files:**
 - Create: `middleware.ts` (repo root)
 
