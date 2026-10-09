@@ -148,6 +148,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 Until these are set, the app runs normally but the Supabase session refresh is a
 no-op — see `src/lib/supabase/middleware.ts`.
 
+## Self-hosting setup
+
+Beyond the environment variables above (see `.env.example` for the full list:
+the Supabase URL and anon/publishable key; the OpenRouter key is for a later
+slice), a fresh Supabase project needs these Auth settings (Supabase dashboard →
+Authentication) for sign-in and signup to work:
+
+- **Enable Anonymous sign-ins** — powers the demo workspace and the tests.
+- **Turn OFF "Confirm email"** — signup then creates a session immediately and
+  lands on `/command`. With it on, signup stops at a "check your email" message
+  and the user must confirm and sign in.
+- **Enable hCaptcha (recommended for production)** — protects signup and
+  anonymous sign-ins from abuse. It is disabled in development.
+
 ## Supabase helpers
 
 - `src/lib/supabase/client.ts` — browser client (Client Components)
