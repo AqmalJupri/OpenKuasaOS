@@ -1,14 +1,18 @@
 import { expect, test } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
+import { hasSupabaseEnv, supabaseEnvSkipReason } from './setup/supabase';
 
+const testWithSupabase = hasSupabaseEnv ? test : test.skip;
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+if (!hasSupabaseEnv) console.warn(supabaseEnvSkipReason);
 const client = () =>
   createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-test('a new user can create an org and becomes its owner', async () => {
+testWithSupabase('a new user can create an org and becomes its owner', async () => {
   const c = client();
   const { data: auth, error: authErr } = await c.auth.signInAnonymously();
   expect(authErr, authErr?.message).toBeNull();
@@ -29,7 +33,7 @@ test('a new user can create an org and becomes its owner', async () => {
   expect(mem?.role).toBe('owner');
 });
 
-test('a demo visitor joins the demo org as a read-only viewer and cannot write', async () => {
+testWithSupabase('a demo visitor joins the demo org as a read-only viewer and cannot write', async () => {
   const c = client();
   const { data: auth, error: anonErr } = await c.auth.signInAnonymously();
   expect(anonErr, anonErr?.message).toBeNull();

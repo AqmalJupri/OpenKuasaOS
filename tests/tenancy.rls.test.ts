@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { hasSupabaseEnv, supabaseEnvSkipReason } from './setup/supabase';
+
+const testWithSupabase = hasSupabaseEnv ? test : test.skip;
+
+if (!hasSupabaseEnv) console.warn(supabaseEnvSkipReason);
 
 // Cross-tenant isolation is the core security guarantee of the tenancy spine.
 // Test identities use anonymous sign-ins: distinct authenticated users for RLS,
@@ -30,6 +35,7 @@ let a: Awaited<ReturnType<typeof anonUserWithOrg>>;
 let b: Awaited<ReturnType<typeof anonUserWithOrg>>;
 
 beforeAll(async () => {
+  if (!hasSupabaseEnv) return;
   a = await anonUserWithOrg('Org A Sdn Bhd');
   b = await anonUserWithOrg('Org B Sdn Bhd');
 });
@@ -39,7 +45,7 @@ afterAll(async () => {
   await b?.c.auth.signOut();
 });
 
-test('a user sees only their own org', async () => {
+testWithSupabase('a user sees only their own org', async () => {
   const { data, error } = await a.c.from('orgs').select('id,name');
   expect(error, error?.message).toBeNull();
   const ids = (data ?? []).map((o) => o.id);
@@ -47,7 +53,7 @@ test('a user sees only their own org', async () => {
   expect(ids).not.toContain(b.orgId);
 });
 
-test('a user cannot read another org membership', async () => {
+testWithSupabase('a user cannot read another org membership', async () => {
   const { data, error } = await a.c
     .from('org_members')
     .select('org_id')
