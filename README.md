@@ -159,8 +159,10 @@ Authentication) for sign-in and signup to work:
 - **Turn OFF "Confirm email"** — signup then creates a session immediately and
   lands on `/command`. With it on, signup stops at a "check your email" message
   and the user must confirm and sign in.
-- **Enable hCaptcha (recommended for production)** — protects signup and
-  anonymous sign-ins from abuse. It is disabled in development.
+- **Leave hCaptcha OFF for now** — the auth forms don't yet pass a captcha
+  token, so *enabling* hCaptcha would break sign-in and signup. Wiring the
+  hCaptcha widget into the auth UI is a planned hardening step before it can be
+  turned on in production.
 
 ## Supabase helpers
 
