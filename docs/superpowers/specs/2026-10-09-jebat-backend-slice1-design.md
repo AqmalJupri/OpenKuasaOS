@@ -80,10 +80,11 @@ same live data.
 
 ### 4.1 Auth & tenancy spine
 
-**Session middleware.** Add a root `middleware.ts` (currently absent) that calls the
-existing `src/lib/supabase/middleware.ts#updateSession`, refreshing the Supabase session
-cookie on each request. It no-ops without env credentials (already handled), so local dev
-without a project still runs.
+**Session middleware (already wired).** Next.js 16 renamed `middleware` to **proxy**, and
+`src/proxy.ts` already calls `src/lib/supabase/middleware.ts#updateSession` with the matcher,
+refreshing the Supabase session cookie on each page/data request. (It no-ops without env
+credentials, so local dev without a project still runs.) No `middleware.ts` is created —
+in Next 16 that is deprecated and would conflict with `proxy.ts`.
 
 **Login** (`src/app/(auth)/login/page.tsx`). Replace the static `action="/command"` form
 with a **server action** calling `supabase.auth.signInWithPassword`. Show inline error
@@ -106,9 +107,13 @@ the dashboards + chat tools work fully in demo mode. Redirects to `/command`; ga
    row making them `owner`. Org creation runs in a server action via a `SECURITY DEFINER`
    Postgres function `create_org_for_current_user(name)` so RLS can stay strict (see §4.2).
 
-**Current org resolution.** Slice #1 uses the user's **first** `org_members` row (single
-active org). A helper `getCurrentOrg()` (server) returns `{ orgId, role }` or `null`.
-A `requireOrg()` wrapper throws/redirects when absent. A workspace switcher is a later slice.
+**Current org resolution.** Slice #1 uses the caller's **first own** `org_members` row —
+the query **must filter `.eq('user_id', current_user_id)`**, because the `org_members_select`
+RLS policy lets a member see *all* of their org's rows, so an unfiltered `order+limit 1` would
+return the earliest (usually the owner's) row and mis-report the caller's role. A helper
+`getCurrentOrg()` (server) returns `{ orgId, role }` or `null` (and throws on a query error —
+a DB error must not look like "org-less"). A `requireOrg()` wrapper redirects to `/onboarding`
+when absent. A workspace switcher is a later slice.
 
 ### 4.2 Data model
 
@@ -212,6 +217,16 @@ become real quick-starts. Responses stream into an expandable panel in the hero;
 visual design is preserved. The hero surfaces which sub-agent is working, from the stream's
 step/tool events.
 
+**Access & cost control (the LLM is the only metered cost).** The live multi-layer agent
+runs **only for a signed-in, non-demo user**. A **demo / anonymous `viewer`** never triggers
+a live model call — the hero shows a **canned example answer** (or a "Sign up to chat with
+Jebat" gate) — so public demo traffic costs **$0** in LLM spend and cannot be abused. The
+route handler decides this from the caller's role (`viewer`/anonymous → canned; member+ →
+live). A **server-side per-user/day rate limit** backstops everyone. On **self-hosted**, real
+chat uses the self-hoster's own OpenRouter key; on the **hosted** instance the maintainers
+meter/cap free usage. (Dashboards read from Postgres and are free for demo and real users
+alike.)
+
 ### 4.4 Provider & configuration
 
 Env (documented in a new committed `.env.example`):
@@ -276,7 +291,7 @@ At no point does the model supply an `org_id`; isolation is enforced by Postgres
 ---
 
 ## 9. Affected / New Files (orientation for the plan)
-- **New:** `middleware.ts`; `src/app/api/reach/chat/route.ts`; `src/app/(auth)/actions.ts` (sign-in / sign-up+org / demo sign-in server actions); `src/lib/auth/current-org.ts`; `src/lib/ai/{provider,tools}.ts`; `src/lib/ai/agents/{orchestrator,analyst,optimizer,copywriter}.ts`; `src/lib/supabase/queries/reach.ts`; `.env.example`; SQL migrations + seed/admin script.
+- **New:** `src/app/api/reach/chat/route.ts`; `src/app/(auth)/actions.ts` (sign-in / sign-up+org / demo sign-in server actions); `src/lib/auth/current-org.ts`; `src/lib/ai/{provider,tools}.ts`; `src/lib/ai/agents/{orchestrator,analyst,optimizer,copywriter}.ts`; `src/lib/supabase/queries/reach.ts`; `.env.example`; SQL migrations + seed/admin script. (Session middleware already exists as `src/proxy.ts` — Next 16 renamed middleware→proxy — so no new file there.)
 - **Changed:** `src/app/(auth)/login/page.tsx` (server action + "Explore the demo" + Google toast); `src/app/(auth)/onboarding/page.tsx` (signup + org creation); `src/screens/reach/assistant.tsx` (live data + `useChat` hero).
 - **Deps (installed 2026-10-09):** `ai@7.0.133`, `@ai-sdk/react@4.0.136`, `@openrouter/ai-sdk-provider@3.1.0`, `zod@4.6.5`. Add `@ai-sdk/anthropic` only if/when the direct-Anthropic path is turned on.
 
