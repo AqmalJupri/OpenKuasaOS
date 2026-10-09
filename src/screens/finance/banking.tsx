@@ -1,6 +1,9 @@
+import { TrendingUp, Gauge, Landmark } from 'lucide-react';
 import { ScreenContainer } from '@/components/screen/screen-container';
 import { PageHeader } from '@/components/screen/page-header';
-import { Badge } from '@/components/ui/badge';
+import { BentoGrid, BentoCard, BentoStat } from '@/components/bento/bento';
+import { AreaTrend, RadialGauge, Sparkline, type Series } from '@/components/charts';
+import { LiveDot } from '@/components/ui/live-dot';
 import {
   Table,
   TableBody,
@@ -11,16 +14,36 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
+/* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
+
 type Account = {
   name: string;
-  type: 'Bank' | 'Cash';
   balance: string;
+  spark: number[];
 };
 
+/** Aggregate = sum of the three tiles (72,400 + 8,100 + 11,800). */
 const ACCOUNTS: Account[] = [
-  { name: 'Maybank — Current', type: 'Bank', balance: 'RM 72,400' },
-  { name: 'CIMB — Savings', type: 'Bank', balance: 'RM 8,100' },
-  { name: 'Cash', type: 'Cash', balance: 'RM 11,800' },
+  { name: 'Maybank — Current', balance: 'RM 72,400', spark: [60, 62, 65, 67, 69, 70, 71, 72.4] },
+  { name: 'CIMB — Savings', balance: 'RM 8,100', spark: [6, 6.5, 7, 7.2, 7.6, 7.8, 8, 8.1] },
+  { name: 'Cash', balance: 'RM 11,800', spark: [9, 10, 10.5, 11, 11.2, 11.5, 11.6, 11.8] },
+];
+
+const SPARK_TOTAL = [76, 79, 83, 85, 88, 90, 91, 92.3];
+
+/* Cash position over time (last 8 months, RM k) ----------------------- */
+const CASH_TREND = [
+  { label: 'Mar', balance: 78 },
+  { label: 'Apr', balance: 81 },
+  { label: 'May', balance: 83 },
+  { label: 'Jun', balance: 85 },
+  { label: 'Jul', balance: 88 },
+  { label: 'Aug', balance: 90 },
+  { label: 'Sep', balance: 91 },
+  { label: 'Oct', balance: 92.3 },
+];
+const CASH_SERIES: Series[] = [
+  { key: 'balance', label: 'Cash position (RM k)', color: 'var(--chart-1)' },
 ];
 
 type TxnStatus = 'Reconciled' | 'Unreconciled';
@@ -121,70 +144,118 @@ function StatusPill({ status }: { status: TxnStatus }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+
 export default function BankingScreen() {
   return (
     <ScreenContainer>
       <PageHeader
         title="Banking"
-        subtitle="Accounts, balances & reconciliation."
+        subtitle="Accounts, balances and reconciliation, Saudara."
       />
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        {ACCOUNTS.map((a) => (
-          <div
-            key={a.name}
-            className="rounded-xl border bg-card p-5 shadow-sm"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 truncate font-semibold">{a.name}</p>
-              <Badge variant="secondary">{a.type}</Badge>
-            </div>
-            <p className="mt-2 text-2xl font-bold tabular-nums">{a.balance}</p>
-            <p className="text-xs text-muted-foreground">Synced 2h ago</p>
-          </div>
+      <BentoGrid>
+        {/* Balance tiles — aggregate + per account */}
+        <BentoCard tone="primary" className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Total cash"
+            value="RM 92,300"
+            delta="+RM 4.2k"
+            onPrimary
+            chart={
+              <Sparkline data={SPARK_TOTAL} color="var(--primary-foreground)" height={36} />
+            }
+          />
+        </BentoCard>
+        {ACCOUNTS.map((a, i) => (
+          <BentoCard key={a.name} className="col-span-1 md:col-span-3">
+            <BentoStat
+              label={a.name}
+              value={a.balance}
+              delta="Synced 2h ago"
+              deltaTone="flat"
+              chart={
+                <Sparkline
+                  data={a.spark}
+                  color={`var(--chart-${i + 1})`}
+                  height={36}
+                />
+              }
+            />
+          </BentoCard>
         ))}
-      </div>
 
-      <h2 className="mb-3 text-base font-semibold tracking-tight">
-        Transactions
-      </h2>
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/40">
-                {COLUMNS.map((c) => (
-                  <TableHead key={c} className="whitespace-nowrap">
-                    {c}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {TRANSACTIONS.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {t.date}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {t.description}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{t.account}</TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums text-emerald-600">
-                    {t.moneyIn ?? ''}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums text-red-600">
-                    {t.moneyOut ?? ''}
-                  </TableCell>
-                  <TableCell>
-                    <StatusPill status={t.status} />
-                  </TableCell>
+        {/* Cash position + reconciliation */}
+        <BentoCard
+          title="Cash position"
+          subtitle="All accounts · last 8 months"
+          icon={TrendingUp}
+          className="col-span-2 md:col-span-8"
+        >
+          <AreaTrend data={CASH_TREND} series={CASH_SERIES} height={240} />
+        </BentoCard>
+        <BentoCard
+          title="Reconciliation"
+          subtitle="142 of 156 October txns"
+          icon={Gauge}
+          className="col-span-2 md:col-span-4"
+        >
+          <RadialGauge
+            value={91}
+            valueLabel="91%"
+            label="reconciled"
+            color="var(--chart-2)"
+            height={240}
+          />
+        </BentoCard>
+
+        {/* Transactions ledger */}
+        <BentoCard
+          title="Transactions"
+          subtitle="Recent · reconciliation status"
+          icon={Landmark}
+          className="col-span-2 md:col-span-12"
+        >
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  {COLUMNS.map((c) => (
+                    <TableHead key={c} className="whitespace-nowrap">
+                      {c}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {TRANSACTIONS.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {t.date}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {t.description}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{t.account}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums text-emerald-600">
+                      {t.moneyIn ?? ''}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums text-red-600">
+                      {t.moneyOut ?? ''}
+                    </TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-2">
+                        <LiveDot active={t.status === 'Reconciled'} />
+                        <StatusPill status={t.status} />
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </BentoCard>
+      </BentoGrid>
     </ScreenContainer>
   );
 }
