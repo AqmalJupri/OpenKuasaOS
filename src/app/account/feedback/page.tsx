@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 
 const REQUESTS = [
   { title: 'Bulk WhatsApp templates', desc: 'Save and reuse message templates for broadcasts', votes: 128, status: 'Planned' },
-  { title: 'Xero / QuickBooks sync', desc: 'Two-way sync with popular accounting tools', votes: 94, status: 'Under review' },
+  { title: 'Accounting software sync', desc: 'Two-way sync with popular accounting tools', votes: 94, status: 'Under review' },
   { title: 'Mobile app for approvals', desc: 'Approve leave & claims on the go', votes: 76, status: 'In progress' },
   { title: 'Custom deal stages', desc: 'Rename and reorder pipeline stages per workspace', votes: 61, status: 'Planned' },
   { title: 'Dark mode', desc: 'A full dark theme across the app', votes: 48, status: 'Under review' },

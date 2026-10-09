@@ -115,7 +115,7 @@ const CANDIDATES: Candidate[] = [
   {
     name: 'Siti Khadijah',
     title: 'Sales Executive',
-    skills: ['Inside Sales', 'HubSpot'],
+    skills: ['Inside Sales', 'CRM'],
     location: 'Subang Jaya',
     source: 'JobStreet',
     rating: 3.7,

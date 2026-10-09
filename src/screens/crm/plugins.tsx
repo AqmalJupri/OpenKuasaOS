@@ -43,7 +43,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Two-way sync for follow-up meetings.',
   },
   {
-    name: 'Mailchimp',
+    name: 'Email marketing',
     category: 'Email',
     connected: false,
     description: 'Sync audiences and newsletters.',
@@ -55,7 +55,7 @@ const INTEGRATIONS: Integration[] = [
     description: 'Connect 5,000+ apps to your pipeline.',
   },
   {
-    name: 'Xero',
+    name: 'Accounting software',
     category: 'Accounting',
     connected: false,
     description: 'Push paid invoices to your ledger.',

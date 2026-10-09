@@ -88,7 +88,7 @@ const PAYMENTS: Payment[] = [
   {
     id: 'PAY-0114',
     date: '10 Oct 2026',
-    supplier: 'Tenaga Nasional Berhad',
+    supplier: 'Suria Utilities Sdn Bhd',
     bill: 'BILL-0229',
     method: 'Bank Transfer',
     amount: 'RM 1,800.00',

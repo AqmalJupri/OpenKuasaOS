@@ -42,10 +42,10 @@ const FOCUS = [
 const TOOLS = [
   'WhatsApp Official',
   'Wordpress',
-  'HubSpot',
+  'Spreadsheets',
   'Meta Ads',
   'TikTok',
-  'Salesforce',
+  'A CRM',
   'Other',
 ];
 

@@ -76,7 +76,7 @@ const BILLS: Bill[] = [
   {
     id: 'BILL-0229',
     date: '22 Sep 2026',
-    supplier: 'Tenaga Nasional Berhad',
+    supplier: 'Suria Utilities Sdn Bhd',
     due: '06 Oct 2026',
     total: 'RM 1,800.00',
     balance: 'RM 1,800.00',
