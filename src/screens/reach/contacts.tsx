@@ -37,22 +37,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import type { CrmContact } from '@/lib/crm/contacts';
 
 /* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
 
-type Contact = {
-  id: string;
-  email: string;
-  company: string;
-  first: string;
-  last: string;
-  phone: string;
-  country: string;
-  status: string | null;
-  score: number;
-  pic: string | null;
-  lastInteraction: string | null;
-};
+type Contact = CrmContact;
 
 /** Total contacts in the book; the table below shows a recent sample. */
 const TOTAL_CONTACTS = 1284;
@@ -236,12 +225,19 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
-export default function ContactsScreen() {
+type ContactsScreenProps = {
+  contacts?: Contact[];
+  totalContacts?: number;
+};
+
+export default function ContactsScreen({ contacts, totalContacts }: ContactsScreenProps = {}) {
+  const rows = contacts ?? CONTACTS;
+  const total = totalContacts ?? TOTAL_CONTACTS;
   const [selected, setSelected] = useState<string[]>([]);
-  const allChecked = selected.length === CONTACTS.length && CONTACTS.length > 0;
+  const allChecked = selected.length === rows.length && rows.length > 0;
 
   const toggleAll = () =>
-    setSelected(allChecked ? [] : CONTACTS.map((c) => c.id));
+    setSelected(allChecked ? [] : rows.map((c) => c.id));
   const toggle = (id: string) =>
     setSelected((s) =>
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
@@ -272,7 +268,7 @@ export default function ContactsScreen() {
         <BentoCard tone="primary" className="col-span-1 md:col-span-3">
           <BentoStat
             label="Total contacts"
-            value={TOTAL_CONTACTS.toLocaleString()}
+            value={total.toLocaleString()}
             delta="+4.2%"
             onPrimary
             chart={
@@ -330,7 +326,7 @@ export default function ContactsScreen() {
           <DonutStat
             data={SCORE_MIX}
             height={240}
-            centerValue={TOTAL_CONTACTS.toLocaleString()}
+            centerValue={total.toLocaleString()}
             centerLabel="contacts"
           />
         </BentoCard>
@@ -383,7 +379,7 @@ export default function ContactsScreen() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {CONTACTS.map((c) => (
+                {rows.map((c) => (
                   <TableRow
                     key={c.id}
                     data-state={selected.includes(c.id) ? 'selected' : undefined}
@@ -431,7 +427,7 @@ export default function ContactsScreen() {
           </div>
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm text-muted-foreground">
             <span>
-              Showing {CONTACTS.length} of {TOTAL_CONTACTS.toLocaleString()} contacts
+              Showing {rows.length} of {total.toLocaleString()} contacts
             </span>
             {selected.length > 0 ? (
               <span>{selected.length} selected</span>
