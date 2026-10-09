@@ -1,6 +1,7 @@
 import { type LucideIcon } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 
 /**
  * Dense bento layout primitives.
@@ -82,13 +83,16 @@ export function BentoCard({
             {Icon ? (
               <span
                 className={cn(
-                  'grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-300 group-hover/bento:scale-110 group-hover/bento:-rotate-6 motion-reduce:transform-none',
+                  'grid size-8 shrink-0 place-items-center rounded-lg',
                   onPrimary
                     ? 'bg-primary-foreground/15 text-primary-foreground'
                     : 'bg-primary/10 text-primary',
                 )}
               >
-                <Icon className="size-4" />
+                <AnimatedIcon
+                  name={(Icon as unknown as { displayName?: string }).displayName}
+                  size={16}
+                />
               </span>
             ) : null}
             <div className="min-w-0">

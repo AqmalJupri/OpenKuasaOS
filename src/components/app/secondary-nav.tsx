@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Settings, LogOut, PanelLeftClose } from 'lucide-react';
 import { type Product, firstItem } from '@/config/nav';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { cn } from '@/lib/utils';
 
 export function SecondaryNav({
@@ -46,7 +47,11 @@ export function SecondaryNav({
                         active && 'bg-accent text-accent-foreground',
                       )}
                     >
-                      <Icon className="size-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
+                      <AnimatedIcon
+                        name={(Icon as unknown as { displayName?: string }).displayName}
+                        size={16}
+                        className="shrink-0"
+                      />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   </li>
