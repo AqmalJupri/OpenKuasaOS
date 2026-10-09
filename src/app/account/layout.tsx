@@ -14,11 +14,13 @@ export default function AccountLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [navState, setNavState] = useState({ pathname, open: false });
-  const navOpen = navState.pathname === pathname && navState.open;
+  const [navOpen, setNavOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
-  function setNavOpen(open: boolean) {
-    setNavState({ pathname, open });
+  // Close the mobile drawer whenever the route changes.
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setNavOpen(false);
   }
 
   return (
