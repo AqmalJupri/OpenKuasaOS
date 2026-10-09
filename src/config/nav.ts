@@ -121,7 +121,7 @@ export const PRODUCTS: Product[] = [
       {
         label: 'Overview',
         items: [
-          { label: 'CMO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'Overview', slug: 'assistant', icon: LayoutDashboard },
           { label: 'AI Agents', slug: 'agents', icon: Bot },
         ],
       },
