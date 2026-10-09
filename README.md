@@ -12,6 +12,10 @@ volunteer contributors.
 would rather not run it themselves. It is built on the code in this repository,
 which stays open source under AGPL-3.0.
 
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" alt="OpenKuasa OS — the Jebat (Ads) module overview; every module has a dashboard like this" width="900">
+</p>
+
 > [!IMPORTANT]
 > **OpenKuasa is an independent, community-run project. It is not affiliated
 > with, endorsed by, sponsored by, or connected to Kuasa.ai or its owners in any
@@ -75,6 +79,17 @@ The full menu for each module lives in `src/config/nav.ts`.
   notifications, plan, subscriptions, add-ons, payment methods, transactions,
   connected apps, developers, activity, changelog, docs, support and feedback.
 - **Polish** — loading skeletons, empty states and not-found pages throughout.
+
+## Screenshots
+
+A look at the running app (sample data):
+
+| | |
+| :---: | :---: |
+| <img src="docs/screenshots/tuah.png" alt="Tuah — AI command center"><br>**Tuah** · AI command center | <img src="docs/screenshots/jebat-ad-studio.png" alt="Jebat — AI Ad Studio"><br>**Jebat** · AI Ad Studio |
+| <img src="docs/screenshots/kasturi-deals.png" alt="Kasturi — deals pipeline"><br>**Kasturi** · deals pipeline | <img src="docs/screenshots/lekiu-payroll.png" alt="Lekiu — payroll"><br>**Lekiu** · payroll |
+| <img src="docs/screenshots/lekir-candidates.png" alt="Lekir — candidate pipeline"><br>**Lekir** · candidate pipeline | <img src="docs/screenshots/bendahara-invoices.png" alt="Bendahara — invoicing"><br>**Bendahara** · invoicing |
+| <img src="docs/screenshots/sari.png" alt="Taming Sari — the assistant, available from every screen"><br>**Taming Sari** · ask Sari from any screen | <img src="docs/screenshots/onboarding.png" alt="Multi-step onboarding"><br>**Onboarding** · multi-step setup |
 
 ## Status
 
