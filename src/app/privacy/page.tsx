@@ -38,7 +38,7 @@ const SECTIONS = [
   },
   {
     h: 'Independence',
-    p: 'OpenKuasa is a community-run project. It is not affiliated with Kuasa.ai, and this page says nothing about how Kuasa.ai or any other company handles data.',
+    p: 'OpenKuasa is a community-run project. It is not affiliated with any other company or product, and this page says nothing about how any third party handles data.',
   },
   {
     h: 'Questions',

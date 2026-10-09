@@ -123,7 +123,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:items-center">
-          <p>© 2026 OpenKuasa contributors · Independent open-source project, not affiliated with Kuasa.ai.</p>
+          <p>© 2026 OpenKuasa contributors · Independent open-source project, not affiliated with any other company or product.</p>
           <span className="inline-flex items-center gap-2">
             <span className="size-2 rounded-full bg-primary" />
             All systems operational

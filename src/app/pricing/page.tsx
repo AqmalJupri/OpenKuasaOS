@@ -88,7 +88,7 @@ const FAQS = [
   },
   {
     q: 'Who builds OpenKuasa?',
-    a: 'The OpenKuasa maintainers and volunteer contributors. It is a crowd-sourced project developed in the open, and it is not affiliated with Kuasa.ai.',
+    a: 'The OpenKuasa maintainers and volunteer contributors. It is a crowd-sourced project developed in the open, and it is not affiliated with any other company or product.',
   },
   {
     q: 'Is there support?',
