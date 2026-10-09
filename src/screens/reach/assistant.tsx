@@ -25,6 +25,7 @@ import {
   type Series,
   type Slice,
 } from '@/components/charts';
+import { LiveDot } from '@/components/ui/live-dot';
 
 /* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
 
@@ -124,7 +125,7 @@ export default function OverviewScreen() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs font-medium text-primary-foreground/70">
-                <Sparkles className="size-3.5" />
+                <Sparkles className="size-3.5 animate-twinkle" />
                 Jebat · your CMO
               </div>
               <h1 className="mt-1 text-2xl font-bold tracking-tight">
@@ -278,13 +279,7 @@ export default function OverviewScreen() {
           <ul className="divide-y">
             {CAMPAIGNS.map((c) => (
               <li key={c.name} className="flex items-center gap-3 py-2.5">
-                <span
-                  className={
-                    c.status === 'Active'
-                      ? 'size-2 shrink-0 rounded-full bg-emerald-500'
-                      : 'size-2 shrink-0 rounded-full bg-muted-foreground/40'
-                  }
-                />
+                <LiveDot active={c.status === 'Active'} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {c.name}
                 </span>
@@ -320,13 +315,7 @@ export default function OverviewScreen() {
                 key={a.name}
                 className="flex items-center gap-2 rounded-lg border bg-background/50 px-3 py-2"
               >
-                <span
-                  className={
-                    a.active
-                      ? 'size-2 shrink-0 rounded-full bg-emerald-500'
-                      : 'size-2 shrink-0 rounded-full bg-muted-foreground/40'
-                  }
-                />
+                <LiveDot active={a.active} />
                 <span className="min-w-0 flex-1 truncate text-sm">{a.name}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {a.active ? 'Active' : 'Paused'}

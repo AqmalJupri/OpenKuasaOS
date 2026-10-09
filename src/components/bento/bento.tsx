@@ -70,7 +70,7 @@ export function BentoCard({
   return (
     <section
       className={cn(
-        'flex flex-col overflow-hidden rounded-xl shadow-sm',
+        'group/bento flex flex-col overflow-hidden rounded-xl shadow-sm',
         flush ? '' : 'p-4',
         TONES[tone],
         className,
@@ -82,7 +82,7 @@ export function BentoCard({
             {Icon ? (
               <span
                 className={cn(
-                  'grid size-8 shrink-0 place-items-center rounded-lg',
+                  'grid size-8 shrink-0 place-items-center rounded-lg transition-transform duration-300 group-hover/bento:scale-110 group-hover/bento:-rotate-6 motion-reduce:transform-none',
                   onPrimary
                     ? 'bg-primary-foreground/15 text-primary-foreground'
                     : 'bg-primary/10 text-primary',
