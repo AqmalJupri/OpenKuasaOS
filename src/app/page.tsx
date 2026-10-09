@@ -74,7 +74,7 @@ export default function LandingPage() {
             from one place.
           </h1>
           <p className="mt-6 max-w-xl text-lg text-white/70">
-            Marketing, sales, people and finance — four products on one login,
+            Marketing, sales, people and finance — six products on one login,
             powered by Taming Sari AI. Start with the one you need most; the rest
             already know your customers and your team.
           </p>
