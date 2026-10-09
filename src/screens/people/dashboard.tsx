@@ -77,7 +77,7 @@ export default function DashboardScreen() {
   return (
     <ScreenContainer>
       <PageHeader
-        title="Welcome, Jon D"
+        title="Welcome, Saudara"
         subtitle="HR operations summary — Wednesday, 07 October 2026"
       />
 

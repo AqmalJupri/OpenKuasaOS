@@ -21,7 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 
 const MEMBERS = [
-  { name: 'Jon (You)', role: 'Owner' },
+  { name: 'Saudara (You)', role: 'Owner' },
   { name: 'Aisyah', role: 'Sales' },
   { name: 'Faiz', role: 'Sales' },
 ];

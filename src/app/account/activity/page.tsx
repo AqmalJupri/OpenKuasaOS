@@ -38,16 +38,16 @@ const CATEGORY_STYLES: Record<Category, string> = {
 };
 
 const ENTRIES: Entry[] = [
-  { id: 'a01', actor: 'Jon D', action: 'Signed in', target: 'Web · Kuala Lumpur', category: 'Auth', timestamp: '08 Oct 2026, 14:32', ip: '203.82.x.x' },
+  { id: 'a01', actor: 'Saudara', action: 'Signed in', target: 'Web · Kuala Lumpur', category: 'Auth', timestamp: '08 Oct 2026, 14:32', ip: '203.82.x.x' },
   { id: 'a02', actor: 'System', action: 'Failed sign-in attempt', target: 'jon@openkuasa.com', category: 'Security', timestamp: '08 Oct 2026, 09:07', ip: '—' },
   { id: 'a03', actor: 'Aisyah Rahim', action: 'Updated payment method', target: 'Card •••• 4242', category: 'Billing', timestamp: '07 Oct 2026, 17:21', ip: '115.164.x.x' },
   { id: 'a04', actor: 'Faiz Hakim', action: 'Downloaded invoice INV-2026-0912', target: 'INV-2026-0912', category: 'Billing', timestamp: '07 Oct 2026, 11:48', ip: '60.51.x.x' },
-  { id: 'a05', actor: 'Jon D', action: 'Changed Faiz Hakim role to Member', target: 'Faiz Hakim', category: 'Team', timestamp: '06 Oct 2026, 16:05', ip: '203.82.x.x' },
+  { id: 'a05', actor: 'Saudara', action: 'Changed Faiz Hakim role to Member', target: 'Faiz Hakim', category: 'Team', timestamp: '06 Oct 2026, 16:05', ip: '203.82.x.x' },
   { id: 'a06', actor: 'Aisyah Rahim', action: 'Invited member nurul@openkuasa.com', target: 'nurul@openkuasa.com', category: 'Team', timestamp: '05 Oct 2026, 10:19', ip: '115.164.x.x' },
   { id: 'a07', actor: 'Ahmad Zaki', action: "Created API key 'Production'", target: 'API key', category: 'Security', timestamp: '04 Oct 2026, 15:52', ip: '175.139.x.x' },
-  { id: 'a08', actor: 'Jon D', action: 'Enabled two-factor authentication', target: 'Account security', category: 'Security', timestamp: '04 Oct 2026, 09:40', ip: '203.82.x.x' },
+  { id: 'a08', actor: 'Saudara', action: 'Enabled two-factor authentication', target: 'Account security', category: 'Security', timestamp: '04 Oct 2026, 09:40', ip: '203.82.x.x' },
   { id: 'a09', actor: 'Nurul Huda', action: 'Exported contacts (Reach)', target: '1,284 contacts', category: 'Data', timestamp: '03 Oct 2026, 14:11', ip: '42.189.x.x' },
-  { id: 'a10', actor: 'Jon D', action: 'Updated company SST number', target: 'Rimba Ventures Sdn Bhd', category: 'Data', timestamp: '02 Oct 2026, 11:26', ip: '203.82.x.x' },
+  { id: 'a10', actor: 'Saudara', action: 'Updated company SST number', target: 'Rimba Ventures Sdn Bhd', category: 'Data', timestamp: '02 Oct 2026, 11:26', ip: '203.82.x.x' },
   { id: 'a11', actor: 'Aisyah Rahim', action: 'Approved leave request', target: 'Faiz Hakim · 2 days', category: 'Team', timestamp: '01 Oct 2026, 09:58', ip: '115.164.x.x' },
 ];
 
@@ -73,7 +73,7 @@ export default function ActivityPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all-members">All members</SelectItem>
-            <SelectItem value="jon">Jon D</SelectItem>
+            <SelectItem value="jon">Saudara</SelectItem>
             <SelectItem value="aisyah">Aisyah Rahim</SelectItem>
             <SelectItem value="faiz">Faiz Hakim</SelectItem>
             <SelectItem value="ahmad">Ahmad Zaki</SelectItem>

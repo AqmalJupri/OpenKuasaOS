@@ -37,7 +37,7 @@ const NOTIFICATIONS: ToggleRow[] = [
 ];
 
 const TEAM = [
-  { name: 'Jon D', role: 'Admin' },
+  { name: 'Saudara', role: 'Admin' },
   { name: 'Ahmad Zaki', role: 'Hiring Manager' },
   { name: 'Faiz Hakim', role: 'Interviewer' },
 ];

@@ -37,7 +37,7 @@ type Member = {
 
 const MEMBERS: Member[] = [
   {
-    name: 'Jon D',
+    name: 'Saudara',
     email: 'jon@openkuasa.com',
     role: 'Owner',
     platforms: '6 platforms',

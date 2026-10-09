@@ -38,7 +38,7 @@ export default function AccountHomePage() {
             JD
           </AvatarFallback>
         </Avatar>
-        <h1 className="mt-3 text-2xl font-bold tracking-tight">Jon D</h1>
+        <h1 className="mt-3 text-2xl font-bold tracking-tight">Saudara</h1>
         <p className="text-sm text-muted-foreground">
           jon@openkuasa.com · Administrator
         </p>

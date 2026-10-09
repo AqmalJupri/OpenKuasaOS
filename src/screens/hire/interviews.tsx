@@ -43,7 +43,7 @@ const ROWS: {
   { name: 'Lim Wei Jie', job: 'Operations Lead', date: '08 Oct', time: '10:00', interviewer: 'Ahmad Zaki', type: 'Onsite', status: 'Scheduled' },
   { name: 'Tan Mei', job: 'Product Designer', date: '08 Oct', time: '14:00', interviewer: 'Faiz Hakim', type: 'Video', status: 'Scheduled' },
   { name: 'Nurul Huda', job: 'Accountant', date: '09 Oct', time: '11:30', interviewer: 'Siti Aminah', type: 'Phone', status: 'Scheduled' },
-  { name: 'Rajesh K', job: 'Sales Executive', date: '07 Oct', time: '11:00', interviewer: 'Jon D', type: 'Video', status: 'Completed' },
+  { name: 'Rajesh K', job: 'Sales Executive', date: '07 Oct', time: '11:00', interviewer: 'Saudara', type: 'Video', status: 'Completed' },
   { name: 'Wong Li', job: 'Customer Support', date: '06 Oct', time: '15:00', interviewer: 'Aisyah Rahim', type: 'Onsite', status: 'Completed' },
   { name: 'Chong A', job: 'Content Writer', date: '06 Oct', time: '09:30', interviewer: 'Faiz Hakim', type: 'Phone', status: 'Completed' },
 ];

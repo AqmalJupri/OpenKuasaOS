@@ -11,7 +11,7 @@ const SECTIONS: Section[] = [
   {
     title: 'Profile',
     rows: [
-      { label: 'Full name', value: 'Jon D' },
+      { label: 'Full name', value: 'Saudara' },
       { label: 'Employee no', value: 'EMP-000' },
       { label: 'Email', value: 'jon@openkuasa.com' },
       { label: 'Phone', value: '+60 12-345 6789' },
