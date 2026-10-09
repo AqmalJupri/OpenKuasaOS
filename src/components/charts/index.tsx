@@ -423,7 +423,7 @@ export function FunnelFlow({
         const conv = Math.round((d.value / top) * 100);
         return (
           <div key={d.key} className="flex items-center gap-2">
-            <span className="w-16 shrink-0 truncate text-right text-xs text-muted-foreground">
+            <span className="w-20 shrink-0 truncate text-right text-xs text-muted-foreground">
               {d.label}
             </span>
             <div className="flex-1">

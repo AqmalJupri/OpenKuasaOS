@@ -10,7 +10,6 @@ import ContactsScreen from '@/screens/reach/contacts';
 import LeadFormsScreen from '@/screens/reach/lead-forms';
 import AppointmentsScreen from '@/screens/reach/appointments';
 import AdSettingsScreen from '@/screens/reach/ad-settings';
-import HealthCheckScreen from '@/screens/reach/health-check';
 
 // Kasturi (crm)
 import CrmAssistantScreen from '@/screens/crm/assistant';
@@ -108,7 +107,6 @@ export const SCREENS: Record<string, ComponentType> = {
   'reach/lead-forms': LeadFormsScreen,
   'reach/appointments': AppointmentsScreen,
   'reach/ad-settings': AdSettingsScreen,
-  'reach/health-check': HealthCheckScreen,
 
   // Kasturi (ARA Manage)
   'crm/assistant': CrmAssistantScreen,
