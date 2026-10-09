@@ -1,14 +1,27 @@
-import { Coins, Download, Percent, TrendingDown, Users } from 'lucide-react';
+import {
+  Download,
+  Filter,
+  Gauge,
+  MapPin,
+  Percent,
+  PieChart,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import { ScreenContainer } from '@/components/screen/screen-container';
 import { PageHeader } from '@/components/screen/page-header';
-import { StatCard } from '@/components/screen/stat-card';
-import { Button } from '@/components/ui/button';
+import { BentoGrid, BentoCard, BentoStat } from '@/components/bento/bento';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  AreaTrend,
+  BarGroup,
+  DonutStat,
+  FunnelFlow,
+  RadialGauge,
+  Sparkline,
+  type Series,
+  type Slice,
+} from '@/components/charts';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -25,74 +38,74 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-type Bar = { label: string; pct: number; muted?: boolean };
+/* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
 
-const LEADS_OVER_TIME: Bar[] = [
-  { label: 'Mon', pct: 40 },
-  { label: 'Tue', pct: 55, muted: true },
-  { label: 'Wed', pct: 45 },
-  { label: 'Thu', pct: 70, muted: true },
-  { label: 'Fri', pct: 60 },
-  { label: 'Sat', pct: 85 },
-  { label: 'Sun', pct: 75, muted: true },
+const LEADS_TREND = [
+  { label: 'Wk1', leads: 34, qualified: 12 },
+  { label: 'Wk2', leads: 41, qualified: 16 },
+  { label: 'Wk3', leads: 38, qualified: 15 },
+  { label: 'Wk4', leads: 52, qualified: 22 },
+  { label: 'Wk5', leads: 48, qualified: 24 },
+  { label: 'Wk6', leads: 63, qualified: 29 },
+  { label: 'Wk7', leads: 59, qualified: 31 },
+  { label: 'Wk8', leads: 72, qualified: 38 },
+];
+const LEADS_SERIES: Series[] = [
+  { key: 'leads', label: 'Leads', color: 'var(--chart-1)' },
+  { key: 'qualified', label: 'Qualified', color: 'var(--chart-2)' },
 ];
 
-const SPEND_BY_CHANNEL: Bar[] = [
-  { label: 'WhatsApp', pct: 80 },
-  { label: 'Facebook', pct: 65, muted: true },
-  { label: 'Instagram', pct: 50 },
-  { label: 'TikTok', pct: 30, muted: true },
+const LEADS_BY_SOURCE: Slice[] = [
+  { key: 'whatsapp', label: 'WhatsApp', value: 142, color: 'var(--chart-1)' },
+  { key: 'facebook', label: 'Facebook', value: 96, color: 'var(--chart-2)' },
+  { key: 'instagram', label: 'Instagram', value: 68, color: 'var(--chart-5)' },
+  { key: 'referral', label: 'Referral', value: 24, color: 'var(--chart-3)' },
+  { key: 'website', label: 'Website form', value: 12, color: 'var(--chart-4)' },
 ];
 
-type Campaign = {
-  name: string;
+const FUNNEL: Slice[] = [
+  { key: 'leads', label: 'Leads', value: 342, color: 'var(--chart-1)' },
+  { key: 'contacted', label: 'Contacted', value: 264, color: 'var(--chart-2)' },
+  { key: 'qualified', label: 'Qualified', value: 158, color: 'var(--chart-5)' },
+  { key: 'booked', label: 'Booked', value: 96, color: 'var(--chart-3)' },
+  { key: 'won', label: 'Won', value: 48, color: 'var(--chart-4)' },
+];
+
+const LEADS_BY_STATE = [
+  { label: 'Selangor', leads: 118 },
+  { label: 'Kuala Lumpur', leads: 86 },
+  { label: 'Johor', leads: 54 },
+  { label: 'Penang', leads: 48 },
+  { label: 'Sabah', leads: 36 },
+];
+const STATE_SERIES: Series[] = [
+  { key: 'leads', label: 'Leads', color: 'var(--chart-2)' },
+];
+
+type SourceRow = {
+  source: string;
   leads: number;
-  spend: string;
-  cpl: string;
+  qualified: number;
   conv: string;
+  value: string;
 };
 
-const CAMPAIGNS: Campaign[] = [
-  { name: 'Ramadan–Raya Promo', leads: 96, spend: 'RM 1,200', cpl: 'RM 12.50', conv: '5.2%' },
-  { name: 'Retargeting — Cart', leads: 54, spend: 'RM 640', cpl: 'RM 11.85', conv: '6.1%' },
-  { name: 'New Product Launch', leads: 70, spend: 'RM 1,850', cpl: 'RM 26.40', conv: '3.4%' },
-  { name: 'Lead Magnet — eBook', leads: 61, spend: 'RM 420', cpl: 'RM 6.88', conv: '7.0%' },
-  { name: 'Brand Awareness', leads: 18, spend: 'RM 900', cpl: 'RM 50.00', conv: '1.1%' },
+const TOP_SOURCES: SourceRow[] = [
+  { source: 'WhatsApp', leads: 142, qualified: 74, conv: '5.6%', value: 'RM 48,200' },
+  { source: 'Facebook', leads: 96, qualified: 44, conv: '4.2%', value: 'RM 31,500' },
+  { source: 'Instagram', leads: 68, qualified: 28, conv: '3.8%', value: 'RM 22,100' },
+  { source: 'Referral', leads: 24, qualified: 8, conv: '6.1%', value: 'RM 18,900' },
+  { source: 'Website form', leads: 12, qualified: 4, conv: '7.0%', value: 'RM 9,400' },
 ];
 
-function BarChart({ bars }: { bars: Bar[] }) {
-  return (
-    <div>
-      <div className="flex h-40 items-end gap-2">
-        {bars.map((bar) => (
-          <div
-            key={bar.label}
-            className={
-              bar.muted
-                ? 'flex-1 rounded-t-md bg-primary/50'
-                : 'flex-1 rounded-t-md bg-primary'
-            }
-            style={{ height: `${bar.pct}%` }}
-          />
-        ))}
-      </div>
-      <div className="mt-2 flex gap-2 text-xs text-muted-foreground">
-        {bars.map((bar) => (
-          <span key={bar.label} className="min-w-0 flex-1 truncate text-center">
-            {bar.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+/* ------------------------------------------------------------------ */
 
 export default function ReportsScreen() {
   return (
     <ScreenContainer>
       <PageHeader
         title="Reports"
-        subtitle="Ad performance and lead analytics."
+        subtitle="Lead, conversion and pipeline analytics."
         actions={
           <>
             <Select defaultValue="30d">
@@ -113,75 +126,173 @@ export default function ReportsScreen() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Leads"
-          value={342}
-          note="+12% vs last period"
+      <BentoGrid>
+        {/* KPI row */}
+        <BentoCard tone="primary" className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Total leads"
+            value="342"
+            delta="+12%"
+            onPrimary
+            chart={
+              <Sparkline
+                data={[34, 41, 38, 52, 48, 63, 59, 72]}
+                color="var(--primary-foreground)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Conversion rate"
+            value="4.8%"
+            delta="+0.6pt"
+            deltaTone="up"
+            chart={
+              <Sparkline
+                data={[3.9, 4.0, 4.1, 4.3, 4.4, 4.5, 4.7, 4.8]}
+                color="var(--chart-2)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Avg response time"
+            value="2.4h"
+            delta="−0.3h"
+            deltaTone="up"
+            chart={
+              <Sparkline
+                data={[3.4, 3.1, 3.0, 2.8, 2.7, 2.6, 2.5, 2.4]}
+                color="var(--chart-3)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Qualified"
+            value="158"
+            delta="+8%"
+            deltaTone="up"
+            chart={
+              <Sparkline
+                data={[12, 16, 15, 22, 24, 29, 31, 38]}
+                color="var(--chart-5)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+
+        {/* Trend + source mix */}
+        <BentoCard
+          title="Leads vs qualified"
+          subtitle="Last 8 weeks"
+          icon={TrendingUp}
+          className="col-span-2 md:col-span-8"
+        >
+          <AreaTrend data={LEADS_TREND} series={LEADS_SERIES} height={240} showLegend />
+        </BentoCard>
+        <BentoCard
+          title="Leads by source"
+          icon={PieChart}
+          className="col-span-2 md:col-span-4"
+        >
+          <DonutStat
+            data={LEADS_BY_SOURCE}
+            height={240}
+            centerValue="342"
+            centerLabel="leads"
+          />
+        </BentoCard>
+
+        {/* Funnel + geography + qualification */}
+        <BentoCard
+          title="Lead → won"
+          subtitle="Pipeline conversion"
+          icon={Filter}
+          className="col-span-2 md:col-span-4"
+        >
+          <FunnelFlow data={FUNNEL} height={200} />
+        </BentoCard>
+        <BentoCard
+          title="Leads by state"
+          subtitle="This period"
+          icon={MapPin}
+          className="col-span-2 md:col-span-4"
+        >
+          <BarGroup
+            data={LEADS_BY_STATE}
+            series={STATE_SERIES}
+            horizontal
+            height={200}
+          />
+        </BentoCard>
+        <BentoCard
+          title="Qualification rate"
+          subtitle="Qualified of all leads"
+          icon={Gauge}
+          className="col-span-2 md:col-span-4"
+        >
+          <RadialGauge
+            value={46}
+            valueLabel="46%"
+            label="qualified"
+            color="var(--chart-2)"
+            height={200}
+          />
+        </BentoCard>
+
+        {/* Top sources table */}
+        <BentoCard
+          title="Top sources"
+          subtitle="By leads this period"
           icon={Users}
-          tone="green"
-        />
-        <StatCard label="Ad Spend" value="RM 8,940" icon={Coins} tone="blue" />
-        <StatCard
-          label="Cost / Lead"
-          value="RM 6.10"
-          icon={TrendingDown}
-          tone="amber"
-        />
-        <StatCard
-          label="Conversion Rate"
-          value="4.8%"
-          icon={Percent}
-          tone="violet"
-        />
-      </div>
-
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Leads over time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart bars={LEADS_OVER_TIME} />
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Spend by channel</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart bars={SPEND_BY_CHANNEL} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <h2 className="mb-3 text-lg font-semibold">Top campaigns</h2>
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Campaign</TableHead>
-                <TableHead className="text-right">Leads</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
-                <TableHead className="text-right">CPL</TableHead>
-                <TableHead className="text-right">Conv.</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {CAMPAIGNS.map((c) => (
-                <TableRow key={c.name}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-right">{c.leads}</TableCell>
-                  <TableCell className="text-right">{c.spend}</TableCell>
-                  <TableCell className="text-right">{c.cpl}</TableCell>
-                  <TableCell className="text-right">{c.conv}</TableCell>
+          action={
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <Percent className="size-3.5" />
+              conversion = won / leads
+            </span>
+          }
+          className="col-span-2 md:col-span-12"
+        >
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead>Source</TableHead>
+                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead className="text-right">Qualified</TableHead>
+                  <TableHead className="text-right">Conversion</TableHead>
+                  <TableHead className="text-right">Pipeline value</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {TOP_SOURCES.map((r) => (
+                  <TableRow key={r.source}>
+                    <TableCell className="whitespace-nowrap font-medium">
+                      {r.source}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{r.leads}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.qualified}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{r.conv}</TableCell>
+                    <TableCell className="whitespace-nowrap text-right tabular-nums">
+                      {r.value}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </BentoCard>
+      </BentoGrid>
     </ScreenContainer>
   );
 }
