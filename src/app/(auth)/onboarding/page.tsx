@@ -346,6 +346,11 @@ export default function OnboardingPage() {
                     {signUpState.error}
                   </p>
                 ) : null}
+                {signUpState?.notice ? (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {signUpState.notice}
+                  </p>
+                ) : null}
                 <div className="flex items-center gap-4">
                   <button
                     type="button"

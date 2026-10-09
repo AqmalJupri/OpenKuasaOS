@@ -5,12 +5,33 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
 export type AuthState =
-  | { error: string; values?: { email?: string; orgName?: string } }
+  | {
+      error?: string;
+      notice?: string;
+      values?: { email?: string; orgName?: string };
+    }
   | undefined;
 
-const credentialsSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address.'),
+const emailSchema = z
+  .string()
+  .trim()
+  .email('Please enter a valid email address.');
+
+// Login only checks presence: the signup password policy must not lock out
+// existing accounts.
+const signInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Please enter your password.'),
+});
+
+const signUpSchema = z.object({
+  email: emailSchema,
   password: z.string().min(8, 'Password must be at least 8 characters.'),
+  orgName: z
+    .string()
+    .trim()
+    .min(1, 'Please enter your business name.')
+    .max(120, 'Business name must be 120 characters or fewer.'),
 });
 
 export async function signInAction(
@@ -21,7 +42,7 @@ export async function signInAction(
   const password = String(formData.get('password') ?? '');
   const values = { email };
 
-  const parsed = credentialsSchema.safeParse({ email, password });
+  const parsed = signInSchema.safeParse({ email, password });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message, values };
   }
@@ -44,8 +65,7 @@ export async function signUpAction(
   const orgName = String(formData.get('orgName') ?? '').trim();
   const values = { email, orgName };
 
-  if (!orgName) return { error: 'Please enter your business name.', values };
-  const parsed = credentialsSchema.safeParse({ email, password });
+  const parsed = signUpSchema.safeParse({ email, password, orgName });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message, values };
   }
@@ -65,14 +85,14 @@ export async function signUpAction(
     }
     if (!data.session) {
       return {
-        error: 'Check your email to confirm your account, then sign in.',
+        notice: 'Check your email to confirm your account, then sign in.',
         values,
       };
     }
   }
 
   const { error: orgErr } = await supabase.rpc('create_org_for_current_user', {
-    org_name: orgName,
+    org_name: parsed.data.orgName,
   });
   if (orgErr) {
     return { error: 'Could not create your workspace. Please try again.', values };
