@@ -15,15 +15,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const product = getProduct(key ?? undefined);
   const hasSecondary = !!product && product.sections.length > 0;
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileNavState, setMobileNavState] = useState({
-    pathname,
-    open: false,
-  });
-  const mobileNavOpen =
-    mobileNavState.pathname === pathname && mobileNavState.open;
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
-  function setMobileNavOpen(open: boolean) {
-    setMobileNavState({ pathname, open });
+  // Close the mobile drawer whenever the route changes.
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setMobileNavOpen(false);
   }
 
   return (
