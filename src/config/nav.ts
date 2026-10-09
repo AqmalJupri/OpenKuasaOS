@@ -282,9 +282,9 @@ export const PRODUCTS: Product[] = [
       {
         label: 'Overview',
         items: [
-          { label: 'CFO Assistant', slug: 'assistant', icon: Sparkles },
+          { label: 'Overview', slug: 'assistant', icon: LayoutDashboard },
           { label: 'AI Agents', slug: 'agents', icon: Bot },
-          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+          { label: 'Dashboard', slug: 'dashboard', icon: TrendingUp },
         ],
       },
       {
