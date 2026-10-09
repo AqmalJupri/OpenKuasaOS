@@ -1,63 +1,169 @@
 import { ScreenContainer } from '@/components/screen/screen-container';
 import { PageHeader } from '@/components/screen/page-header';
+import { BentoGrid, BentoCard, BentoStat } from '@/components/bento/bento';
+import { LiveDot } from '@/components/ui/live-dot';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
-type Plugin = {
+type Integration = {
   name: string;
   category: string;
   connected: boolean;
   description: string;
 };
 
-const PLUGINS: Plugin[] = [
-  { name: 'WhatsApp Business', category: 'Messaging', connected: true, description: 'Reply and broadcast on WhatsApp' },
-  { name: 'Stripe', category: 'Payments', connected: true, description: 'Collect card payments' },
-  { name: 'Meta Ads', category: 'Advertising', connected: true, description: 'Sync leads from Facebook & IG ads' },
-  { name: 'Google Calendar', category: 'Scheduling', connected: false, description: 'Two-way calendar sync' },
-  { name: 'Shopify', category: 'E-commerce', connected: false, description: 'Import orders & customers' },
-  { name: 'Mailchimp', category: 'Email', connected: false, description: 'Sync audiences & campaigns' },
-  { name: 'Zapier', category: 'Automation', connected: true, description: 'Connect 5,000+ apps' },
-  { name: 'Telegram', category: 'Messaging', connected: false, description: 'Reply on Telegram' },
-  { name: 'LHDN MyInvois', category: 'Compliance', connected: true, description: 'Submit e-invoices to LHDN' },
+const INTEGRATIONS: Integration[] = [
+  {
+    name: 'WhatsApp Business',
+    category: 'Messaging',
+    connected: true,
+    description: 'Reply to leads and broadcast on WhatsApp.',
+  },
+  {
+    name: 'Stripe',
+    category: 'Payments',
+    connected: true,
+    description: 'Collect card payments on invoices.',
+  },
+  {
+    name: 'Billplz',
+    category: 'Payments',
+    connected: false,
+    description: 'FPX and online banking collections.',
+  },
+  {
+    name: 'Meta',
+    category: 'Social',
+    connected: true,
+    description: 'Sync leads from Facebook & Instagram pages.',
+  },
+  {
+    name: 'Google Calendar',
+    category: 'Scheduling',
+    connected: false,
+    description: 'Two-way sync for follow-up meetings.',
+  },
+  {
+    name: 'Mailchimp',
+    category: 'Email',
+    connected: false,
+    description: 'Sync audiences and newsletters.',
+  },
+  {
+    name: 'Zapier',
+    category: 'Automation',
+    connected: true,
+    description: 'Connect 5,000+ apps to your pipeline.',
+  },
+  {
+    name: 'Xero',
+    category: 'Accounting',
+    connected: false,
+    description: 'Push paid invoices to your ledger.',
+  },
+  {
+    name: 'Slack',
+    category: 'Messaging',
+    connected: false,
+    description: 'Deal-won alerts in your channels.',
+  },
+  {
+    name: 'Shopify',
+    category: 'E-commerce',
+    connected: false,
+    description: 'Import orders and customers.',
+  },
+  {
+    name: 'Telegram',
+    category: 'Messaging',
+    connected: false,
+    description: 'Reply to conversations on Telegram.',
+  },
+  {
+    name: 'LHDN MyInvois',
+    category: 'Compliance',
+    connected: true,
+    description: 'Submit e-invoices to LHDN.',
+  },
 ];
 
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((word) => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function IntegrationCard({ integration }: { integration: Integration }) {
+  const { name, category, connected, description } = integration;
+  return (
+    <BentoCard className="col-span-2 md:col-span-3">
+      <div className="flex h-full flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-sm font-bold text-primary transition-transform duration-300 group-hover/bento:scale-110 motion-reduce:transform-none">
+            {initials(name)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <LiveDot active={connected} />
+            {connected ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-semibold">{name}</p>
+          <p className="truncate text-xs text-muted-foreground">{category}</p>
+        </div>
+        <p className="flex-1 text-sm text-muted-foreground">{description}</p>
+        <Button
+          variant={connected ? 'outline' : 'default'}
+          size="sm"
+          className="w-full"
+        >
+          {connected ? 'Manage' : 'Connect'}
+        </Button>
+      </div>
+    </BentoCard>
+  );
+}
+
 export default function PluginsScreen() {
+  const connected = INTEGRATIONS.filter((i) => i.connected).length;
+  const categories = new Set(INTEGRATIONS.map((i) => i.category)).size;
+
   return (
     <ScreenContainer>
       <PageHeader
         title="Plugins"
-        subtitle="Connect OpenKuasa to the tools you already use."
+        subtitle="Connect OpenKuasa CRM to the tools you already use, Saudara."
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {PLUGINS.map((plugin) => (
-          <div key={plugin.name} className="space-y-3 rounded-xl border bg-card p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="grid size-10 place-items-center rounded-xl bg-muted text-sm font-bold text-foreground">
-                {plugin.name.charAt(0)}
-              </div>
-              <span
-                className={cn(
-                  'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                  plugin.connected
-                    ? 'bg-emerald-500/15 text-emerald-600'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {plugin.connected ? 'Connected' : 'Not connected'}
-              </span>
-            </div>
-            <div>
-              <p className="font-semibold">{plugin.name}</p>
-              <p className="text-xs text-muted-foreground">{plugin.category}</p>
-            </div>
-            <p className="text-sm text-muted-foreground">{plugin.description}</p>
-            <Button variant="outline" size="sm" className="w-full">
-              {plugin.connected ? 'Manage' : 'Connect'}
-            </Button>
-          </div>
+
+      <BentoGrid>
+        {/* KPI strip */}
+        <BentoCard tone="primary" className="col-span-2 md:col-span-4">
+          <BentoStat label="Connected" value={connected} delta="Active" onPrimary />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-4">
+          <BentoStat
+            label="Available"
+            value={INTEGRATIONS.length}
+            delta="Marketplace"
+            deltaTone="flat"
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-4">
+          <BentoStat
+            label="Categories"
+            value={categories}
+            delta="Coverage"
+            deltaTone="flat"
+          />
+        </BentoCard>
+
+        {/* Integration marketplace */}
+        {INTEGRATIONS.map((integration) => (
+          <IntegrationCard key={integration.name} integration={integration} />
         ))}
-      </div>
+      </BentoGrid>
     </ScreenContainer>
   );
 }
