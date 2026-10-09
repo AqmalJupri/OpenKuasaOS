@@ -5,7 +5,6 @@ import {
   Users,
   UserPlus,
   Landmark,
-  Sparkles,
   Bot,
   Wand2,
   Images,
@@ -247,8 +246,8 @@ export const PRODUCTS: Product[] = [
       {
         label: 'Overview',
         items: [
-          { label: 'Recruiter Assistant', slug: 'assistant', icon: Sparkles },
-          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+          { label: 'Overview', slug: 'assistant', icon: LayoutDashboard },
+          { label: 'Dashboard', slug: 'dashboard', icon: TrendingUp },
         ],
       },
       {
