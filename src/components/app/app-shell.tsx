@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { getProduct } from '@/config/nav';
 import { ProductRail } from './product-rail';
@@ -15,12 +15,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const product = getProduct(key ?? undefined);
   const hasSecondary = !!product && product.sections.length > 0;
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileNavState, setMobileNavState] = useState({
+    pathname,
+    open: false,
+  });
+  const mobileNavOpen =
+    mobileNavState.pathname === pathname && mobileNavState.open;
 
-  // Close the mobile drawer whenever the route changes.
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
+  function setMobileNavOpen(open: boolean) {
+    setMobileNavState({ pathname, open });
+  }
 
   return (
     <TooltipProvider delayDuration={0}>
