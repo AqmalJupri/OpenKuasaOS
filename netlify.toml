@@ -1,0 +1,17 @@
+# Netlify build configuration for OpenKuasa OS (Next.js 16, App Router).
+#
+# The site's dashboard build settings were left unset when the repo was
+# linked, so Netlify published the raw repo with no build and the Next.js
+# runtime never engaged (404 on every route). This file makes the build
+# explicit and loads the official Next.js runtime, which provisions the
+# SSR/route-handler functions, ISR, and image handling.
+#
+# The plugin is intentionally unpinned: Netlify keeps the Next.js runtime
+# up to date per build (it supports Next 13.5+, including 16).
+
+[build]
+  command = "next build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
