@@ -5,6 +5,7 @@ import { Search, Bell, CircleHelp, Coins, PanelLeftOpen, Menu } from 'lucide-rea
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/components/app/user-menu';
+import { useIconHover } from '@animateicons/react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import {
   DropdownMenu,
@@ -36,6 +37,9 @@ export function AppTopbar({
   onExpand?: () => void;
   onOpenNav?: () => void;
 }) {
+  const { ref: creditsRef, triggerProps: creditsTrigger } = useIconHover();
+  const { ref: helpRef, triggerProps: helpTrigger } = useIconHover();
+  const { ref: bellRef, triggerProps: bellTrigger } = useIconHover();
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
       {onOpenNav ? (
@@ -73,17 +77,18 @@ export function AppTopbar({
       <div className="ml-auto flex items-center gap-2">
         <Link
           href="/account/subscriptions"
-          className="group hidden items-center gap-1.5 rounded-full border bg-muted/60 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:flex"
+          {...creditsTrigger}
+          className="hidden items-center gap-1.5 rounded-full border bg-muted/60 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:flex"
         >
-          <AnimatedIcon name={(Coins as unknown as { displayName?: string }).displayName} size={16} className="text-primary" />
+          <AnimatedIcon ref={creditsRef} name={(Coins as unknown as { displayName?: string }).displayName} size={16} className="text-primary" />
           <span>27,240</span>
           <span className="text-muted-foreground">credits</span>
         </Link>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Help">
-              <AnimatedIcon name={(CircleHelp as unknown as { displayName?: string }).displayName} size={20} />
+            <Button variant="ghost" size="icon" aria-label="Help" {...helpTrigger}>
+              <AnimatedIcon ref={helpRef} name={(CircleHelp as unknown as { displayName?: string }).displayName} size={20} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8} className="w-56">
@@ -103,9 +108,10 @@ export function AppTopbar({
               variant="ghost"
               size="icon"
               aria-label="Notifications"
+              {...bellTrigger}
               className="relative"
             >
-              <AnimatedIcon name={(Bell as unknown as { displayName?: string }).displayName} size={20} />
+              <AnimatedIcon ref={bellRef} name={(Bell as unknown as { displayName?: string }).displayName} size={20} />
               <span className="absolute right-2 top-2 size-2 animate-ping rounded-full bg-primary/70 motion-reduce:hidden" />
               <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </Button>

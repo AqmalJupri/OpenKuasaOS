@@ -4,8 +4,38 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Settings, LogOut, PanelLeftClose } from 'lucide-react';
 import { type Product, firstItem } from '@/config/nav';
+import { useIconHover } from '@animateicons/react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { cn } from '@/lib/utils';
+
+/** A nav row whose icon animates when the whole row is hovered. */
+function NavItemLink({
+  href,
+  active,
+  name,
+  label,
+}: {
+  href: string;
+  active: boolean;
+  name?: string;
+  label: string;
+}) {
+  const { ref, triggerProps } = useIconHover();
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      {...triggerProps}
+      className={cn(
+        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+        active && 'bg-accent text-accent-foreground',
+      )}
+    >
+      <AnimatedIcon ref={ref} name={name} size={16} className="shrink-0" />
+      <span className="truncate">{label}</span>
+    </Link>
+  );
+}
 
 export function SecondaryNav({
   product,
@@ -39,21 +69,12 @@ export function SecondaryNav({
                 const Icon = item.icon;
                 return (
                   <li key={item.slug}>
-                    <Link
+                    <NavItemLink
                       href={href}
-                      aria-current={active ? 'page' : undefined}
-                      className={cn(
-                        'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-                        active && 'bg-accent text-accent-foreground',
-                      )}
-                    >
-                      <AnimatedIcon
-                        name={(Icon as unknown as { displayName?: string }).displayName}
-                        size={16}
-                        className="shrink-0"
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </Link>
+                      active={active}
+                      name={(Icon as unknown as { displayName?: string }).displayName}
+                      label={item.label}
+                    />
                   </li>
                 );
               })}

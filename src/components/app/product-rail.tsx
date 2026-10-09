@@ -9,6 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useIconHover } from '@animateicons/react';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ function RailLink({
   icon: LucideIcon;
   active?: boolean;
 }) {
+  const { ref, triggerProps } = useIconHover();
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -32,13 +34,15 @@ function RailLink({
           href={href}
           aria-label={label}
           aria-current={active ? 'page' : undefined}
+          {...triggerProps}
           className={cn(
-            'group grid size-10 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+            'grid size-10 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
             active &&
               'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
           )}
         >
           <AnimatedIcon
+            ref={ref}
             name={(Icon as unknown as { displayName?: string }).displayName}
             size={20}
           />
