@@ -1,14 +1,29 @@
+'use client';
+
 import {
   TrendingUp,
   Receipt,
   CircleCheck,
-  ArrowUpRight,
   Users,
-  Banknote,
   Clock,
+  BarChart3,
+  Lightbulb,
+  SquareKanban,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { type ReactNode } from 'react';
+import { BentoCard, BentoStat } from '@/components/bento/bento';
+import {
+  AreaTrend,
+  BarGroup,
+  DonutStat,
+  RadialGauge,
+  Sparkline,
+  FunnelFlow,
+  type Series,
+  type Slice,
+} from '@/components/charts';
 
 export type CardType =
   | 'overview'
@@ -38,106 +53,125 @@ export function ReplyCard({ type }: { type: CardType }) {
   }
 }
 
-const SHELL = 'rounded-xl border bg-card p-4 shadow-sm';
+/** Small pill used in a few card headers. */
+function Trend({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+      <TrendingUp className="size-3.5" />
+      {children}
+    </span>
+  );
+}
 
 /* ---------- Business overview ---------- */
 
-const STATS = [
-  { label: 'Revenue', value: 'RM 48,250', delta: '+12%' },
-  { label: 'New leads', value: '184', delta: '+9%' },
-  { label: 'Deals won', value: '23', delta: '+4' },
-  { label: 'Cash runway', value: '7.2 mo', delta: 'healthy' },
+const OVERVIEW_KPIS: {
+  label: string;
+  value: string;
+  delta: string;
+  deltaTone: 'up' | 'down' | 'flat';
+  spark: number[];
+  color: string;
+}[] = [
+  {
+    label: 'Revenue',
+    value: 'RM 48,250',
+    delta: '+12%',
+    deltaTone: 'up',
+    spark: [32, 38, 35, 42, 45, 48],
+    color: 'var(--chart-1)',
+  },
+  {
+    label: 'New leads',
+    value: '184',
+    delta: '+9%',
+    deltaTone: 'up',
+    spark: [120, 140, 135, 160, 175, 184],
+    color: 'var(--chart-2)',
+  },
+  {
+    label: 'Deals won',
+    value: '23',
+    delta: '+4',
+    deltaTone: 'up',
+    spark: [15, 17, 16, 19, 21, 23],
+    color: 'var(--chart-5)',
+  },
+  {
+    label: 'Cash runway',
+    value: '7.2 mo',
+    delta: 'healthy',
+    deltaTone: 'flat',
+    spark: [6.1, 6.4, 6.6, 6.9, 7.0, 7.2],
+    color: 'var(--chart-3)',
+  },
 ];
-const REVENUE = [32, 38, 35, 42, 45, 48];
+
 const MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+const REVENUE = [32, 38, 35, 42, 45, 48];
+const REVENUE_TREND: Record<string, string | number>[] = MONTHS.map((m, i) => ({
+  label: m,
+  revenue: REVENUE[i],
+}));
+const REVENUE_SERIES: Series[] = [
+  { key: 'revenue', label: 'Revenue (RM k)', color: 'var(--chart-1)' },
+];
 
 function OverviewCard() {
-  const max = Math.max(...REVENUE);
   return (
-    <div className={SHELL}>
-      <p className="text-sm font-semibold">October at a glance</p>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {STATS.map((s) => (
-          <div key={s.label} className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-bold tracking-tight">{s.value}</p>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className="mt-1 inline-flex items-center gap-0.5 text-xs font-medium text-primary">
-              <ArrowUpRight className="size-3" />
-              {s.delta}
-            </p>
+    <BentoCard
+      title="October at a glance"
+      subtitle="Month to date · up 12% MoM"
+      icon={BarChart3}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        {OVERVIEW_KPIS.map((k) => (
+          <div key={k.label} className="min-w-0 rounded-lg bg-muted/40 p-3">
+            <BentoStat
+              label={k.label}
+              value={k.value}
+              delta={k.delta}
+              deltaTone={k.deltaTone}
+              chart={<Sparkline data={k.spark} color={k.color} height={32} />}
+            />
           </div>
         ))}
       </div>
       <div className="mt-4">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">
+        <p className="mb-1 text-xs font-medium text-muted-foreground">
           Revenue, last 6 months (RM k)
         </p>
-        <div className="flex items-end gap-2">
-          {REVENUE.map((v, i) => (
-            <div key={MONTHS[i]} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex h-24 w-full items-end">
-                <div
-                  className={cn(
-                    'w-full rounded-t',
-                    i === REVENUE.length - 1 ? 'bg-primary' : 'bg-primary/25',
-                  )}
-                  style={{ height: `${(v / max) * 100}%` }}
-                />
-              </div>
-              <span className="text-[10px] text-muted-foreground">
-                {MONTHS[i]}
-              </span>
-            </div>
-          ))}
-        </div>
+        <AreaTrend data={REVENUE_TREND} series={REVENUE_SERIES} height={160} />
       </div>
-    </div>
+    </BentoCard>
   );
 }
 
 /* ---------- Leads ---------- */
 
-const SOURCES = [
-  { label: 'Meta Ads', value: 22 },
-  { label: 'WhatsApp', value: 14 },
-  { label: 'Lead Forms', value: 8 },
-  { label: 'Referral', value: 3 },
+const LEAD_SOURCES: Slice[] = [
+  { key: 'meta', label: 'Meta Ads', value: 22, color: 'var(--chart-1)' },
+  { key: 'whatsapp', label: 'WhatsApp', value: 14, color: 'var(--chart-2)' },
+  { key: 'forms', label: 'Lead Forms', value: 8, color: 'var(--chart-5)' },
+  { key: 'referral', label: 'Referral', value: 3, color: 'var(--chart-3)' },
 ];
 
 function LeadsCard() {
-  const total = SOURCES.reduce((a, s) => a + s.value, 0);
-  const max = Math.max(...SOURCES.map((s) => s.value));
+  const total = LEAD_SOURCES.reduce((a, s) => a + s.value, 0);
   return (
-    <div className={SHELL}>
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-2xl font-bold tracking-tight">{total}</p>
-          <p className="text-xs text-muted-foreground">new leads this week</p>
-        </div>
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          <TrendingUp className="size-3.5" />
-          +18% vs last week
-        </span>
-      </div>
-      <div className="mt-4 space-y-2.5">
-        {SOURCES.map((s) => (
-          <div key={s.label} className="flex items-center gap-3">
-            <span className="w-20 shrink-0 text-xs text-muted-foreground">
-              {s.label}
-            </span>
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${(s.value / max) * 100}%` }}
-              />
-            </div>
-            <span className="w-6 shrink-0 text-right text-xs font-medium">
-              {s.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <BentoCard
+      title="New leads this week"
+      subtitle="Meta Ads leads, WhatsApp close behind"
+      icon={Users}
+      action={<Trend>+18% vs last week</Trend>}
+    >
+      <DonutStat
+        data={LEAD_SOURCES}
+        centerValue={String(total)}
+        centerLabel="this week"
+        height={210}
+      />
+    </BentoCard>
   );
 }
 
@@ -171,9 +205,8 @@ const PRIORITIES: {
 
 function PrioritiesCard() {
   return (
-    <div className={SHELL}>
-      <p className="text-sm font-semibold">Top 3 for today</p>
-      <ul className="mt-3 space-y-2.5">
+    <BentoCard title="Top 3 for today" icon={Lightbulb}>
+      <ul className="space-y-2.5">
         {PRIORITIES.map((p) => {
           const Icon = p.icon;
           return (
@@ -195,107 +228,132 @@ function PrioritiesCard() {
           );
         })}
       </ul>
-    </div>
+    </BentoCard>
   );
 }
 
 /* ---------- Overdue invoices ---------- */
 
-const INVOICES = [
-  { inv: 'INV-1041', customer: 'Rimba Retail', amount: 'RM 4,200', days: '6d' },
-  { inv: 'INV-1038', customer: 'Melur Café', amount: 'RM 1,850', days: '11d' },
-  { inv: 'INV-1032', customer: 'Seri Maju Sdn Bhd', amount: 'RM 7,400', days: '18d' },
+const INVOICES: {
+  key: string;
+  inv: string;
+  customer: string;
+  amount: number;
+  days: string;
+  color: string;
+}[] = [
+  {
+    key: 'inv1032',
+    inv: 'INV-1032',
+    customer: 'Seri Maju Sdn Bhd',
+    amount: 7400,
+    days: '18d',
+    color: 'var(--chart-1)',
+  },
+  {
+    key: 'inv1041',
+    inv: 'INV-1041',
+    customer: 'Rimba Retail',
+    amount: 4200,
+    days: '6d',
+    color: 'var(--chart-2)',
+  },
+  {
+    key: 'inv1038',
+    inv: 'INV-1038',
+    customer: 'Melur Café',
+    amount: 1850,
+    days: '11d',
+    color: 'var(--chart-5)',
+  },
 ];
+
+const INVOICE_SLICES: Slice[] = INVOICES.map((r) => ({
+  key: r.key,
+  label: r.inv,
+  value: r.amount,
+  color: r.color,
+}));
 
 function InvoicesCard() {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <p className="text-sm font-semibold">Overdue invoices (3)</p>
-        <p className="text-sm font-semibold text-red-600">RM 13,450</p>
+    <BentoCard
+      title="Overdue invoices (3)"
+      subtitle="RM 13,450 outstanding · oldest 18 days"
+      icon={Receipt}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <DonutStat
+            data={INVOICE_SLICES}
+            centerValue="RM 13.5k"
+            centerLabel="overdue"
+            showLegend={false}
+            height={180}
+          />
+        </div>
+        <div className="min-w-0 divide-y rounded-lg border">
+          {INVOICES.map((r) => (
+            <div key={r.key} className="flex items-center gap-2 px-3 py-2">
+              <span
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: r.color }}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{r.customer}</p>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {r.inv}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-semibold tabular-nums">
+                  RM {r.amount.toLocaleString('en-MY')}
+                </p>
+                <p className="text-[11px] font-medium text-red-600">{r.days}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="divide-y">
-        {INVOICES.map((r) => (
-          <div key={r.inv} className="flex items-center gap-3 px-4 py-2.5">
-            <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">
-              {r.inv}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {r.customer}
-            </span>
-            <span className="shrink-0 text-sm font-semibold">{r.amount}</span>
-            <span className="w-10 shrink-0 text-right text-xs font-medium text-red-600">
-              {r.days}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    </BentoCard>
   );
 }
 
 /* ---------- Deals pipeline ---------- */
 
-const STAGES = [
-  { label: 'New Lead', count: 2, value: 17400 },
-  { label: 'Contacted', count: 2, value: 12400 },
-  { label: 'Qualified', count: 2, value: 19200 },
-  { label: 'Proposal Sent', count: 1, value: 7200 },
-  { label: 'Won', count: 3, value: 42000 },
+const PIPELINE_FUNNEL: Slice[] = [
+  { key: 'new', label: 'New Lead', value: 7, color: 'var(--chart-1)' },
+  { key: 'contacted', label: 'Contacted', value: 5, color: 'var(--chart-2)' },
+  { key: 'qualified', label: 'Qualified', value: 4, color: 'var(--chart-5)' },
+  { key: 'proposal', label: 'Proposal', value: 2, color: 'var(--chart-3)' },
 ];
 
 function PipelineCard() {
-  const open = STAGES.filter((s) => s.label !== 'Won').reduce(
-    (a, s) => a + s.value,
-    0,
-  );
-  const max = Math.max(...STAGES.map((s) => s.value));
   return (
-    <div className={SHELL}>
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-sm font-semibold">Sales pipeline</p>
-          <p className="text-xs text-muted-foreground">7 open deals</p>
+    <BentoCard
+      title="Sales pipeline"
+      subtitle="7 open deals · Rimba Retail is biggest"
+      icon={SquareKanban}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-2 content-start gap-3">
+          <BentoStat label="Open value" value="RM 56.2k" delta="7 deals" deltaTone="flat" />
+          <BentoStat label="Won (MTD)" value="RM 42k" delta="3 deals" deltaTone="up" />
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold tracking-tight">
-            RM {open.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground">open value</p>
+        <div className="min-w-0">
+          <FunnelFlow data={PIPELINE_FUNNEL} height={160} />
         </div>
       </div>
-      <div className="mt-4 space-y-2.5">
-        {STAGES.map((s) => (
-          <div key={s.label} className="flex items-center gap-3">
-            <span className="w-28 shrink-0 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{s.label}</span> ·{' '}
-              {s.count}
-            </span>
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn(
-                  'h-full rounded-full',
-                  s.label === 'Won' ? 'bg-primary' : 'bg-primary/40',
-                )}
-                style={{ width: `${(s.value / max) * 100}%` }}
-              />
-            </div>
-            <span className="w-20 shrink-0 text-right text-xs font-medium">
-              RM {s.value.toLocaleString()}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    </BentoCard>
   );
 }
 
 /* ---------- Team & payroll ---------- */
 
-const TEAM_STATS: { icon: LucideIcon; label: string; value: string }[] = [
-  { icon: Users, label: 'Headcount', value: '24' },
-  { icon: CircleCheck, label: 'Pending', value: '3' },
-  { icon: Banknote, label: 'Next payroll', value: 'RM 86,400' },
+const TEAM_KPIS: { label: string; value: string }[] = [
+  { label: 'Headcount', value: '24' },
+  { label: 'Pending', value: '3' },
+  { label: 'Next payroll', value: 'RM 86.4k' },
 ];
 
 const APPROVALS: { icon: LucideIcon; text: string; sub: string }[] = [
@@ -309,83 +367,143 @@ const APPROVALS: { icon: LucideIcon; text: string; sub: string }[] = [
 
 function TeamCard() {
   return (
-    <div className={SHELL}>
-      <p className="text-sm font-semibold">Team &amp; payroll</p>
-      <div className="mt-3 grid grid-cols-3 gap-3">
-        {TEAM_STATS.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="rounded-lg bg-muted/50 p-3">
-              <Icon className="size-4 text-primary" />
-              <p className="mt-1 text-base font-bold tracking-tight">
-                {s.value}
-              </p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
-          );
-        })}
+    <BentoCard
+      title="Team & payroll"
+      subtitle="24 people · payroll runs 28 Oct"
+      icon={Users}
+    >
+      <div className="grid grid-cols-3 gap-3">
+        {TEAM_KPIS.map((s) => (
+          <div key={s.label} className="min-w-0 rounded-lg bg-muted/40 p-3">
+            <BentoStat label={s.label} value={s.value} />
+          </div>
+        ))}
       </div>
-      <div className="mt-3 space-y-2">
-        {APPROVALS.map((a) => {
-          const Icon = a.icon;
-          return (
-            <div key={a.text} className="flex items-center gap-3">
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{a.text}</p>
-                <p className="text-xs text-muted-foreground">{a.sub}</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="min-w-0">
+          <RadialGauge
+            value={96}
+            max={100}
+            label="Attendance"
+            valueLabel="96%"
+            color="var(--chart-2)"
+            height={200}
+          />
+        </div>
+        <div className="min-w-0 space-y-2">
+          {APPROVALS.map((a) => {
+            const Icon = a.icon;
+            return (
+              <div key={a.text} className="flex items-center gap-3">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{a.text}</p>
+                  <p className="truncate text-xs text-muted-foreground">{a.sub}</p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                >
+                  Review
+                </button>
               </div>
-              <button
-                type="button"
-                className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
-              >
-                Review
-              </button>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Clock className="size-3.5 shrink-0" />
-        Payroll runs 28 Oct · EPF, SOCSO &amp; PCB included
+        Payroll runs 28 Oct · RM 86,400 with EPF, SOCSO &amp; PCB included
       </p>
-    </div>
+    </BentoCard>
   );
 }
 
 /* ---------- Ad performance ---------- */
 
-const AD_STATS = [
-  { label: 'Spend', value: 'RM 4,820' },
-  { label: 'Leads', value: '184' },
-  { label: 'Cost / lead', value: 'RM 26' },
-  { label: 'ROAS', value: '3.4×' },
+const AD_KPIS: {
+  label: string;
+  value: string;
+  delta?: string;
+  deltaTone?: 'up' | 'down' | 'flat';
+  spark: number[];
+  color: string;
+}[] = [
+  {
+    label: 'Spend',
+    value: 'RM 4,820',
+    spark: [3200, 3600, 4100, 4400, 4600, 4820],
+    color: 'var(--chart-1)',
+  },
+  {
+    label: 'Leads',
+    value: '184',
+    delta: '+9%',
+    deltaTone: 'up',
+    spark: [120, 140, 135, 160, 175, 184],
+    color: 'var(--chart-2)',
+  },
+  {
+    label: 'Cost / lead',
+    value: 'RM 26',
+    delta: '−RM 4',
+    deltaTone: 'up',
+    spark: [34, 31, 30, 28, 27, 26],
+    color: 'var(--chart-5)',
+  },
+  {
+    label: 'ROAS',
+    value: '3.4×',
+    delta: '+0.4',
+    deltaTone: 'up',
+    spark: [2.6, 2.8, 3.0, 3.1, 3.3, 3.4],
+    color: 'var(--chart-3)',
+  },
+];
+
+const AD_CHANNELS: Record<string, string | number>[] = [
+  { label: 'Meta Ads', leads: 104 },
+  { label: 'WhatsApp', leads: 46 },
+  { label: 'Google', leads: 22 },
+  { label: 'TikTok', leads: 12 },
+];
+const AD_SERIES: Series[] = [
+  { key: 'leads', label: 'Leads', color: 'var(--chart-1)' },
 ];
 
 function AdsCard() {
   return (
-    <div className={SHELL}>
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">Ad performance · October</p>
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          <TrendingUp className="size-3.5" />
-          ROAS 3.4×
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {AD_STATS.map((s) => (
-          <div key={s.label} className="rounded-lg bg-muted/50 p-3">
-            <p className="text-lg font-bold tracking-tight">{s.value}</p>
-            <p className="text-xs text-muted-foreground">{s.label}</p>
+    <BentoCard
+      title="Ad performance · October"
+      subtitle="RM 4,820 spent · 184 leads"
+      icon={Megaphone}
+      action={<Trend>ROAS 3.4×</Trend>}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        {AD_KPIS.map((k) => (
+          <div key={k.label} className="min-w-0 rounded-lg bg-muted/40 p-3">
+            <BentoStat
+              label={k.label}
+              value={k.value}
+              delta={k.delta}
+              deltaTone={k.deltaTone}
+              chart={<Sparkline data={k.spark} color={k.color} height={32} />}
+            />
           </div>
         ))}
       </div>
+      <div className="mt-4">
+        <p className="mb-1 text-xs font-medium text-muted-foreground">
+          Leads by channel
+        </p>
+        <BarGroup data={AD_CHANNELS} series={AD_SERIES} horizontal height={150} />
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Meta Ads is driving the most leads at RM 22 each; WhatsApp click-to-chat
-        is your cheapest channel.
+        Meta Ads drives the most leads at RM 22 each; WhatsApp click-to-chat is
+        your cheapest channel.
       </p>
-    </div>
+    </BentoCard>
   );
 }
