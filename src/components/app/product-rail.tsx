@@ -9,6 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 import { cn } from '@/lib/utils';
 
 function RailLink({
@@ -37,7 +38,10 @@ function RailLink({
               'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
           )}
         >
-          <Icon className="size-5 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
+          <AnimatedIcon
+            name={(Icon as unknown as { displayName?: string }).displayName}
+            size={20}
+          />
         </Link>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={8}>

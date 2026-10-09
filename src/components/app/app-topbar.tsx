@@ -5,6 +5,7 @@ import { Search, Bell, CircleHelp, Coins, PanelLeftOpen, Menu } from 'lucide-rea
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/components/app/user-menu';
+import { AnimatedIcon } from '@/components/ui/animated-icon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,15 +75,15 @@ export function AppTopbar({
           href="/account/subscriptions"
           className="group hidden items-center gap-1.5 rounded-full border bg-muted/60 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:flex"
         >
-          <Coins className="size-4 text-primary transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
+          <AnimatedIcon name={(Coins as unknown as { displayName?: string }).displayName} size={16} className="text-primary" />
           <span>27,240</span>
           <span className="text-muted-foreground">credits</span>
         </Link>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Help" className="group">
-              <CircleHelp className="size-5 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
+            <Button variant="ghost" size="icon" aria-label="Help">
+              <AnimatedIcon name={(CircleHelp as unknown as { displayName?: string }).displayName} size={20} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8} className="w-56">
@@ -102,9 +103,9 @@ export function AppTopbar({
               variant="ghost"
               size="icon"
               aria-label="Notifications"
-              className="group relative"
+              className="relative"
             >
-              <Bell className="size-5 transition-transform duration-200 ease-out group-hover:-rotate-12 motion-reduce:transform-none" />
+              <AnimatedIcon name={(Bell as unknown as { displayName?: string }).displayName} size={20} />
               <span className="absolute right-2 top-2 size-2 animate-ping rounded-full bg-primary/70 motion-reduce:hidden" />
               <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </Button>
