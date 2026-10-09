@@ -42,11 +42,11 @@ export function SecondaryNav({
                       href={href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+                        'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
                         active && 'bg-accent text-accent-foreground',
                       )}
                     >
-                      <Icon className="size-4 shrink-0" />
+                      <Icon className="size-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
                       <span className="truncate">{item.label}</span>
                     </Link>
                   </li>
