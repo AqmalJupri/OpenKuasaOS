@@ -65,7 +65,7 @@ type Voucher = {
 
 const VOUCHERS: Voucher[] = [
   { id: '1', date: '03 Oct 2026', no: 'PV-2026-0088', to: 'Lim Hardware Sdn Bhd', account: 'Main Bank', category: 'Supplier bills', amount: 'RM 3,450.00', status: 'Paid' },
-  { id: '2', date: '02 Oct 2026', no: 'PV-2026-0087', to: 'Tenaga Nasional Berhad', account: 'Main Bank', category: 'Utilities', amount: 'RM 1,280.00', status: 'Paid' },
+  { id: '2', date: '02 Oct 2026', no: 'PV-2026-0087', to: 'Suria Utilities Sdn Bhd', account: 'Main Bank', category: 'Utilities', amount: 'RM 1,280.00', status: 'Paid' },
   { id: '3', date: '01 Oct 2026', no: 'PV-2026-0086', to: 'Syarikat Ramli & Anak', account: 'Main Bank', category: 'Rent & premises', amount: 'RM 2,200.00', status: 'Pending' },
   { id: '4', date: '30 Sep 2026', no: 'PV-2026-0085', to: 'Printhub Solutions', account: 'Main Bank', category: 'Services', amount: 'RM 640.00', status: 'Paid' },
   { id: '5', date: '28 Sep 2026', no: 'PV-2026-0084', to: 'Kedai Kain Kak Siti', account: 'Main Bank', category: 'Supplier bills', amount: 'RM 5,900.00', status: 'Paid' },

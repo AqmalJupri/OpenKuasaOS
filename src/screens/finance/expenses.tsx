@@ -49,7 +49,7 @@ const TOTAL_EXPENSES = 142;
 
 const EXPENSES: Expense[] = [
   { id: '1', date: '03 Oct 2026', category: 'Rent', vendor: 'Menara Axis Management', amount: 'RM 4,500.00', method: 'Bank Transfer', status: 'Approved' },
-  { id: '2', date: '02 Oct 2026', category: 'Utilities', vendor: 'Tenaga Nasional Berhad', amount: 'RM 1,280.00', method: 'FPX', status: 'Approved' },
+  { id: '2', date: '02 Oct 2026', category: 'Utilities', vendor: 'Suria Utilities Sdn Bhd', amount: 'RM 1,280.00', method: 'FPX', status: 'Approved' },
   { id: '3', date: '01 Oct 2026', category: 'Marketing', vendor: 'Meta Ads Malaysia', amount: 'RM 2,200.00', method: 'Credit Card', status: 'Pending' },
   { id: '4', date: '30 Sep 2026', category: 'Travel', vendor: 'Grab Malaysia', amount: 'RM 186.00', method: 'E-Wallet', status: 'Approved' },
   { id: '5', date: '29 Sep 2026', category: 'Supplies', vendor: 'Printhub Solutions', amount: 'RM 640.00', method: 'Cash', status: 'Approved' },
