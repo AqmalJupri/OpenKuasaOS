@@ -1,69 +1,340 @@
 import {
+  Activity,
   ArrowUp,
-  MessageSquare,
+  Filter,
+  Flame,
+  Gauge,
+  ListChecks,
   Mic,
-  Phone,
+  PieChart,
   Plus,
   Sparkles,
-  SquareKanban,
   TrendingUp,
-  type LucideIcon,
+  Users,
 } from 'lucide-react';
 import { ScreenContainer } from '@/components/screen/screen-container';
+import { BentoGrid, BentoCard, BentoStat } from '@/components/bento/bento';
+import {
+  AreaTrend,
+  BarGroup,
+  DonutStat,
+  FunnelFlow,
+  RadialGauge,
+  Sparkline,
+  type Series,
+  type Slice,
+} from '@/components/charts';
+import { LiveDot } from '@/components/ui/live-dot';
+import { cn } from '@/lib/utils';
 
-const SUGGESTIONS: { icon: LucideIcon; text: string }[] = [
-  { icon: SquareKanban, text: 'Which deals are stuck in my pipeline?' },
-  { icon: MessageSquare, text: 'Draft a follow-up to Aisyah Trading' },
-  { icon: TrendingUp, text: "What's my win rate this month?" },
-  { icon: Phone, text: 'Who should I call today?' },
+/* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
+
+const REVENUE_TREND = [
+  { label: 'Mar', revenue: 78, deals: 9 },
+  { label: 'Apr', revenue: 92, deals: 11 },
+  { label: 'May', revenue: 85, deals: 10 },
+  { label: 'Jun', revenue: 104, deals: 14 },
+  { label: 'Jul', revenue: 96, deals: 12 },
+  { label: 'Aug', revenue: 118, deals: 16 },
+  { label: 'Sep', revenue: 112, deals: 15 },
+  { label: 'Oct', revenue: 128, deals: 18 },
+];
+const REVENUE_SERIES: Series[] = [
+  { key: 'revenue', label: 'Revenue won (RM K)', color: 'var(--chart-1)' },
+  { key: 'deals', label: 'Deals won', color: 'var(--chart-2)' },
 ];
 
-export default function AssistantScreen() {
+const STAGE_MIX: Slice[] = [
+  { key: 'lead', label: 'Lead', value: 12, color: 'var(--chart-1)' },
+  { key: 'qualified', label: 'Qualified', value: 9, color: 'var(--chart-2)' },
+  { key: 'proposal', label: 'Proposal', value: 8, color: 'var(--chart-5)' },
+  { key: 'negotiation', label: 'Negotiation', value: 6, color: 'var(--chart-3)' },
+  { key: 'won', label: 'Won', value: 3, color: 'var(--chart-4)' },
+];
+
+const PIPELINE: Slice[] = [
+  { key: 'lead', label: 'Lead', value: 120, color: 'var(--chart-1)' },
+  { key: 'qualified', label: 'Qualified', value: 78, color: 'var(--chart-2)' },
+  { key: 'proposal', label: 'Proposal', value: 52, color: 'var(--chart-5)' },
+  { key: 'negotiation', label: 'Negotiation', value: 34, color: 'var(--chart-3)' },
+  { key: 'won', label: 'Won', value: 18, color: 'var(--chart-4)' },
+];
+
+const DEALS_BY_OWNER = [
+  { label: 'Aisyah', deals: 12 },
+  { label: 'Faiz', deals: 9 },
+  { label: 'Nurul', deals: 8 },
+  { label: 'Zaki', deals: 9 },
+];
+const OWNER_SERIES: Series[] = [
+  { key: 'deals', label: 'Open deals', color: 'var(--chart-2)' },
+];
+
+type ClosingDeal = {
+  name: string;
+  value: number;
+  stage: string;
+  hot: boolean;
+};
+const CLOSING_SOON: ClosingDeal[] = [
+  { name: 'Lim Hardware — Fitout', value: 15000, stage: 'Negotiation', hot: true },
+  { name: 'Aisyah Trading — Bulk order', value: 12000, stage: 'Proposal', hot: true },
+  { name: 'Nurul Boutique — POS setup', value: 8900, stage: 'Qualified', hot: true },
+  { name: 'Siti Decor — Event', value: 7200, stage: 'Proposal', hot: false },
+  { name: 'Faiz Studio — Branding', value: 5400, stage: 'Qualified', hot: false },
+];
+
+const ACTIVITY = [
+  { text: 'Aisyah Rahim replied on WhatsApp', when: '8m' },
+  { text: 'Proposal sent to Lim Hardware', when: '1h' },
+  { text: 'Call booked with Nurul Huda', when: '3h' },
+  { text: 'Zaki Enterprise moved to Negotiation', when: '5h' },
+  { text: 'Rahman Logistics marked Won — RM 24,000', when: '1d' },
+];
+
+const TASKS = [
+  { text: 'Follow up with Aisyah Trading on bulk order', when: '10:00am', done: true },
+  { text: 'Send revised quote to Lim Hardware', when: '11:30am', done: false },
+  { text: 'Call Nurul Huda re: POS setup', when: '2:00pm', done: false },
+  { text: 'Prepare proposal for Siti Decor event', when: '4:00pm', done: false },
+];
+
+const PROMPTS = [
+  'Which deals are stuck in my pipeline?',
+  'Draft a follow-up to Aisyah Trading',
+  "What's my win rate this month?",
+  'Who should I call today?',
+];
+
+const formatRM = (n: number) => `RM ${n.toLocaleString('en-MY')}`;
+
+/* ------------------------------------------------------------------ */
+
+export default function OverviewScreen() {
   return (
     <ScreenContainer>
-      <div className="mx-auto flex w-full max-w-2xl flex-col items-center pt-16">
-        <div className="mb-6 grid size-16 place-items-center rounded-2xl bg-primary text-primary-foreground">
-          <Sparkles className="size-8" />
-        </div>
-        <h1 className="text-center text-3xl font-bold tracking-tight">
-          How can we close more deals, Saudara?
-        </h1>
-        <p className="mt-2 mb-8 text-center text-sm text-muted-foreground">
-          I&apos;m Kasturi, your CMO — firm and relentless about the pipeline.
-          Powered by Taming Sari.
-        </p>
+      <BentoGrid>
+        {/* Ask-Kasturi hero */}
+        <BentoCard tone="primary" className="col-span-2 md:col-span-12">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-xs font-medium text-primary-foreground/70">
+                <Sparkles className="size-3.5 animate-twinkle" />
+                Kasturi · your sales co-pilot
+              </div>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">
+                How can we close more deals, Saudara?
+              </h1>
+              <p className="mt-1 text-xs text-primary-foreground/70">
+                Firm and relentless about the pipeline. Powered by Taming Sari.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className="rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-medium text-primary-foreground ring-1 ring-inset ring-primary-foreground/20 transition hover:bg-primary-foreground/20"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex w-full items-center gap-2 rounded-2xl bg-primary-foreground/10 p-2 ring-1 ring-inset ring-primary-foreground/20 lg:w-96">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-foreground/15">
+                <Plus className="size-4" />
+              </span>
+              <span className="flex-1 truncate text-sm text-primary-foreground/70">
+                Ask Kasturi anything…
+              </span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-foreground/15">
+                <Mic className="size-4" />
+              </span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-foreground text-primary">
+                <ArrowUp className="size-4" />
+              </span>
+            </div>
+          </div>
+        </BentoCard>
 
-        <div className="flex w-full items-center gap-2 rounded-2xl border bg-background p-2 shadow-sm">
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
-            <Plus className="size-4" />
-          </div>
-          <div className="flex-1 truncate text-sm text-muted-foreground">
-            Ask anything…
-          </div>
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
-            <Mic className="size-4" />
-          </div>
-          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-foreground text-background">
-            <ArrowUp className="size-4" />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          AI can make mistakes. Check important info.
-        </p>
+        {/* KPI row */}
+        <BentoCard tone="primary" className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Pipeline value"
+            value="RM 486K"
+            delta="+9%"
+            onPrimary
+            chart={
+              <Sparkline
+                data={[380, 410, 395, 430, 445, 460, 472, 486]}
+                color="var(--primary-foreground)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Open deals"
+            value="38"
+            delta="+4"
+            deltaTone="up"
+            chart={<Sparkline data={[28, 30, 31, 33, 34, 36, 37, 38]} height={36} />}
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Win rate"
+            value="32%"
+            delta="+3pt"
+            deltaTone="up"
+            chart={
+              <Sparkline
+                data={[25, 26, 27, 28, 29, 30, 31, 32]}
+                color="var(--chart-5)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
+        <BentoCard className="col-span-1 md:col-span-3">
+          <BentoStat
+            label="Revenue won · MTD"
+            value="RM 128K"
+            delta="+15%"
+            deltaTone="up"
+            chart={
+              <Sparkline
+                data={[78, 92, 85, 104, 96, 118, 112, 128]}
+                color="var(--chart-2)"
+                height={36}
+              />
+            }
+          />
+        </BentoCard>
 
-        <div className="mt-8 w-full space-y-1">
-          {SUGGESTIONS.map(({ icon: Icon, text }) => (
-            <button
-              key={text}
-              type="button"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-accent"
-            >
-              <Icon className="size-4 shrink-0 text-muted-foreground" />
-              <span>{text}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+        {/* Revenue trend + stage mix */}
+        <BentoCard
+          title="Revenue & deals over time"
+          subtitle="Won · last 8 months"
+          icon={TrendingUp}
+          className="col-span-2 md:col-span-8"
+        >
+          <AreaTrend data={REVENUE_TREND} series={REVENUE_SERIES} height={240} showLegend />
+        </BentoCard>
+        <BentoCard title="Deals by stage" icon={PieChart} className="col-span-2 md:col-span-4">
+          <DonutStat data={STAGE_MIX} height={240} centerValue="38" centerLabel="open" />
+        </BentoCard>
+
+        {/* Pipeline funnel + owners + win rate */}
+        <BentoCard
+          title="Pipeline"
+          subtitle="Lead → won"
+          icon={Filter}
+          className="col-span-2 md:col-span-4"
+        >
+          <FunnelFlow data={PIPELINE} height={200} />
+        </BentoCard>
+        <BentoCard
+          title="Deals by owner"
+          subtitle="Open deals per rep"
+          icon={Users}
+          className="col-span-2 md:col-span-4"
+        >
+          <BarGroup data={DEALS_BY_OWNER} series={OWNER_SERIES} horizontal height={200} />
+        </BentoCard>
+        <BentoCard
+          title="Win rate"
+          subtitle="Closed-won share"
+          icon={Gauge}
+          className="col-span-2 md:col-span-4"
+        >
+          <RadialGauge value={32} label="won" valueLabel="32%" height={200} />
+        </BentoCard>
+
+        {/* Deals closing soon + recent activity */}
+        <BentoCard
+          title="Deals closing soon"
+          subtitle="Next 14 days"
+          icon={Flame}
+          className="col-span-2 md:col-span-8"
+        >
+          <ul className="divide-y">
+            {CLOSING_SOON.map((d) => (
+              <li key={d.name} className="flex items-center gap-3 py-2.5">
+                <LiveDot active={d.hot} />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {d.name}
+                </span>
+                <span className="hidden shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary sm:inline-block">
+                  {d.stage}
+                </span>
+                <span className="w-24 shrink-0 text-right text-sm font-semibold tabular-nums">
+                  {formatRM(d.value)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </BentoCard>
+        <BentoCard
+          title="Recent activity"
+          subtitle="Across your deals"
+          icon={Activity}
+          className="col-span-2 md:col-span-4"
+        >
+          <ul className="space-y-2.5">
+            {ACTIVITY.map((a) => (
+              <li key={a.text} className="flex items-start gap-2.5">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                <span className="min-w-0 flex-1 text-sm leading-snug">{a.text}</span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {a.when}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </BentoCard>
+
+        {/* Today's tasks */}
+        <BentoCard
+          title="Today's tasks"
+          subtitle="Follow-ups & actions"
+          icon={ListChecks}
+          className="col-span-2 md:col-span-12"
+        >
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {TASKS.map((t) => (
+              <li
+                key={t.text}
+                className="flex items-center gap-3 rounded-lg border bg-background/50 px-3 py-2"
+              >
+                <span
+                  className={cn(
+                    'grid size-5 shrink-0 place-items-center rounded-md border text-[10px]',
+                    t.done
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-muted-foreground/40 text-transparent',
+                  )}
+                  aria-hidden
+                >
+                  ✓
+                </span>
+                <span
+                  className={cn(
+                    'min-w-0 flex-1 truncate text-sm',
+                    t.done && 'text-muted-foreground line-through',
+                  )}
+                >
+                  {t.text}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {t.when}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </BentoCard>
+      </BentoGrid>
     </ScreenContainer>
   );
 }
