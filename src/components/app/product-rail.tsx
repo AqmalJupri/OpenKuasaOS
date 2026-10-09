@@ -32,12 +32,12 @@ function RailLink({
           aria-label={label}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'grid size-10 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+            'group grid size-10 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
             active &&
               'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground',
           )}
         >
-          <Icon className="size-5" />
+          <Icon className="size-5 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
         </Link>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={8}>

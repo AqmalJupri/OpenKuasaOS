@@ -72,17 +72,17 @@ export function AppTopbar({
       <div className="ml-auto flex items-center gap-2">
         <Link
           href="/account/subscriptions"
-          className="hidden items-center gap-1.5 rounded-full border bg-muted/60 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:flex"
+          className="group hidden items-center gap-1.5 rounded-full border bg-muted/60 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent sm:flex"
         >
-          <Coins className="size-4 text-primary" />
+          <Coins className="size-4 text-primary transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
           <span>27,240</span>
           <span className="text-muted-foreground">credits</span>
         </Link>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Help">
-              <CircleHelp className="size-5" />
+            <Button variant="ghost" size="icon" aria-label="Help" className="group">
+              <CircleHelp className="size-5 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transform-none" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8} className="w-56">
@@ -102,9 +102,10 @@ export function AppTopbar({
               variant="ghost"
               size="icon"
               aria-label="Notifications"
-              className="relative"
+              className="group relative"
             >
-              <Bell className="size-5" />
+              <Bell className="size-5 transition-transform duration-200 ease-out group-hover:-rotate-12 motion-reduce:transform-none" />
+              <span className="absolute right-2 top-2 size-2 animate-ping rounded-full bg-primary/70 motion-reduce:hidden" />
               <span className="absolute right-2 top-2 size-2 rounded-full bg-primary ring-2 ring-background" />
             </Button>
           </DropdownMenuTrigger>
