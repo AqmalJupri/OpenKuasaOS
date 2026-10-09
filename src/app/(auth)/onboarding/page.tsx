@@ -312,7 +312,7 @@ export default function OnboardingPage() {
                   <Input
                     id="org-name"
                     name="orgName"
-                    defaultValue={company.name}
+                    defaultValue={signUpState?.values?.orgName ?? company.name}
                     placeholder="Acme Sdn Bhd"
                     required
                   />
@@ -325,6 +325,7 @@ export default function OnboardingPage() {
                     type="email"
                     placeholder="you@company.com"
                     autoComplete="email"
+                    defaultValue={signUpState?.values?.email}
                     required
                   />
                 </div>
@@ -345,9 +346,18 @@ export default function OnboardingPage() {
                     {signUpState.error}
                   </p>
                 ) : null}
-                <Button type="submit" size="lg" disabled={signingUp}>
-                  {signingUp ? 'Creating workspace…' : 'Create account'}
-                </Button>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={back}
+                    className="text-sm font-semibold uppercase tracking-wide text-muted-foreground transition hover:text-foreground"
+                  >
+                    Back
+                  </button>
+                  <Button type="submit" size="lg" disabled={signingUp}>
+                    {signingUp ? 'Creating workspace…' : 'Create account'}
+                  </Button>
+                </div>
               </form>
             </Step>
           )}

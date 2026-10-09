@@ -23,6 +23,7 @@ export function LoginForm() {
           type="email"
           placeholder="you@company.com"
           autoComplete="email"
+          defaultValue={state?.values?.email}
           required
         />
       </div>
