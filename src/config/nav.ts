@@ -175,8 +175,8 @@ export const PRODUCTS: Product[] = [
       {
         label: 'General',
         items: [
-          { label: 'CHRO Assistant', slug: 'assistant', icon: Sparkles },
-          { label: 'Dashboard', slug: 'dashboard', icon: LayoutDashboard },
+          { label: 'Overview', slug: 'assistant', icon: LayoutDashboard },
+          { label: 'Dashboard', slug: 'dashboard', icon: TrendingUp },
           { label: 'Calendar', slug: 'calendar', icon: Calendar },
           { label: 'Announcements', slug: 'announcements', icon: Megaphone },
           { label: 'My Attendance', slug: 'my-attendance', icon: Clock },
