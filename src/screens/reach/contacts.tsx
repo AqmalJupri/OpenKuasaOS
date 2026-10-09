@@ -40,7 +40,7 @@ type Contact = {
 const CONTACTS: Contact[] = [
   {
     id: '1',
-    email: 'promotion@kuasa.ai',
+    email: 'promotion@openkuasa.com',
     company: 'Campaign Q4 2026',
     first: 'Promotion',
     last: 'Campaign Q4 2026',

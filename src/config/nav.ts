@@ -59,8 +59,6 @@ export type Product = {
   key: string;
   /** Hang codename shown in the UI */
   name: string;
-  /** original Kuasa product, kept for reference */
-  kuasa: string;
   tagline: string;
   icon: LucideIcon;
   /** empty sections => full-width module with no secondary panel */
@@ -71,7 +69,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'command',
     name: 'Tuah',
-    kuasa: 'AI CEO',
     tagline: 'Command your business',
     icon: Compass,
     sections: [],
@@ -79,7 +76,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'reach',
     name: 'Jebat',
-    kuasa: 'Kuasa ARA · Ads',
     tagline: 'Win new leads with AI ads',
     icon: Megaphone,
     sections: [
@@ -123,7 +119,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'crm',
     name: 'Kasturi',
-    kuasa: 'Kuasa ARA · CRM',
     tagline: 'Manage & close your pipeline',
     icon: SquareKanban,
     sections: [
@@ -178,7 +173,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'people',
     name: 'Lekiu',
-    kuasa: 'Kuasa HIRA · Team',
     tagline: 'Build & manage your team',
     icon: Users,
     sections: [
@@ -251,7 +245,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'hire',
     name: 'Lekir',
-    kuasa: 'Kuasa HIRA · Recruit',
     tagline: 'Recruit & hire your next team',
     icon: UserPlus,
     sections: [
@@ -287,7 +280,6 @@ export const PRODUCTS: Product[] = [
   {
     key: 'finance',
     name: 'Bendahara',
-    kuasa: 'Kuasa Safa',
     tagline: 'Accounting & e-Invois LHDN',
     icon: Landmark,
     sections: [

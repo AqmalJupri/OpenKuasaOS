@@ -55,7 +55,7 @@ export default function SettingsScreen() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="company-name">Company name</Label>
-                <Input id="company-name" defaultValue="Kuasa Sdn Bhd" />
+                <Input id="company-name" defaultValue="Rimba Ventures Sdn Bhd" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="working-days">Working days</Label>
