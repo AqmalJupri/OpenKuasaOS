@@ -1,5 +1,10 @@
 -- Kasturi CRM core schema: contacts, deals, activities and audit spine.
 -- Depends on the tenancy spine and private.is_org_member/is_org_writer helpers.
+--
+-- Columns follow the Kasturi screens: crm_contacts carries what the Contacts
+-- page lists, crm_deals what a card on the Deals board shows. Child rows point
+-- at their parent with (id, org_id), so a row can never reference another
+-- workspace's record, and a deal's stage always belongs to the deal's pipeline.
 
 create table public.crm_pipelines (
   id uuid primary key default gen_random_uuid(),
@@ -9,65 +14,79 @@ create table public.crm_pipelines (
   is_default boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (org_id, name)
+  unique (org_id, name),
+  unique (id, org_id)
 );
 alter table public.crm_pipelines enable row level security;
 
 create table public.crm_pipeline_stages (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  pipeline_id uuid not null references public.crm_pipelines(id) on delete cascade,
+  pipeline_id uuid not null,
   name text not null,
   position integer not null,
   probability_percent integer not null default 0 check (probability_percent between 0 and 100),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (pipeline_id, position),
-  unique (pipeline_id, name)
+  unique (pipeline_id, name),
+  unique (id, pipeline_id),
+  foreign key (pipeline_id, org_id) references public.crm_pipelines(id, org_id) on delete cascade
 );
 alter table public.crm_pipeline_stages enable row level security;
 
 create table public.crm_contacts (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  name text not null,
+  first_name text not null,
+  last_name text,
   company text,
   email text,
   phone text,
+  country text check (country is null or country ~ '^[A-Z]{2}$'),
   source text,
-  status text not null default 'lead' check (status in ('lead','qualified','customer','archived')),
+  status text not null default 'lead' check (status in ('lead','contacted','qualified','customer','archived')),
+  lead_score integer not null default 0 check (lead_score between 0 and 100),
   owner_user_id uuid references auth.users(id) on delete set null,
   tags text[] not null default '{}',
+  last_interaction_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, org_id)
 );
 alter table public.crm_contacts enable row level security;
 
 create table public.crm_deals (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  contact_id uuid not null references public.crm_contacts(id) on delete cascade,
-  pipeline_id uuid not null references public.crm_pipelines(id) on delete restrict,
-  stage_id uuid not null references public.crm_pipeline_stages(id) on delete restrict,
+  contact_id uuid not null,
+  pipeline_id uuid not null,
+  stage_id uuid not null,
   title text not null,
-  value_amount numeric(14,2) not null default 0 check (value_amount >= 0),
+  value_cents bigint not null default 0 check (value_cents >= 0),
   currency text not null default 'MYR',
+  tag text,
   status text not null default 'open' check (status in ('open','won','lost')),
   expected_close_date date,
   won_at timestamptz,
   lost_at timestamptz,
   lost_reason text,
   owner_user_id uuid references auth.users(id) on delete set null,
+  last_activity_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, org_id),
+  foreign key (contact_id, org_id) references public.crm_contacts(id, org_id) on delete cascade,
+  foreign key (pipeline_id, org_id) references public.crm_pipelines(id, org_id) on delete restrict,
+  foreign key (stage_id, pipeline_id) references public.crm_pipeline_stages(id, pipeline_id) on delete restrict
 );
 alter table public.crm_deals enable row level security;
 
 create table public.crm_activities (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  contact_id uuid references public.crm_contacts(id) on delete cascade,
-  deal_id uuid references public.crm_deals(id) on delete cascade,
+  contact_id uuid,
+  deal_id uuid,
   type text not null check (type in ('call','whatsapp','email','meeting','task','note')),
   title text not null,
   body text,
@@ -76,35 +95,41 @@ create table public.crm_activities (
   owner_user_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (contact_id is not null or deal_id is not null)
+  check (contact_id is not null or deal_id is not null),
+  foreign key (contact_id, org_id) references public.crm_contacts(id, org_id) on delete cascade,
+  foreign key (deal_id, org_id) references public.crm_deals(id, org_id) on delete cascade
 );
 alter table public.crm_activities enable row level security;
 
 create table public.crm_notes (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  contact_id uuid references public.crm_contacts(id) on delete cascade,
-  deal_id uuid references public.crm_deals(id) on delete cascade,
+  contact_id uuid,
+  deal_id uuid,
   body text not null,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (contact_id is not null or deal_id is not null)
+  check (contact_id is not null or deal_id is not null),
+  foreign key (contact_id, org_id) references public.crm_contacts(id, org_id) on delete cascade,
+  foreign key (deal_id, org_id) references public.crm_deals(id, org_id) on delete cascade
 );
 alter table public.crm_notes enable row level security;
 
 create table public.crm_attachments (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.orgs(id) on delete cascade,
-  contact_id uuid references public.crm_contacts(id) on delete cascade,
-  deal_id uuid references public.crm_deals(id) on delete cascade,
+  contact_id uuid,
+  deal_id uuid,
   storage_path text not null,
   file_name text not null,
   content_type text,
   byte_size bigint check (byte_size is null or byte_size >= 0),
   uploaded_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
-  check (contact_id is not null or deal_id is not null)
+  check (contact_id is not null or deal_id is not null),
+  foreign key (contact_id, org_id) references public.crm_contacts(id, org_id) on delete cascade,
+  foreign key (deal_id, org_id) references public.crm_deals(id, org_id) on delete cascade
 );
 alter table public.crm_attachments enable row level security;
 
@@ -208,15 +233,28 @@ create policy crm_attachments_delete on public.crm_attachments
 create policy crm_audit_logs_select on public.crm_audit_logs
   for select to authenticated using (private.is_org_member(org_id));
 create policy crm_audit_logs_insert on public.crm_audit_logs
-  for insert to authenticated with check (private.is_org_writer(org_id));
+  for insert to authenticated
+  with check (private.is_org_writer(org_id) and actor_user_id = (select auth.uid()));
 
-revoke truncate, references, trigger on
-  public.crm_pipelines,
-  public.crm_pipeline_stages,
-  public.crm_contacts,
-  public.crm_deals,
-  public.crm_activities,
-  public.crm_notes,
-  public.crm_attachments,
-  public.crm_audit_logs
-from anon, authenticated;
+-- MFA belt-and-suspenders + explicit grants, identical per table (same shape as
+-- the Jebat foundation). Tables created by a migration carry no usable grants
+-- for authenticated, so without these every query is denied before RLS runs.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'crm_pipelines','crm_pipeline_stages','crm_contacts','crm_deals',
+    'crm_activities','crm_notes','crm_attachments','crm_audit_logs'
+  ] loop
+    execute format(
+      'create policy mfa_required on public.%I as restrictive for all to authenticated '
+      || 'using ((select private.mfa_ok())) with check ((select private.mfa_ok()))', t);
+    execute format('revoke all on public.%I from anon, authenticated', t);
+    if t = 'crm_audit_logs' then
+      -- append-only: no update or delete, matching its policies
+      execute format('grant select, insert on public.%I to authenticated', t);
+    else
+      execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+    end if;
+  end loop;
+end $$;
