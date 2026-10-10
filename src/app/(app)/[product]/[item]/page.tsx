@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { PlaceholderPage } from '@/components/app/placeholder-page';
 import { getProduct, findItem } from '@/config/nav';
 import { SCREENS } from '@/screens/registry';
+import CrmContactsPage from '@/screens/crm/contacts-page';
 
 export default async function ItemPage({
   params,
@@ -14,6 +15,8 @@ export default async function ItemPage({
 
   const item = findItem(product, slug);
   if (!item) notFound();
+
+  if (key === 'crm' && slug === 'contacts') return <CrmContactsPage />;
 
   const Screen = SCREENS[`${key}/${slug}`];
   if (Screen) return <Screen />;
