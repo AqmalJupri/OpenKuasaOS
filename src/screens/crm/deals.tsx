@@ -19,24 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { CrmDealStage } from '@/lib/crm/deals';
 
 /* ---- mock data (Rimba Ventures Sdn Bhd — sales pipeline) ---------- */
 
-type Deal = {
-  id: string;
-  company: string;
-  summary: string;
-  value: number;
-  owner: string;
-  lastTouch: string;
-  tag?: string;
-};
-
-type Stage = {
-  name: string;
-  dot: string;
-  deals: Deal[];
-};
+type Stage = CrmDealStage;
+type Deal = Stage['deals'][number];
 
 const STAGES: Stage[] = [
   {
@@ -188,7 +176,17 @@ const initials = (name: string) =>
     .join('')
     .slice(0, 2);
 
-const totalDeals = STAGES.reduce((sum, s) => sum + s.deals.length, 0);
+const sampleTotalDeals = STAGES.reduce((sum, s) => sum + s.deals.length, 0);
+const samplePipelineValue = STAGES.reduce(
+  (sum, stage) => sum + stage.deals.reduce((stageSum, deal) => stageSum + deal.value, 0),
+  0,
+);
+
+type DealsScreenProps = {
+  stages?: Stage[];
+  totalDeals?: number;
+  pipelineValue?: number;
+};
 
 function DealCard({ deal }: { deal: Deal }) {
   return (
@@ -224,7 +222,13 @@ function DealCard({ deal }: { deal: Deal }) {
   );
 }
 
-export default function DealsScreen() {
+export default function DealsScreen({
+  stages = STAGES,
+  totalDeals = sampleTotalDeals,
+  pipelineValue = samplePipelineValue,
+}: DealsScreenProps = {}) {
+  const averageDealSize = totalDeals > 0 ? pipelineValue / totalDeals : 0;
+
   return (
     <ScreenContainer>
       <PageHeader
@@ -248,7 +252,7 @@ export default function DealsScreen() {
         <BentoCard tone="primary" className="col-span-1 md:col-span-3">
           <BentoStat
             label="Pipeline value"
-            value="RM 164.5k"
+            value={formatRM(pipelineValue)}
             delta="+9%"
             onPrimary
             chart={
@@ -263,7 +267,7 @@ export default function DealsScreen() {
         <BentoCard className="col-span-1 md:col-span-3">
           <BentoStat
             label="Open deals"
-            value="8"
+            value={String(totalDeals)}
             delta="+2"
             deltaTone="up"
             chart={
@@ -278,7 +282,7 @@ export default function DealsScreen() {
         <BentoCard className="col-span-1 md:col-span-3">
           <BentoStat
             label="Avg deal size"
-            value="RM 20.6k"
+            value={formatRM(averageDealSize)}
             delta="+6%"
             deltaTone="up"
             chart={
@@ -366,7 +370,7 @@ export default function DealsScreen() {
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {STAGES.map((stage) => {
+        {stages.map((stage) => {
           const total = stage.deals.reduce((sum, d) => sum + d.value, 0);
           return (
             <div
