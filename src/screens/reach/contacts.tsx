@@ -226,11 +226,16 @@ function StatusPill({ status }: { status: string | null }) {
 }
 
 type ContactsScreenProps = {
+  /** Live contacts. Omitted on Jebat and when no database is configured. */
   contacts?: Contact[];
   totalContacts?: number;
 };
 
 export default function ContactsScreen({ contacts, totalContacts }: ContactsScreenProps = {}) {
+  // With live contacts, only what is backed by real data is shown: the total
+  // and the table. The trend, score and pipeline cards are sample figures and
+  // stay hidden until they have a live source.
+  const live = contacts !== undefined;
   const rows = contacts ?? CONTACTS;
   const total = totalContacts ?? TOTAL_CONTACTS;
   const [selected, setSelected] = useState<string[]>([]);
@@ -269,67 +274,73 @@ export default function ContactsScreen({ contacts, totalContacts }: ContactsScre
           <BentoStat
             label="Total contacts"
             value={total.toLocaleString()}
-            delta="+4.2%"
+            delta={live ? undefined : '+4.2%'}
             onPrimary
             chart={
-              <Sparkline
-                data={SPARK_TOTAL}
-                color="var(--primary-foreground)"
-                height={36}
-              />
+              live ? undefined : (
+                <Sparkline
+                  data={SPARK_TOTAL}
+                  color="var(--primary-foreground)"
+                  height={36}
+                />
+              )
             }
           />
         </BentoCard>
-        <BentoCard className="col-span-1 md:col-span-3">
-          <BentoStat
-            label="New this week"
-            value="86"
-            delta="+18"
-            deltaTone="up"
-            chart={<Sparkline data={SPARK_NEW} color="var(--chart-2)" height={36} />}
-          />
-        </BentoCard>
-        <BentoCard className="col-span-1 md:col-span-3">
-          <BentoStat
-            label="Qualified"
-            value="402"
-            delta="+6%"
-            deltaTone="up"
-            chart={<Sparkline data={SPARK_QUALIFIED} color="var(--chart-1)" height={36} />}
-          />
-        </BentoCard>
-        <BentoCard className="col-span-1 md:col-span-3">
-          <BentoStat
-            label="Avg lead score"
-            value="68"
-            delta="+2"
-            deltaTone="up"
-            chart={<Sparkline data={SPARK_SCORE} color="var(--chart-3)" height={36} />}
-          />
-        </BentoCard>
+        {!live && (
+          <>
+            <BentoCard className="col-span-1 md:col-span-3">
+              <BentoStat
+                label="New this week"
+                value="86"
+                delta="+18"
+                deltaTone="up"
+                chart={<Sparkline data={SPARK_NEW} color="var(--chart-2)" height={36} />}
+              />
+            </BentoCard>
+            <BentoCard className="col-span-1 md:col-span-3">
+              <BentoStat
+                label="Qualified"
+                value="402"
+                delta="+6%"
+                deltaTone="up"
+                chart={<Sparkline data={SPARK_QUALIFIED} color="var(--chart-1)" height={36} />}
+              />
+            </BentoCard>
+            <BentoCard className="col-span-1 md:col-span-3">
+              <BentoStat
+                label="Avg lead score"
+                value="68"
+                delta="+2"
+                deltaTone="up"
+                chart={<Sparkline data={SPARK_SCORE} color="var(--chart-3)" height={36} />}
+              />
+            </BentoCard>
 
-        {/* Trend + score distribution */}
-        <BentoCard
-          title="Contacts added over time"
-          subtitle="Last 8 weeks"
-          icon={TrendingUp}
-          className="col-span-2 md:col-span-8"
-        >
-          <AreaTrend data={ADDED_TREND} series={ADDED_SERIES} height={240} showLegend />
-        </BentoCard>
-        <BentoCard
-          title="Lead score distribution"
-          subtitle="Hot · Warm · Cold"
-          icon={PieChart}
-          className="col-span-2 md:col-span-4"
-        >
-          <DonutStat
-            data={SCORE_MIX}
-            height={240}
-            centerValue={total.toLocaleString()}
-            centerLabel="contacts"
-          />
-        </BentoCard>
+            {/* Trend + score distribution */}
+            <BentoCard
+              title="Contacts added over time"
+              subtitle="Last 8 weeks"
+              icon={TrendingUp}
+              className="col-span-2 md:col-span-8"
+            >
+              <AreaTrend data={ADDED_TREND} series={ADDED_SERIES} height={240} showLegend />
+            </BentoCard>
+            <BentoCard
+              title="Lead score distribution"
+              subtitle="Hot · Warm · Cold"
+              icon={PieChart}
+              className="col-span-2 md:col-span-4"
+            >
+              <DonutStat
+                data={SCORE_MIX}
+                height={240}
+                centerValue={total.toLocaleString()}
+                centerLabel="contacts"
+              />
+            </BentoCard>
+          </>
+        )}
 
         {/* Contacts table */}
         <BentoCard
@@ -422,6 +433,13 @@ export default function ContactsScreen({ contacts, totalContacts }: ContactsScre
                     </TableCell>
                   </TableRow>
                 ))}
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                      No contacts yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
               </TableBody>
             </Table>
           </div>
@@ -436,33 +454,37 @@ export default function ContactsScreen({ contacts, totalContacts }: ContactsScre
         </BentoCard>
 
         {/* Pipeline breakdown + qualification rate */}
-        <BentoCard
-          title="Pipeline by status"
-          subtitle="Across all contacts"
-          icon={BarChart3}
-          className="col-span-2 md:col-span-8"
-        >
-          <BarGroup
-            data={STATUS_MIX}
-            series={STATUS_SERIES}
-            horizontal
-            height={200}
-          />
-        </BentoCard>
-        <BentoCard
-          title="Qualification rate"
-          subtitle="Qualified ÷ total"
-          icon={Target}
-          className="col-span-2 md:col-span-4"
-        >
-          <RadialGauge
-            value={31}
-            label="qualified"
-            valueLabel="31%"
-            color="var(--chart-1)"
-            height={200}
-          />
-        </BentoCard>
+        {!live && (
+          <>
+            <BentoCard
+              title="Pipeline by status"
+              subtitle="Across all contacts"
+              icon={BarChart3}
+              className="col-span-2 md:col-span-8"
+            >
+              <BarGroup
+                data={STATUS_MIX}
+                series={STATUS_SERIES}
+                horizontal
+                height={200}
+              />
+            </BentoCard>
+            <BentoCard
+              title="Qualification rate"
+              subtitle="Qualified ÷ total"
+              icon={Target}
+              className="col-span-2 md:col-span-4"
+            >
+              <RadialGauge
+                value={31}
+                label="qualified"
+                valueLabel="31%"
+                color="var(--chart-1)"
+                height={200}
+              />
+            </BentoCard>
+          </>
+        )}
       </BentoGrid>
     </ScreenContainer>
   );
