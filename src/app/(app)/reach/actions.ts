@@ -7,6 +7,8 @@ import { can } from '@/lib/auth/permissions';
 import {
   type CapResult,
   type ReachWriteContext,
+  createAppointment,
+  createAppointmentInput,
   createCampaign,
   createCampaignInput,
   createCreative,
@@ -15,6 +17,8 @@ import {
   createFormInput,
   createLead,
   createLeadInput,
+  deleteAppointment,
+  deleteAppointmentInput,
   deleteCampaign,
   deleteCampaignInput,
   deleteCreative,
@@ -27,6 +31,8 @@ import {
   deleteLeadInput,
   promoteLeadToContact,
   promoteLeadToContactInput,
+  setAppointmentStatus,
+  setAppointmentStatusInput,
   setCampaignStatus,
   setCampaignStatusInput,
   setFormStatus,
@@ -35,6 +41,8 @@ import {
   setLeadStageInput,
   updateAdSettings,
   updateAdSettingsInput,
+  updateAppointment,
+  updateAppointmentInput,
   updateCampaign,
   updateCampaignInput,
   updateCreative,
@@ -44,9 +52,11 @@ import {
   updateLead,
   updateLeadInput,
 } from '@/lib/reach/capabilities';
-import { createSupabaseReachData } from '@/lib/reach/supabase';
+import { createSupabaseReachData, getReachData } from '@/lib/reach/supabase';
 import { FORM_MESSAGES } from '@/lib/reach/forms';
+import { leadsToCsv } from '@/lib/reach/csv';
 import type { FormSubmission } from '@/lib/reach/types';
+import type { ReportRange } from '@/lib/reach/reports';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
 
@@ -212,4 +222,53 @@ export async function listFormSubmissionsAction(
 
 export async function deleteFormSubmissionAction(input: unknown) {
   return runForm(deleteFormSubmissionInput, input, deleteFormSubmission);
+}
+
+// ─── appointments ────────────────────────────────────────────────────────────
+
+const APPOINTMENTS_PATHS = ['/reach/appointments', '/crm/appointments'];
+
+/** Same shape as {@link runLeads}, refreshing the Appointments screen. */
+async function runAppointments<I, O>(
+  schema: ZodType<I>,
+  input: unknown,
+  fn: (ctx: ReachWriteContext, parsed: I) => Promise<CapResult<O>>,
+): Promise<CapResult<O>> {
+  const ctx = await writeCtx();
+  if (!ctx) return FORBIDDEN;
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'That input was not valid.' };
+  }
+  const result = await fn(ctx, parsed.data);
+  if (result.ok) for (const path of APPOINTMENTS_PATHS) revalidatePath(path);
+  return result;
+}
+
+export async function createAppointmentAction(input: unknown) {
+  return runAppointments(createAppointmentInput, input, createAppointment);
+}
+export async function updateAppointmentAction(input: unknown) {
+  return runAppointments(updateAppointmentInput, input, updateAppointment);
+}
+export async function setAppointmentStatusAction(input: unknown) {
+  return runAppointments(setAppointmentStatusInput, input, setAppointmentStatus);
+}
+export async function deleteAppointmentAction(input: unknown) {
+  return runAppointments(deleteAppointmentInput, input, deleteAppointment);
+}
+
+export async function exportLeadsCsv(
+  range: ReportRange,
+): Promise<{ ok: true; filename: string; csv: string } | { ok: false; error: string }> {
+  const viewer = await getViewer();
+  if (!viewer.orgId) return { ok: false, error: 'Please sign in to export.' };
+  const days = { '7d': 7, '30d': 30, '90d': 90 }[range];
+  if (!days) return { ok: false, error: 'That range is not valid.' };
+  const supabase = await createClient();
+  const leads = await (await getReachData(supabase)).listLeads();
+  const cutoff = Date.now() - days * 86_400_000;
+  const inRange = leads.filter((l) => new Date(l.created_at).getTime() >= cutoff);
+  const stamp = new Date().toISOString().slice(0, 10);
+  return { ok: true, filename: `leads-${range}-${stamp}.csv`, csv: leadsToCsv(inRange) };
 }

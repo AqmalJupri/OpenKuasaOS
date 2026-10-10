@@ -4,6 +4,13 @@
  * prepared and the chat can word one it finds in a message.
  */
 
+const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+  scheduled: 'scheduled',
+  completed: 'completed',
+  cancelled: 'cancelled',
+  no_show: 'no-show',
+};
+
 /** A named row with this id, anywhere in a tool result (a listing, or a saved row). */
 function nameOf(value: unknown, id: string, depth = 0): string | null {
   if (!value || typeof value !== 'object' || depth > 3) return null;
@@ -171,6 +178,13 @@ export function approvalTitle(
     case 'setLeadStage': return `Move ${the('lead', 'lead')} to “${i.stage ?? ''}”?`;
     case 'deleteLead': return `Delete ${the('lead', 'lead')}?`;
     case 'promoteLeadToContact': return `Promote ${the('lead', 'lead')} to a CRM contact?`;
+    case 'createAppointment': return `Book appointment with “${i.contact_name ?? ''}”?`;
+    case 'updateAppointment': return 'Save changes to this appointment?';
+    case 'setAppointmentStatus': {
+      const label = APPOINTMENT_STATUS_LABELS[String(i.status)] ?? String(i.status ?? '');
+      return `Mark this appointment as ${label}?`;
+    }
+    case 'deleteAppointment': return 'Delete this appointment?';
     default: return 'Approve this change?';
   }
 }
@@ -182,7 +196,8 @@ export function approvalDetail(toolName: string): string | null {
     toolName === 'deleteCreative' ||
     toolName === 'deleteForm' ||
     toolName === 'deleteDeal' ||
-    toolName === 'deleteLead'
+    toolName === 'deleteLead' ||
+    toolName === 'deleteAppointment'
   ) {
     return 'This cannot be undone.';
   }

@@ -15,11 +15,16 @@ export const LIVE_SCREENS: ReadonlySet<string> = new Set([
   'reach/leads',
   'reach/lead-forms',
   'reach/ad-settings',
+  'reach/appointments',
 
   // Kasturi
   'crm/contacts',
   'crm/deals',
   'crm/lead-forms',
+  'crm/appointments',
+  // Shared with Jebat's analytics (registry 'reach/reports'); /reach/reports
+  // is not a nav item, so the screen is served at /crm/reports.
+  'crm/reports',
 ]);
 
 /** Whether the app path is a screen that is not connected to live data yet. */
