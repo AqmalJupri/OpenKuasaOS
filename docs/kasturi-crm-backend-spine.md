@@ -24,13 +24,35 @@ Tables added:
 5. Activities, notes and attachments can sit on a contact or a deal.
 6. Audit logs record important CRM changes.
 
+## How the tables map to the Kasturi pages
+
+The columns follow what the screens already show.
+
+| Page | Backed by | Notes |
+|---|---|---|
+| Contacts | `crm_contacts` | `first_name`, `last_name`, `company`, `email`, `phone`, `country`, `status`, `lead_score`, `last_interaction_at`. The person in charge is `owner_user_id`; the display name comes from `profiles.full_name`. |
+| Deals | `crm_deals`, `crm_pipelines`, `crm_pipeline_stages` | A board column is a stage. A card shows the contact's `company`, `title`, `value_cents`, `tag`, the owner and `last_activity_at`. |
+| Overview, Reports | read from the tables above | No tables of their own. |
+| Appointments, Calendar | `appointments` (Jebat foundation) | Already on `main`; Kasturi should read the same table and not add a second one. |
+| Lead Forms, Broadcast, AI Chatbot, Automations, Landing Page, Billings, Plugins, Settings, AI Agents | not in this slice | Each gets its own table when its page is wired up. |
+
+Money is stored in cents (`value_cents bigint`), the same as `campaigns.spend_cents`.
+
+Contact `status` values are `lead`, `contacted`, `qualified`, `customer` and `archived`. The screen labels them New Leads, Contacted, Qualified and Customer.
+
+## Consistency rules
+
+- Deals, activities, notes and attachments reference their contact or deal by `(id, org_id)`, so a row cannot point at another workspace's record.
+- A deal references its stage by `(stage_id, pipeline_id)`, so the stage always belongs to the deal's pipeline.
+
 ## Access rule
 
 All CRM records are scoped by `org_id`.
 
 - Org members can read.
 - Org writers can create, update and delete.
-- Audit logs are insert and read only from app-side policy.
+- Audit logs are insert and read only, and `actor_user_id` must be the signed-in user.
+- Every table carries the restrictive `mfa_required` policy and explicit grants to `authenticated`, the same shape as the Jebat foundation migration. `anon` has no access.
 
 The migration reuses the private tenancy helper functions:
 
@@ -44,6 +66,8 @@ The migration reuses the private tenancy helper functions:
 - CSV import
 - Supabase Storage bucket policies
 - Audit trigger functions
+- Keeping `updated_at`, `last_interaction_at` and `last_activity_at` current (the write paths set them)
+- Turning a Jebat lead into a Kasturi contact
 - Seed demo CRM data
 
 Those should come as smaller follow-up slices.

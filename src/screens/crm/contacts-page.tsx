@@ -1,46 +1,66 @@
 import { revalidatePath } from 'next/cache';
 import ContactsScreen from '@/screens/reach/contacts';
 import { requireOrg } from '@/lib/auth/current-org';
+import { hasSupabaseEnv } from '@/lib/auth/viewer';
 import {
+  CrmContactFormError,
   createCrmContact,
   listCrmContacts,
   parseCrmContactForm,
-  type CrmContactInsertClient,
-  type CrmContactsClient,
+  type CrmContactFormState,
 } from '@/lib/crm/contacts';
 import { createClient } from '@/lib/supabase/server';
 
-async function createContactAction(formData: FormData) {
+async function createContactAction(
+  _prev: CrmContactFormState,
+  formData: FormData,
+): Promise<CrmContactFormState> {
   'use server';
 
   const supabase = await createClient();
   const { orgId } = await requireOrg(supabase);
-  const payload = parseCrmContactForm(formData, orgId);
 
-  await createCrmContact(supabase as unknown as CrmContactInsertClient, payload);
+  // Hand back what was typed, so a rejected form is not emptied.
+  const values: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === 'string') values[key] = value;
+  }
+
+  try {
+    await createCrmContact(supabase, parseCrmContactForm(formData, orgId));
+  } catch (error) {
+    if (error instanceof CrmContactFormError) return { error: error.message, values };
+    console.error('[crm/contacts] could not create contact', error);
+    return { error: 'Could not save the contact. Please try again.', values };
+  }
+
   revalidatePath('/crm/contacts');
+  return undefined;
 }
 
 export default async function CrmContactsPage() {
-  const hasSupabaseEnv = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
-
-  if (!hasSupabaseEnv) return <ContactsScreen />;
+  // No project configured (dev / preview / tests): the sample view.
+  if (!hasSupabaseEnv()) return <ContactsScreen />;
 
   const supabase = await createClient();
-  const { orgId } = await requireOrg(supabase);
-  const { contacts, total } = await listCrmContacts(
-    supabase as unknown as CrmContactsClient,
-    orgId,
-    20,
-  );
+  const { orgId, role } = await requireOrg(supabase);
 
+  let live: Awaited<ReturnType<typeof listCrmContacts>> | null = null;
+  try {
+    live = await listCrmContacts(supabase, orgId, 20);
+  } catch (error) {
+    // The CRM migration is applied to a database separately from a deploy, so
+    // the table can be missing for a while. Keep the page up meanwhile.
+    console.error('[crm/contacts] could not load contacts', error);
+  }
+
+  if (!live) return <ContactsScreen />;
   return (
     <ContactsScreen
-      contacts={contacts}
-      totalContacts={total}
-      createContactAction={createContactAction}
+      contacts={live.contacts}
+      totalContacts={live.total}
+      // Viewers can read contacts but the database refuses their writes.
+      createContactAction={role === 'viewer' ? undefined : createContactAction}
     />
   );
 }

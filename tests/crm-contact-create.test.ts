@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, test, vi } from 'vitest';
 import {
   createCrmContact,
@@ -18,20 +19,21 @@ function createInsertClient() {
       data: {
         id: 'contact-1',
         email: 'aisyah@example.com',
-        company_name: 'Rimba Ventures',
+        company: 'Rimba Ventures',
         first_name: 'Aisyah',
         last_name: 'Rahim',
         phone: '+60123456789',
         country: 'MY',
         status: 'qualified',
         lead_score: 72,
-        owner_name: null,
+        owner_user_id: null,
         last_interaction_at: null,
       },
       error: null,
     })),
   };
-  return { client: { from: vi.fn(() => query) }, query };
+  const from = vi.fn(() => query);
+  return { client: { from } as unknown as SupabaseClient, from, query };
 }
 
 describe('create Kasturi contact', () => {
@@ -56,7 +58,7 @@ describe('create Kasturi contact', () => {
       last_name: 'Rahim',
       email: 'aisyah@example.com',
       phone: '+60123456789',
-      company_name: 'Rimba Ventures',
+      company: 'Rimba Ventures',
       country: 'MY',
       status: 'qualified',
       lead_score: 72,
@@ -72,8 +74,29 @@ describe('create Kasturi contact', () => {
     ).toThrow('Enter a valid email.');
   });
 
+  test('defaults to the status and country the table accepts', () => {
+    const payload = parseCrmContactForm(
+      form({ firstName: 'Aisyah', email: 'aisyah@example.com', status: 'new' }),
+      'org-1',
+    );
+
+    // crm_contacts.status allows lead, contacted, qualified, customer, archived.
+    expect(payload.status).toBe('lead');
+    expect(payload.country).toBe('MY');
+    expect(payload).not.toHaveProperty('company_name');
+  });
+
+  test('rejects a country that is not a two-letter code', () => {
+    expect(() =>
+      parseCrmContactForm(
+        form({ firstName: 'Aisyah', email: 'aisyah@example.com', country: 'Malaysia' }),
+        'org-1',
+      ),
+    ).toThrow('Use a two-letter country code, such as MY.');
+  });
+
   test('inserts the contact and maps the returned row', async () => {
-    const { client, query } = createInsertClient();
+    const { client, from, query } = createInsertClient();
 
     const contact = await createCrmContact(client, {
       org_id: 'org-1',
@@ -81,20 +104,20 @@ describe('create Kasturi contact', () => {
       last_name: 'Rahim',
       email: 'aisyah@example.com',
       phone: '+60123456789',
-      company_name: 'Rimba Ventures',
+      company: 'Rimba Ventures',
       country: 'MY',
       status: 'qualified',
       lead_score: 72,
     });
 
-    expect(client.from).toHaveBeenCalledWith('crm_contacts');
+    expect(from).toHaveBeenCalledWith('crm_contacts');
     expect(query.insert).toHaveBeenCalledWith({
       org_id: 'org-1',
       first_name: 'Aisyah',
       last_name: 'Rahim',
       email: 'aisyah@example.com',
       phone: '+60123456789',
-      company_name: 'Rimba Ventures',
+      company: 'Rimba Ventures',
       country: 'MY',
       status: 'qualified',
       lead_score: 72,

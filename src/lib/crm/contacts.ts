@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 export type CrmContact = {
   id: string;
   email: string;
@@ -23,76 +25,60 @@ export type CrmContactInsert = {
   last_name: string | null;
   email: string;
   phone: string | null;
-  company_name: string | null;
+  company: string | null;
   country: string;
   status: string;
   lead_score: number;
 };
 
+/** What the Add contact form gets back when a submission is not saved. */
+export type CrmContactFormState =
+  | { error: string; values: Record<string, string> }
+  | undefined;
+
+/** A problem with what was typed, safe to show beside the form. */
+export class CrmContactFormError extends Error {}
+
 type CrmContactRow = {
   id: string;
   email: string | null;
-  company_name: string | null;
-  first_name: string | null;
+  company: string | null;
+  first_name: string;
   last_name: string | null;
   phone: string | null;
   country: string | null;
-  status: string | null;
-  lead_score: number | null;
-  owner_name: string | null;
+  status: string;
+  lead_score: number;
+  owner_user_id: string | null;
   last_interaction_at: string | null;
 };
 
-export type CrmContactsClient = {
-  from: (table: 'crm_contacts') => {
-    select: (
-      columns: string,
-      options: { count: 'exact' },
-    ) => {
-      eq: (column: 'org_id', value: string) => {
-        order: (
-          column: 'created_at',
-          options: { ascending: false },
-        ) => {
-          limit: (count: number) => PromiseLike<{
-            data: unknown[] | null;
-            count: number | null;
-            error: unknown;
-          }>;
-        };
-      };
-    };
-  };
-};
-
-export type CrmContactInsertClient = {
-  from: (table: 'crm_contacts') => {
-    insert: (payload: CrmContactInsert) => {
-      select: (columns: string) => {
-        single: () => PromiseLike<{
-          data: unknown | null;
-          error: unknown;
-        }>;
-      };
-    };
-  };
-};
-
+/** Columns of `crm_contacts` the Contacts screen lists. */
 const CONTACT_COLUMNS = [
   'id',
   'email',
-  'company_name',
+  'company',
   'first_name',
   'last_name',
   'phone',
   'country',
   'status',
   'lead_score',
-  'owner_name',
+  'owner_user_id',
   'last_interaction_at',
 ].join(',');
 
-const STATUSES = new Set(['new', 'contacted', 'qualified', 'customer']);
+/** Database status -> the label the screen shows. */
+const STATUS_LABELS: Record<string, string> = {
+  lead: 'New Leads',
+  contacted: 'Contacted',
+  qualified: 'Qualified',
+  customer: 'Customer',
+  archived: 'Archived',
+};
+
+/** Statuses the Add contact form offers; all are allowed by the table. */
+const STATUSES = new Set(['lead', 'contacted', 'qualified', 'customer']);
 
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
@@ -104,7 +90,7 @@ function optionalString(value: string) {
 
 function normalizeStatus(value: string) {
   const status = value.trim().toLowerCase().replaceAll(' ', '_');
-  return STATUSES.has(status) ? status : 'new';
+  return STATUSES.has(status) ? status : 'lead';
 }
 
 function normalizeScore(value: string) {
@@ -112,15 +98,6 @@ function normalizeScore(value: string) {
   const score = Number(value);
   if (!Number.isFinite(score)) return 0;
   return Math.min(100, Math.max(0, Math.round(score)));
-}
-
-function titleCase(value: string | null) {
-  if (!value) return null;
-  return value
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(' ');
 }
 
 function formatDate(value: string | null) {
@@ -146,8 +123,12 @@ export function parseCrmContactForm(
   const status = readString(formData, 'status');
   const leadScore = readString(formData, 'leadScore');
 
-  if (!firstName) throw new Error('Enter a first name.');
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid email.');
+  if (!firstName) throw new CrmContactFormError('Enter a first name.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new CrmContactFormError('Enter a valid email.');
+  // The table stores a two-letter country code.
+  if (!/^[A-Z]{2}$/.test(country)) {
+    throw new CrmContactFormError('Use a two-letter country code, such as MY.');
+  }
 
   return {
     org_id: orgId,
@@ -155,31 +136,55 @@ export function parseCrmContactForm(
     last_name: optionalString(lastName),
     email,
     phone: optionalString(phone),
-    company_name: optionalString(company),
+    company: optionalString(company),
     country,
     status: normalizeStatus(status),
     lead_score: normalizeScore(leadScore),
   };
 }
 
-export function mapCrmContact(row: CrmContactRow): CrmContact {
+export function mapCrmContact(row: CrmContactRow, ownerName: string | null = null): CrmContact {
   return {
     id: row.id,
     email: row.email ?? '',
-    company: row.company_name ?? 'Personal',
-    first: row.first_name ?? '',
+    company: row.company ?? 'Personal',
+    first: row.first_name,
     last: row.last_name ?? '',
     phone: row.phone ?? '',
-    country: row.country ?? 'MY',
-    status: titleCase(row.status),
-    score: row.lead_score ?? 0,
-    pic: row.owner_name,
+    country: row.country ?? '—',
+    status: STATUS_LABELS[row.status] ?? null,
+    score: row.lead_score,
+    pic: ownerName,
     lastInteraction: formatDate(row.last_interaction_at),
   };
 }
 
+/**
+ * The person in charge is stored as `owner_user_id`; the name shown comes from
+ * `profiles`. A name that cannot be read (no profile, or the lookup fails) is
+ * shown as blank and never fails the page.
+ */
+async function ownerNames(client: SupabaseClient, rows: CrmContactRow[]) {
+  const names = new Map<string, string>();
+  const ids = [
+    ...new Set(rows.map((r) => r.owner_user_id).filter((id): id is string => !!id)),
+  ];
+  if (ids.length === 0) return names;
+
+  const { data, error } = await client
+    .from('profiles')
+    .select('user_id,full_name')
+    .in('user_id', ids);
+  if (error) return names;
+
+  for (const p of (data ?? []) as { user_id: string; full_name: string | null }[]) {
+    if (p.full_name) names.set(p.user_id, p.full_name);
+  }
+  return names;
+}
+
 export async function listCrmContacts(
-  client: CrmContactsClient,
+  client: SupabaseClient,
   orgId: string,
   limit = 20,
 ): Promise<CrmContactsResult> {
@@ -192,14 +197,19 @@ export async function listCrmContacts(
 
   if (error) throw error;
 
+  const rows = (data ?? []) as unknown as CrmContactRow[];
+  const names = await ownerNames(client, rows);
+
   return {
-    contacts: ((data ?? []) as unknown as CrmContactRow[]).map(mapCrmContact),
-    total: count ?? data?.length ?? 0,
+    contacts: rows.map((row) =>
+      mapCrmContact(row, row.owner_user_id ? (names.get(row.owner_user_id) ?? null) : null),
+    ),
+    total: count ?? rows.length,
   };
 }
 
 export async function createCrmContact(
-  client: CrmContactInsertClient,
+  client: SupabaseClient,
   payload: CrmContactInsert,
 ): Promise<CrmContact> {
   const { data, error } = await client
@@ -209,5 +219,5 @@ export async function createCrmContact(
     .single();
 
   if (error) throw error;
-  return mapCrmContact(data as CrmContactRow);
+  return mapCrmContact(data as unknown as CrmContactRow);
 }
