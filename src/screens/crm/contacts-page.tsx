@@ -1,15 +1,49 @@
+import { revalidatePath } from 'next/cache';
 import ContactsScreen from '@/screens/reach/contacts';
 import { requireOrg } from '@/lib/auth/current-org';
 import { hasSupabaseEnv } from '@/lib/auth/viewer';
-import { listCrmContacts } from '@/lib/crm/contacts';
+import {
+  CrmContactFormError,
+  createCrmContact,
+  listCrmContacts,
+  parseCrmContactForm,
+  type CrmContactFormState,
+} from '@/lib/crm/contacts';
 import { createClient } from '@/lib/supabase/server';
+
+async function createContactAction(
+  _prev: CrmContactFormState,
+  formData: FormData,
+): Promise<CrmContactFormState> {
+  'use server';
+
+  const supabase = await createClient();
+  const { orgId } = await requireOrg(supabase);
+
+  // Hand back what was typed, so a rejected form is not emptied.
+  const values: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === 'string') values[key] = value;
+  }
+
+  try {
+    await createCrmContact(supabase, parseCrmContactForm(formData, orgId));
+  } catch (error) {
+    if (error instanceof CrmContactFormError) return { error: error.message, values };
+    console.error('[crm/contacts] could not create contact', error);
+    return { error: 'Could not save the contact. Please try again.', values };
+  }
+
+  revalidatePath('/crm/contacts');
+  return undefined;
+}
 
 export default async function CrmContactsPage() {
   // No project configured (dev / preview / tests): the sample view.
   if (!hasSupabaseEnv()) return <ContactsScreen />;
 
   const supabase = await createClient();
-  const { orgId } = await requireOrg(supabase);
+  const { orgId, role } = await requireOrg(supabase);
 
   let live: Awaited<ReturnType<typeof listCrmContacts>> | null = null;
   try {
@@ -21,5 +55,12 @@ export default async function CrmContactsPage() {
   }
 
   if (!live) return <ContactsScreen />;
-  return <ContactsScreen contacts={live.contacts} totalContacts={live.total} />;
+  return (
+    <ContactsScreen
+      contacts={live.contacts}
+      totalContacts={live.total}
+      // Viewers can read contacts but the database refuses their writes.
+      createContactAction={role === 'viewer' ? undefined : createContactAction}
+    />
+  );
 }

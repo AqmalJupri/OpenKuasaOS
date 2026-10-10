@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useActionState, useState } from 'react';
 import {
   BarChart3,
   CalendarClock,
@@ -28,6 +28,8 @@ import {
 } from '@/components/charts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -37,7 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import type { CrmContact } from '@/lib/crm/contacts';
+import type { CrmContact, CrmContactFormState } from '@/lib/crm/contacts';
 
 /* ---- mock data (Rimba Ventures Sdn Bhd) --------------------------- */
 
@@ -229,9 +231,126 @@ type ContactsScreenProps = {
   /** Live contacts. Omitted on Jebat and when no database is configured. */
   contacts?: Contact[];
   totalContacts?: number;
+  /** Present only when the signed-in person may add contacts. */
+  createContactAction?: CreateContactAction;
 };
 
-export default function ContactsScreen({ contacts, totalContacts }: ContactsScreenProps = {}) {
+type CreateContactAction = (
+  prev: CrmContactFormState,
+  formData: FormData,
+) => Promise<CrmContactFormState>;
+
+function AddContactCard({ action }: { action: CreateContactAction }) {
+  const [state, formAction, pending] = useActionState<CrmContactFormState, FormData>(
+    action,
+    undefined,
+  );
+  const v = state?.values ?? {};
+
+  return (
+    <BentoCard
+      title="Add contact"
+      subtitle="Create a Kasturi contact for this workspace"
+      icon={Plus}
+      className="col-span-2 md:col-span-12"
+    >
+      <form action={formAction} className="grid gap-3 md:grid-cols-12">
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="firstName">First name</Label>
+          <Input
+            id="firstName"
+            name="firstName"
+            placeholder="Aisyah"
+            defaultValue={v.firstName}
+            required
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="lastName">Last name</Label>
+          <Input id="lastName" name="lastName" placeholder="Rahim" defaultValue={v.lastName} />
+        </div>
+        <div className="space-y-1.5 md:col-span-3">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="aisyah@example.com"
+            defaultValue={v.email}
+            required
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="phone">Phone</Label>
+          <Input id="phone" name="phone" placeholder="+60123456789" defaultValue={v.phone} />
+        </div>
+        <div className="space-y-1.5 md:col-span-3">
+          <Label htmlFor="company">Company</Label>
+          <Input
+            id="company"
+            name="company"
+            placeholder="Rimba Ventures"
+            defaultValue={v.company}
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="country">Country code</Label>
+          <Input
+            id="country"
+            name="country"
+            defaultValue={v.country ?? 'MY'}
+            maxLength={2}
+            pattern="[A-Za-z]{2}"
+            title="Two-letter country code, such as MY"
+            className="uppercase"
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            name="status"
+            defaultValue={v.status ?? 'lead'}
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <option value="lead">New lead</option>
+            <option value="contacted">Contacted</option>
+            <option value="qualified">Qualified</option>
+            <option value="customer">Customer</option>
+          </select>
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="leadScore">Lead score</Label>
+          <Input
+            id="leadScore"
+            name="leadScore"
+            type="number"
+            min="0"
+            max="100"
+            defaultValue={v.leadScore ?? '0'}
+          />
+        </div>
+        <div className="flex items-end gap-3 md:col-span-6">
+          <Button type="submit" className="w-full md:w-auto" disabled={pending}>
+            <Plus className="size-4" />
+            {pending ? 'Saving…' : 'Save contact'}
+          </Button>
+          {state?.error ? (
+            <p role="alert" className="pb-2 text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : null}
+        </div>
+      </form>
+    </BentoCard>
+  );
+}
+
+export default function ContactsScreen({
+  contacts,
+  totalContacts,
+  createContactAction,
+}: ContactsScreenProps = {}) {
   // With live contacts, only what is backed by real data is shown: the total
   // and the table. The trend, score and pipeline cards are sample figures and
   // stay hidden until they have a live source.
@@ -269,6 +388,8 @@ export default function ContactsScreen({ contacts, totalContacts }: ContactsScre
       />
 
       <BentoGrid>
+        {createContactAction ? <AddContactCard action={createContactAction} /> : null}
+
         {/* KPI row */}
         <BentoCard tone="primary" className="col-span-1 md:col-span-3">
           <BentoStat
