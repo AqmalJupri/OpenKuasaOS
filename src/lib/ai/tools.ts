@@ -10,13 +10,35 @@
  */
 
 import { tool } from 'ai';
+import { rm } from '@/lib/reach/format';
 import { z } from 'zod';
+import {
+  type ReachWriteContext,
+  createCampaign as capCreateCampaign,
+  createCampaignInput,
+  createCreative as capCreateCreative,
+  createCreativeInput,
+  deleteCampaign as capDeleteCampaign,
+  deleteCampaignInput,
+  deleteCreative as capDeleteCreative,
+  deleteCreativeInput,
+  setCampaignStatus as capSetCampaignStatus,
+  setCampaignStatusInput,
+  updateAdSettings as capUpdateAdSettings,
+  updateAdSettingsInput,
+  updateCampaign as capUpdateCampaign,
+  updateCampaignInput,
+  updateCreative as capUpdateCreative,
+  updateCreativeInput,
+} from '@/lib/reach/capabilities';
 import {
   type Appointment,
   type Automation,
   type Broadcast,
   type Campaign,
   type Channel,
+  type Creative,
+  type CreativeType,
   type Form,
   type Lead,
   LEAD_STAGES,
@@ -24,15 +46,9 @@ import {
   type ReachData,
 } from '@/lib/reach/types';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export { rm } from '@/lib/reach/format';
 
-/** Format cents as `RM 1,234.50`. */
-export function rm(cents: number): string {
-  return `RM ${(cents / 100).toLocaleString('en-MY', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function stageRank(stage: LeadStage): number {
   return LEAD_STAGES.indexOf(stage);
@@ -141,9 +157,9 @@ export function summarizeCampaigns(
       spend_cents: c.spend_cents,
       spend: rm(c.spend_cents),
       cpl_cents: c.cpl_cents,
-      cpl: rm(c.cpl_cents),
+      cpl: c.cpl_cents == null ? '—' : rm(c.cpl_cents),
     }))
-    .sort((a, b) => a.cpl_cents - b.cpl_cents);
+    .sort((a, b) => (a.cpl_cents ?? Infinity) - (b.cpl_cents ?? Infinity));
 }
 
 export function filterUpcomingAppointments(
@@ -249,6 +265,17 @@ export function summarizeAutomations(automations: Automation[], limit = 10) {
     }));
 }
 
+export function summarizeCreatives(
+  creatives: Creative[],
+  opts: { type?: CreativeType; limit?: number } = {},
+) {
+  const { type, limit = 20 } = opts;
+  return creatives
+    .filter((c) => (type ? c.type === type : true))
+    .slice(0, limit)
+    .map((c) => ({ name: c.name, type: c.type, channel: c.channel, status: c.status, ctr: c.ctr }));
+}
+
 const limitSchema = (describe: string) =>
   z.number().int().positive().max(50).optional().describe(describe);
 
@@ -256,9 +283,13 @@ const limitSchema = (describe: string) =>
  * Build all Jebat read-only data tools over a {@link ReachData} provider. `now`
  * (a Date or a clock function) is injectable for tests; the route uses the real clock.
  */
-export function createReachTools(data: ReachData, nowArg: Date | (() => Date) = () => new Date()) {
+export function createReachTools(
+  data: ReachData,
+  nowArg: Date | (() => Date) = () => new Date(),
+  write?: { ctx: ReachWriteContext; canWrite: boolean },
+) {
   const now = typeof nowArg === 'function' ? nowArg : () => nowArg;
-  return {
+  const read = {
     getCampaigns: tool({
       description:
         'List the org’s ad campaigns with leads, spend and cost-per-lead (RM). ' +
@@ -338,6 +369,81 @@ export function createReachTools(data: ReachData, nowArg: Date | (() => Date) = 
       description: 'Automation workflows with trigger, status and number of runs, most runs first.',
       inputSchema: z.object({ limit: limitSchema('Max automations to return (default 10).') }),
       execute: async ({ limit }) => summarizeAutomations(await data.listAutomations(), limit),
+    }),
+
+    getCreatives: tool({
+      description: 'List the org’s ad creatives (image/video/copy) with channel, status and CTR. Optionally filter by type.',
+      inputSchema: z.object({
+        type: z.enum(['image', 'video', 'copy']).optional().describe('Only return creatives of this type.'),
+        limit: limitSchema('Max creatives to return (default 20).'),
+      }),
+      execute: async ({ type, limit }) => summarizeCreatives(await data.listCreatives(), { type, limit }),
+    }),
+
+    getAdSettings: tool({
+      description: 'The org’s ad settings: budget caps (RM), currency, and automation/notification toggles.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        const s = await data.getAdSettings();
+        if (!s) return { configured: false };
+        return {
+          configured: true,
+          daily_cap: s.daily_cap_cents == null ? null : rm(s.daily_cap_cents),
+          monthly_cap: s.monthly_cap_cents == null ? null : rm(s.monthly_cap_cents),
+          currency: s.currency,
+          automation: s.automation,
+          notifications: s.notifications,
+        };
+      },
+    }),
+  };
+
+  // A caller who cannot write gets no write tools at all (not merely gated ones).
+  if (!write?.canWrite) return read;
+  const ctx = write.ctx;
+
+  return {
+    ...read,
+    createCampaign: tool({
+      description: 'Create a new ad campaign. Needs the owner’s approval before it is saved.',
+      inputSchema: createCampaignInput,
+      execute: async (input) => capCreateCampaign(ctx, input),
+    }),
+    updateCampaign: tool({
+      description:
+        'Edit an existing campaign by id (name, channel, status, spend or leads). Needs approval.',
+      inputSchema: updateCampaignInput,
+      execute: async (input) => capUpdateCampaign(ctx, input),
+    }),
+    setCampaignStatus: tool({
+      description: 'Pause or resume a campaign by id. Needs approval.',
+      inputSchema: setCampaignStatusInput,
+      execute: async (input) => capSetCampaignStatus(ctx, input),
+    }),
+    deleteCampaign: tool({
+      description: 'Delete a campaign by id. This cannot be undone and needs approval.',
+      inputSchema: deleteCampaignInput,
+      execute: async (input) => capDeleteCampaign(ctx, input),
+    }),
+    createCreative: tool({
+      description: 'Create a new ad creative (image/video/copy). Needs approval.',
+      inputSchema: createCreativeInput,
+      execute: async (input) => capCreateCreative(ctx, input),
+    }),
+    updateCreative: tool({
+      description: 'Edit a creative by id. Needs approval.',
+      inputSchema: updateCreativeInput,
+      execute: async (input) => capUpdateCreative(ctx, input),
+    }),
+    deleteCreative: tool({
+      description: 'Delete a creative by id. Cannot be undone; needs approval.',
+      inputSchema: deleteCreativeInput,
+      execute: async (input) => capDeleteCreative(ctx, input),
+    }),
+    updateAdSettings: tool({
+      description: 'Update the org’s ad settings (budget caps, currency, automation/notification toggles). Needs approval.',
+      inputSchema: updateAdSettingsInput,
+      execute: async (input) => capUpdateAdSettings(ctx, input),
     }),
   };
 }

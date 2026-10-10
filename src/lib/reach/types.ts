@@ -31,7 +31,7 @@ export type Campaign = {
   leads_count: number;
   spend_cents: number;
   /** Cost per lead, in cents. */
-  cpl_cents: number;
+  cpl_cents: number | null;
   created_at: string;
 };
 
@@ -90,6 +90,30 @@ export type Automation = {
   created_at: string;
 };
 
+export type CreativeType = 'image' | 'video' | 'copy';
+export type CreativeStatus = 'draft' | 'active' | 'archived';
+
+export type Creative = {
+  id: string;
+  campaign_id: string | null;
+  name: string;
+  type: CreativeType;
+  channel: Channel;
+  status: CreativeStatus;
+  body: string | null;
+  ctr: number | null;
+  created_at: string;
+};
+
+export type AdSettings = {
+  daily_cap_cents: number | null;
+  monthly_cap_cents: number | null;
+  currency: string;
+  automation: Record<string, boolean>;
+  notifications: Record<string, boolean>;
+  updated_at: string;
+};
+
 /**
  * The data seam the AI tools read through. The seed provider returns in-memory
  * fixtures today; the data slice adds a Supabase provider whose methods query
@@ -102,4 +126,6 @@ export interface ReachData {
   listForms(): Promise<Form[]>;
   listBroadcasts(): Promise<Broadcast[]>;
   listAutomations(): Promise<Automation[]>;
+  listCreatives(): Promise<Creative[]>;
+  getAdSettings(): Promise<AdSettings | null>;
 }

@@ -18,6 +18,8 @@ import type {
   Broadcast,
   Campaign,
   Channel,
+  AdSettings,
+  Creative,
   Form,
   Lead,
   LeadStage,
@@ -80,8 +82,10 @@ const SOURCES = [
 ];
 
 /** The 5 campaigns, mirroring the Jebat Overview campaign table exactly. */
-export function seedCampaigns(now: Date): Campaign[] {
-  const rows: Array<Omit<Campaign, 'id' | 'spend_cents' | 'created_at'> & { ageDays: number }> = [
+export function seedCampaigns(now: Date): Array<Campaign & { cpl_cents: number }> {
+  const rows: Array<
+    Omit<Campaign, 'id' | 'spend_cents' | 'created_at' | 'cpl_cents'> & { cpl_cents: number; ageDays: number }
+  > = [
     { name: 'Ramadan–Raya Promo', channel: 'facebook', status: 'active', leads_count: 96, cpl_cents: 1250, ageDays: 40 },
     { name: 'Lead Magnet — eBook', channel: 'whatsapp', status: 'active', leads_count: 61, cpl_cents: 688, ageDays: 33 },
     { name: 'Retargeting — Cart', channel: 'instagram', status: 'active', leads_count: 54, cpl_cents: 1185, ageDays: 26 },
@@ -210,6 +214,31 @@ export function seedAutomations(now: Date): Automation[] {
   }));
 }
 
+export function seedAdSettings(now: Date): AdSettings {
+  return {
+    daily_cap_cents: 15000,
+    monthly_cap_cents: 300000,
+    currency: 'MYR',
+    automation: { auto_pause_low_ctr: true, auto_boost_winners: false, daily_budget_guard: true },
+    notifications: { spend_alerts: true, weekly_summary: true },
+    updated_at: daysAgo(now, 1),
+  };
+}
+
+export function seedCreatives(now: Date): Creative[] {
+  const rows: Array<Omit<Creative, 'id' | 'created_at'> & { ageDays: number }> = [
+    { campaign_id: 'camp_1', name: 'Raya hero image', type: 'image', channel: 'facebook', status: 'active', body: 'https://assets.openkuasa.com/raya-hero.jpg', ctr: 3.2, ageDays: 39 },
+    { campaign_id: 'camp_1', name: 'Raya carousel copy', type: 'copy', channel: 'facebook', status: 'active', body: 'Raya datang! Jimat sampai 30%.', ctr: 2.8, ageDays: 38 },
+    { campaign_id: 'camp_2', name: 'eBook promo video', type: 'video', channel: 'whatsapp', status: 'active', body: 'https://assets.openkuasa.com/ebook.mp4', ctr: 4.1, ageDays: 32 },
+    { campaign_id: 'camp_3', name: 'Cart reminder copy', type: 'copy', channel: 'instagram', status: 'active', body: 'Troli anda menunggu — habiskan pembelian hari ni.', ctr: 1.9, ageDays: 25 },
+    { campaign_id: 'camp_4', name: 'Launch teaser', type: 'video', channel: 'tiktok', status: 'draft', body: null, ctr: null, ageDays: 18 },
+    { campaign_id: null, name: 'Evergreen brand image', type: 'image', channel: 'facebook', status: 'active', body: 'https://assets.openkuasa.com/brand.jpg', ctr: 1.2, ageDays: 11 },
+    { campaign_id: null, name: 'Testimoni pelanggan', type: 'copy', channel: 'whatsapp', status: 'archived', body: 'Servis terbaik, respons pantas!', ctr: null, ageDays: 7 },
+    { campaign_id: 'camp_5', name: 'Awareness banner', type: 'image', channel: 'facebook', status: 'active', body: 'https://assets.openkuasa.com/awareness.jpg', ctr: 0.8, ageDays: 5 },
+  ];
+  return rows.map(({ ageDays, ...r }, i) => ({ id: `creative_${i + 1}`, ...r, created_at: daysAgo(now, ageDays) }));
+}
+
 /**
  * Build a seed-backed {@link ReachData} provider anchored to `now`. Called per
  * request (not memoized) so appointment "upcoming" windows stay correct on a
@@ -222,6 +251,8 @@ export function createSeedReachData(now: Date = new Date()): ReachData {
   const forms = seedForms(now);
   const broadcasts = seedBroadcasts(now);
   const automations = seedAutomations(now);
+  const creatives = seedCreatives(now);
+  const adSettings = seedAdSettings(now);
   return {
     listCampaigns: async () => campaigns,
     listLeads: async () => leads,
@@ -229,5 +260,7 @@ export function createSeedReachData(now: Date = new Date()): ReachData {
     listForms: async () => forms,
     listBroadcasts: async () => broadcasts,
     listAutomations: async () => automations,
+    listCreatives: async () => creatives,
+    getAdSettings: async () => adSettings,
   };
 }
