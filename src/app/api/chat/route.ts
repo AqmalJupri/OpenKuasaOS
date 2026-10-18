@@ -19,7 +19,7 @@ import { errorCodeOf, modelErrorCode } from '@/lib/ai/call-log';
 import { prepareChat } from '@/lib/ai/chat-request';
 import { ensureCrmPipeline } from '@/lib/ai/crm-tools';
 import { runTuah, type HireAccess, type PeopleAccess } from '@/lib/ai/agents/orchestrator';
-import { receiptFromMessages, type PeopleWrite } from '@/lib/ai/people-tools';
+import { peopleWriteFor, receiptFromMessages } from '@/lib/ai/people-tools';
 import { getCurrentOrg } from '@/lib/auth/current-org';
 import { can } from '@/lib/auth/permissions';
 import { hasSupabaseEnv } from '@/lib/auth/viewer';
@@ -87,23 +87,16 @@ export async function POST(request: Request) {
 
   // HR is workspace-only, like the CRM: no workspace, no HR this turn (never the
   // sample data, and never a crash — a failed viewer load just drops HR).
-  // Rows are the caller's own session's, so the database decides who sees what;
-  // the change tier (`hr` for an owner or admin, `self` for a linked member,
-  // none in the demo) and the employee id come from the viewer, never the model.
+  // Rows are the caller's own session's, so the database decides who sees what.
+  // `peopleWriteFor` makes the one write-access decision both chat routes share, so a manager
+  // gets their team's decide tools here just as on the screens and in Ask-Lekiu.
   let people: PeopleAccess | null = null;
   if (org) {
     try {
       const viewer = await getPeopleViewer(supabase, org);
       const data = createSupabasePeopleData(supabase, org.orgId);
       const receipt = receiptFromMessages(chat.uiMessages);
-      let write: PeopleWrite | undefined;
-      if (viewer.isDemo) {
-        write = undefined;
-      } else if (can(org.role, 'approve')) {
-        write = { ctx: { client: supabase, orgId: org.orgId }, tier: 'hr', employeeId: viewer.employeeId, receipt, userId: chat.userId };
-      } else if (viewer.employeeId !== null) {
-        write = { ctx: { client: supabase, orgId: org.orgId }, tier: 'self', employeeId: viewer.employeeId, receipt, userId: chat.userId };
-      }
+      const write = peopleWriteFor(viewer, { client: supabase, orgId: org.orgId }, receipt, chat.userId);
       people = { data, viewer, write };
     } catch (error) {
       console.error('[tuah] HR unavailable this turn:', errorCodeOf(error));
