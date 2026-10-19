@@ -3043,3 +3043,34 @@ with no date).
   `finance_ledger_lines` already carries the payment-out realised line the
   next stage needs; it reads only allocations' `amount_myr`/`carried_myr`,
   which nothing writes on a bill allocation yet, so it is 0.
+- Payments out of bills in another currency (`20261121111000`, stage 4b):
+  `FIN41` is no longer raised. A foreign bill is paid from a ringgit account
+  on Payments Out, now: `finance_record_payment_out` takes the ringgit that
+  left the account as `payment->>'amount_myr'` (`FIN46` when it is missing,
+  not above 0, or NaN), refuses one asked as scheduled (`FIN47`), and asks one
+  currency per payment before anything is written (`FIN44`). The split stays
+  in the bills' currency; `private.finance_fx_settle` shares the ringgit over
+  it (in proportion, to the sen, the remainder to the largest, ties to the
+  lowest document id) and writes each allocation's `amount_myr` and
+  `carried_myr`, which `private.finance_fx_carried_bill` works out: the part at
+  the bill's rate, never more than the ringgit still open, or, for the payment
+  that brings the bill to zero, exactly the ringgit still open, so a bill paid
+  in full leaves Payable at 0.00. Carried less paid out is the realised gain
+  (above 0) or loss, posted to Realised Exchange Gain or Loss. A payment
+  voucher never names a foreign bill (`FIN47`; the voucher picker offers
+  ringgit bills only), so a member cannot pay one. Every Payments Out figure
+  (Paid this month, the trend, the method donut, To be paid) and Supplier
+  Bills' Paid this month add `paymentOutRinggit`. The finance assistant pays
+  ringgit bills only (`recordPaymentOutInRinggit`). Lines of
+  `20261121111000` that `supabase/tests/bendahara_fx_payments_out_check.sql`
+  cannot pin (a single session cannot observe them), kept by review of the
+  text:
+  - `bill_id` in `finance_fx_settle`'s tie key (inserts are in bill-id order).
+  - The up-front `for update` bill lock in `finance_record_payment_out`.
+  - The `for update` read of the bill's currency in
+    `finance_allocation_currency_guard` (a plain read is not observably
+    different alone).
+  - The bill lock in `finance_fx_settle` (nearly equivalent: the allocation
+    guard has already locked the bills).
+  - The FIN04 arm of `finance_fx_carried_bill` (unreachable: it runs only on a
+    posted bill, which always has a rate).
