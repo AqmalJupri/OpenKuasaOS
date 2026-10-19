@@ -71,6 +71,10 @@ export const RECEIPT_MESSAGES = {
   // FIN46, and what the form says first: an invoice in another currency is paid in ringgit, and the payment is
   // the ringgit that arrived.
   ringgitReceived: 'Enter the ringgit that arrived in the account.',
+  // FIN48, when a payment in on an invoice in another currency is voided while a credit note issued after it
+  // stands on that invoice (stage 3c): the credit note's ringgit was worked out against what the payment left.
+  creditNoteAfter:
+    'A credit note on this invoice was issued after this payment. Void the credit note first, then the payment; issue the credit note again after.',
   // The finance assistant records payments in ringgit only; it says this before the database is asked.
   foreignByAssistant: 'This invoice is not in ringgit. Record its payment on the Invoices screen.',
   date: M.date,
@@ -129,14 +133,18 @@ export const recordPaymentOutInput = z.object({
 });
 
 /**
- * The ringgit that arrived, as decimal text with at most two places ("2883.50"), so no float stands between
- * the box and the database. Above 0.
+ * A ringgit figure (what arrived, or what left: a refund in stage 3c), as decimal text with at most two places
+ * ("2883.50"), so no float stands between the box and the database. Above 0.
  */
-const ringgitText = z
-  .string({ error: R.ringgitReceived })
-  .trim()
-  .regex(/^\d{1,12}(\.\d{1,2})?$/, R.ringgitReceived)
-  .refine((v) => /[1-9]/.test(v), R.ringgitReceived);
+export function ringgitTextInput(message: string) {
+  return z
+    .string({ error: message })
+    .trim()
+    .regex(/^\d{1,12}(\.\d{1,2})?$/, message)
+    .refine((v) => /[1-9]/.test(v), message);
+}
+
+const ringgitText = ringgitTextInput(R.ringgitReceived);
 
 const paymentInBase = z.object({
   account_id: z.string({ error: R.account }).uuid(R.account),
@@ -198,6 +206,7 @@ const RECEIPT_REFUSALS: Record<string, string> = {
   FIN09: R.locked,
   FIN44: R.oneCurrency,
   FIN46: R.ringgitReceived,
+  FIN48: R.creditNoteAfter,
   [PG_FOREIGN_KEY]: R.missing,
   // The same invoice twice on one payment; see RECORD_OUT_REFUSALS.
   [PG_UNIQUE]: R.duplicate,
