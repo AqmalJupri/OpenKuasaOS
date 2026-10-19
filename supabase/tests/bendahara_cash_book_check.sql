@@ -120,7 +120,9 @@ begin
   if n <> 10 then fails := fails || format('expected 10 security_invoker views, found %s', n); end if;
   select string_agg(conname, ',' order by conname) into t from pg_constraint
    where conrelid = 'public.finance_allocations'::regclass and contype = 'c';
-  if t is distinct from 'finance_allocations_amount_check,finance_allocations_one_document_check,finance_allocations_reason_check' then
+  -- 20261120110000 (3b) adds the three on amount_myr and carried_myr.
+  if t is distinct from 'finance_allocations_amount_check,finance_allocations_amount_myr_check,finance_allocations_carried_myr_check,'
+       || 'finance_allocations_myr_pair_check,finance_allocations_one_document_check,finance_allocations_reason_check' then
     fails := fails || format('check constraints on finance_allocations are: %s', t);
   end if;
   select pg_get_constraintdef(oid) into t from pg_constraint
@@ -131,7 +133,9 @@ begin
   select string_agg(attname, ',' order by attnum) into t from pg_attribute
    where attrelid = 'public.finance_cash_receipts'::regclass and attnum > 0 and not attisdropped;
   if t is distinct from 'transaction_id,org_id,number,txn_date,method,amount,status,reference,notes,account_id,account_name,'
-       || 'account_kind,contact_id,party_name,kind,category_id,category_name,documents,created_by,created_at' then
+       || 'account_kind,contact_id,party_name,kind,category_id,category_name,documents,created_by,created_at,'
+       -- 20261120110000 (3b) appends the ringgit figures.
+       || 'currency,amount_myr,carried_myr,realised_myr' then
     fails := fails || format('finance_cash_receipts has the columns: %s', t);
   end if;
   select string_agg(attname, ',' order by attnum) into t from pg_attribute

@@ -113,7 +113,9 @@ begin
   if n <> 7 then fails := fails || format('expected 7 security_invoker views, found %s', n); end if;
   select string_agg(conname, ',' order by conname) into t from pg_constraint
    where conrelid = 'public.finance_allocations'::regclass and contype = 'c';
-  if t is distinct from 'finance_allocations_amount_check,finance_allocations_one_document_check,finance_allocations_reason_check' then
+  -- 20261120110000 (3b) adds the three on amount_myr and carried_myr.
+  if t is distinct from 'finance_allocations_amount_check,finance_allocations_amount_myr_check,finance_allocations_carried_myr_check,'
+       || 'finance_allocations_myr_pair_check,finance_allocations_one_document_check,finance_allocations_reason_check' then
     fails := fails || format('check constraints on finance_allocations are: %s', t);
   end if;
   -- The live view keeps its columns in their order; the two new ones are at the end,
@@ -123,7 +125,7 @@ begin
   if t is distinct from 'id,org_id,customer_id,customer_name,invoice_no,invoice_date,due_date,notes,status,posted_at,'
        || 'einvoice_status,einvoice_uuid,created_by,created_at,updated_at,subtotal,sst,total,paid,balance,display_status,credited,refunded,set_off,'
        || 'currency,fx_rate,fx_rate_source,fx_rate_date,fx_rate_provider,fx_rate_reference,supply_date,'
-       || 'subtotal_myr,sst_myr,total_myr,balance_myr' then
+       || 'subtotal_myr,sst_myr,total_myr,balance_myr,paid_myr' then
     fails := fails || format('finance_invoice_totals has the columns: %s', t);
   end if;
   -- One function answers the call with a date and the call without one. A second
