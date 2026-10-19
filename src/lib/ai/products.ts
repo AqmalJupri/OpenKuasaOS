@@ -9,6 +9,8 @@
  */
 
 import { deletionCheckFor, type DeletionCheck, type DeletionGate } from '@/lib/ai/hire-deletions';
+import { makeFinanceIdCheck } from '@/lib/ai/finance-id-gate';
+import { revalidateFinance } from '@/lib/ai/finance-revalidate';
 import { poolCheckFor, type PoolCheck } from '@/lib/ai/hire-pool-gate';
 import { interviewCheckFor, type InterviewCheck } from '@/lib/ai/hire-interview-gate';
 import type { ModelMessage, Tool, ToolSet } from 'ai';
@@ -187,6 +189,12 @@ export type ProductToolkit = {
   checkPoolChange?: PoolCheck;
   /** Hiring only: the server read asked before an interview change is put to the user (see hire-interview-gate.ts). */
   checkInterviewChange?: InterviewCheck;
+  /**
+   * Finance only: the server existence read asked in team mode before a finance write is put to the user (see
+   * finance-id-gate.ts). The row id lives in the stored proposal, not in the messages the apply gate sees, so a
+   * hallucinated or foreign id is caught here instead of by `lookedUpFinance`. Returns false to deny before a card.
+   */
+  checkFinanceId?: (action: string, id: unknown) => Promise<boolean>;
 };
 
 function split(all: ToolSet, writeNames: readonly string[]): Pick<ProductToolkit, 'read' | 'write'> {
@@ -235,6 +243,7 @@ export function financeProduct(finance: FinanceAccess): ProductToolkit {
     key: 'finance',
     name: 'Bendahara',
     ...split(createBendaharaTools(finance), FINANCE_WRITE_TOOL_NAMES),
+    checkFinanceId: makeFinanceIdCheck({ client: finance.client, orgId: finance.orgId }),
   };
 }
 
@@ -373,7 +382,11 @@ export function bindApprovals(
             return { ok: false, error: NOT_WAITING };
           }
           // The arguments the server kept when it proposed the change, not the ones this request carried.
-          return run(stored.input, options);
+          const result = await run(stored.input, options);
+          // An AI-applied finance write bypasses the finance forms' own revalidatePath calls, so refresh the
+          // screens it changed here — only on success, and only for finance (see finance-revalidate.ts).
+          if (product.key === 'finance' && (result as { ok?: unknown } | null)?.ok) revalidateFinance(name);
+          return result;
         },
       } as Tool;
     }

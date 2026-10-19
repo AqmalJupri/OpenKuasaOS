@@ -85,6 +85,9 @@ function labelOf(row: Record<string, unknown>, kind?: ItemKind): string | null {
   // id, not `id`, so they are not named here.
   if (kind === 'invoice') return text(row.invoice_no) ?? text(row.customer_name);
   if (kind === 'quotation') return text(row.quotation_no) ?? text(row.customer_name);
+  if (kind === 'rfq') return text(row.rfq_no) ?? text(row.supplier_name);
+  if (kind === 'purchase-order') return text(row.po_no) ?? text(row.supplier_name);
+  if (kind === 'journal') return text(row.journal_no) ?? text(row.description);
   if (kind === 'bill') return text(row.bill_no) ?? text(row.supplier_name);
   if (kind === 'credit-note') return text(row.credit_note_no) ?? text(row.customer_name);
   if (kind === 'finance-contact' || kind === 'item') return text(row.name);
@@ -148,6 +151,9 @@ export type ItemKind =
   | 'template'
   | 'invoice'
   | 'quotation'
+  | 'rfq'
+  | 'purchase-order'
+  | 'journal'
   | 'bill'
   | 'credit-note'
   | 'finance-contact'
@@ -286,6 +292,21 @@ const KIND_OF_TOOL: Record<string, ItemKind> = {
   declineQuotation: 'quotation',
   convertQuotation: 'quotation',
   deleteQuotation: 'quotation',
+  saveRfq: 'rfq',
+  sendRfq: 'rfq',
+  quoteRfq: 'rfq',
+  convertRfq: 'rfq',
+  closeRfq: 'rfq',
+  savePurchaseOrder: 'purchase-order',
+  submitPurchaseOrder: 'purchase-order',
+  receivePurchaseOrder: 'purchase-order',
+  billFromPurchaseOrder: 'purchase-order',
+  decidePurchaseOrder: 'purchase-order',
+  closePurchaseOrder: 'purchase-order',
+  cancelPurchaseOrder: 'purchase-order',
+  saveJournal: 'journal',
+  postJournal: 'journal',
+  reverseJournal: 'journal',
   listBills: 'bill',
   getBill: 'bill',
   saveBill: 'bill',
@@ -1887,6 +1908,21 @@ export function approvalTitle(
     case 'declineQuotation': return `Mark ${the('quotation', 'quotation')} as declined?`;
     case 'convertQuotation': return `Convert ${the('quotation', 'quotation')} into a draft invoice?`;
     case 'deleteQuotation': return `Delete ${the('quotation', 'quotation')}?`;
+    case 'saveRfq': return i.id ? `Save changes to ${the('request for quotation', 'rfq')}?` : 'Create a draft request for quotation?';
+    case 'sendRfq': return `Mark ${the('request for quotation', 'rfq')} as sent to the supplier?`;
+    case 'quoteRfq': return `Record the supplier's quote on ${the('request for quotation', 'rfq')}?`;
+    case 'convertRfq': return `Make a draft purchase order from ${the('request for quotation', 'rfq')}?`;
+    case 'savePurchaseOrder': return i.id ? `Save changes to ${the('purchase order', 'purchase-order')}?` : 'Create a draft purchase order?';
+    case 'submitPurchaseOrder': return `Submit ${the('purchase order', 'purchase-order')} for approval?`;
+    case 'receivePurchaseOrder': return `Record this delivery against ${the('purchase order', 'purchase-order')}?`;
+    case 'billFromPurchaseOrder': return `Create a draft supplier bill from ${the('purchase order', 'purchase-order')}?`;
+    case 'decidePurchaseOrder': return `${i.approve === false ? 'Reject' : 'Approve'} ${the('purchase order', 'purchase-order')}?`;
+    case 'closePurchaseOrder': return `Close ${the('purchase order', 'purchase-order')}?`;
+    case 'cancelPurchaseOrder': return `Cancel ${the('purchase order', 'purchase-order')}?`;
+    case 'saveJournal': return i.id ? `Save changes to ${the('journal', 'journal')}?` : 'Create a draft journal?';
+    case 'postJournal': return `Post ${the('journal', 'journal')} to the books?`;
+    case 'reverseJournal': return `Create the reversing draft of ${the('journal', 'journal')}?`;
+    case 'closeRfq': return `Close ${the('request for quotation', 'rfq')}?`;
     case 'saveBill': return i.id ? `Save changes to ${the('supplier bill', 'bill')}?` : 'Create a draft supplier bill?';
     case 'postBill': return `Post ${the('supplier bill', 'bill')}?`;
     case 'voidBill': return `Void ${the('supplier bill', 'bill')}?`;

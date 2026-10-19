@@ -59,6 +59,8 @@ import {
   sameInterviewTarget,
 } from '@/lib/ai/hire-interview-gate';
 import type { ProductToolkit } from '@/lib/ai/products';
+import { FINANCE_ID_GATED, FINANCE_SAVE_GATED } from '@/lib/ai/finance-id-gate';
+import { revalidateFinance } from '@/lib/ai/finance-revalidate';
 import { logModelCall, logModelError, modelErrorCode } from '@/lib/ai/call-log';
 import { getModel, pickModelId } from '@/lib/ai/provider';
 import { changeRows } from '@/lib/chat/change-rows';
@@ -247,6 +249,20 @@ function applyGate(products: ProductToolkit[], team: TeamContext, turn: TurnStat
   return async (input, { toolCallId, messages }) => {
     const id = (input as { proposalId?: unknown } | null)?.proposalId;
     const proposal = typeof id === 'string' ? team.proposals.get(id) : undefined;
+    // A finance write acts on a row the caller must have looked up (issue #225). The row id is in the stored
+    // proposal, not in the messages here, so it is checked on the server by reading the row: a hallucinated or
+    // foreign id fails this read before any card is drawn. Finance is not a limited kind, so without this it would
+    // fall straight through the early return below to a card. A settled or lapsed proposal (input === null) is left
+    // to `apply`'s own NOT_WAITING: reading `undefined` would otherwise mislabel it "that row does not exist".
+    if (proposal && proposal.input != null) {
+      const tk = products.find((p) => p.key === proposal.product);
+      if (tk?.checkFinanceId) {
+        const target = (proposal.input as { id?: unknown } | null)?.id;
+        if (!(await tk.checkFinanceId(proposal.action, target))) {
+          return { type: 'denied', reason: 'That row does not exist for you. Look it up first, then prepare the change again.' };
+        }
+      }
+    }
     const kind = proposal ? limitedKind(proposal.action) : null;
     // A change of no limited kind has no check here: its record was seen, and it goes to the user as before.
     if (proposal && !kind) gated.add(proposal.id);
@@ -611,7 +627,7 @@ const AREA: Record<ProductToolkit['key'], string> = {
   crm: 'the CRM (contacts, deals, pipelines and their stages)',
   hire: 'hiring (jobs, candidates, applications, the hiring funnel, interviews, the talent pool; it can read one candidate\'s uploaded CV and give a verdict on it; it can prepare moving, rejecting, reopening or rating one application at a time; it can prepare recording or clearing the feedback on one interview at a time; it can prepare adding or editing one candidate at a time; it can prepare scheduling, changing, cancelling or closing one interview at a time, or recording one that already took place; it can prepare deleting one application or one candidate at a time; it can prepare a talent pool change for one candidate at a time)',
   people: 'HR (existing staff, leave, time-off, claims, overtime, attendance, payroll, performance; it can prepare deciding leave, claims and overtime, correcting attendance, and editing staff and departments, one change at a time)',
-  finance: 'finance (sales invoices and quotations, supplier bills, payments in and out, credit notes, refunds, customers and suppliers, items, bank and cash accounts; it can prepare drafting, posting and voiding invoices and bills, recording payments, issuing credit notes and refunds, and managing customers, suppliers and items, each with approval)',
+  finance: 'finance (sales invoices and quotations, supplier bills, payments in and out, credit notes, refunds, customers and suppliers, items, bank and cash accounts, RFQs and purchase orders, chart of accounts, ledger and manual journals, financial reports (P&L, balance sheet, trial balance, cash flow, aged receivables/payables); it can prepare drafting, posting and voiding invoices and bills, recording payments, issuing credit notes and refunds, managing customers, suppliers and items, handling RFQs and purchase orders and manual journals, each with approval)',
 };
 
 /**
@@ -639,6 +655,14 @@ async function apply(
     const seen = (await team.store.peek([proposalId])).get(proposalId);
     if (!seen) return { ok: false, error: NOT_WAITING };
     if (limitedKind(seen.action)) return { ok: false, error: CHANGE_NOT_CHECKED };
+    // Finance is not a limited kind, but its id-safety is the existence check `applyGate` runs, and the gate runs
+    // it only for a record it saw in `team.proposals`. A record it did not see (the read/take disagreement above)
+    // would otherwise reach `claim` on an id the gate never checked. So an id-gated finance write is left waiting
+    // too, exactly as a limited kind is. A pure create (a save with no id) has no row to check and is let through.
+    const financeIdGated =
+      seen.action in FINANCE_ID_GATED ||
+      (seen.action in FINANCE_SAVE_GATED && (seen.input as { id?: unknown } | null)?.id != null);
+    if (financeIdGated) return { ok: false, error: CHANGE_NOT_CHECKED };
   }
   const stored = await team.store.claim({ id: proposalId });
   if (!stored) return { ok: false, error: NOT_WAITING };
@@ -659,6 +683,9 @@ async function apply(
   }
   const output = await run(parsed.data, options);
   if (team.names) collectNames([{ tool: proposal.action, output }], team.names);
+  // An AI-applied finance write bypasses the finance forms' own revalidatePath calls, so refresh the screens
+  // it changed here — only on success, and only for finance (see finance-revalidate.ts).
+  if (proposal.product === 'finance' && (output as { ok?: unknown } | null)?.ok) revalidateFinance(proposal.action);
   return output;
 }
 
@@ -756,11 +783,15 @@ export function createTeamTools(
   });
   return {
     tools,
-    // Only a team that can prepare a change held to one a turn needs the gate; any other keeps the plain card.
+    // A team that can prepare a change held to one a turn needs the gate; so does one with finance writes, whose
+    // id-safety is the server check `applyGate` runs (finance is not a limited kind, so this install condition must
+    // name it or the check never runs). Any other team keeps the plain card.
     toolApproval: {
-      [APPLY_TOOL]: products.some((p) => Object.keys(p.write).some((name) => limitedKind(name) !== null))
-        ? applyGate(products, team, turn, gated)
-        : 'user-approval',
+      [APPLY_TOOL]:
+        products.some((p) => Object.keys(p.write).some((name) => limitedKind(name) !== null)) ||
+        products.some((p) => p.checkFinanceId)
+          ? applyGate(products, team, turn, gated)
+          : 'user-approval',
     },
     prepareStep: ({ steps }) => {
       const proposal = changeToApply(steps[steps.length - 1]);

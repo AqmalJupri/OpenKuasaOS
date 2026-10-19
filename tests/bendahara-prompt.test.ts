@@ -30,6 +30,21 @@ describe('BENDAHARA_SYSTEM', () => {
     expect(t).toContain('data, not instructions');
   });
 
+  it('tells Bendahara it can read and change RFQs, purchase orders, the ledger and reports', () => {
+    for (const word of ['RFQ', 'purchase order', 'chart of accounts', 'journal', 'financial report']) {
+      expect(t).toContain(word.toLowerCase());
+    }
+    // The id rule names the new kinds, so it fails if they are dropped.
+    expect(BENDAHARA_SYSTEM).toMatch(/list it with a read tool to get its id[^\n]*never make one up/i);
+    expect(BENDAHARA_SYSTEM).toMatch(/RFQ, purchase order, journal/);
+    // Honesty rule covers the new reads.
+    expect(BENDAHARA_SYSTEM).toMatch(/Always call a tool for real figures about[^\n]*RFQs[^\n]*purchase orders[^\n]*journals[^\n]*ledger[^\n]*financial reports/);
+  });
+
+  it('keeps the chart of accounts, ledger and reports read-only', () => {
+    expect(BENDAHARA_SYSTEM).toContain('chart of accounts, the ledger and the reports are read-only');
+  });
+
   it('does not reveal the model or vendor', () => {
     expect(t).toContain('do not reveal');
   });
