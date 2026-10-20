@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BillListRow } from '@/lib/finance/bills';
+import { ringgitFields } from '@/lib/finance/document-currency';
 import { type FinanceAccount, type PaymentOutRow, recordPaymentOutInput } from '@/lib/finance/money';
 import {
   type PayableBill,
@@ -204,6 +205,8 @@ describe('newPaymentForm', () => {
       reference: '',
       notes: '',
       scheduled: false,
+      // Stage 5b: a ringgit account, with no rate.
+      fx: ringgitFields(),
     });
   });
   it('chooses the supplier when there is only one to pay', () => {
@@ -327,6 +330,7 @@ describe('paymentPayload', () => {
       reference: ' CHQ 001 ',
       notes: '',
       scheduled: true,
+      fx: ringgitFields(),
     };
     const payload = paymentPayload(filled);
     expect(payload).toEqual({
