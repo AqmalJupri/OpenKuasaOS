@@ -31,7 +31,9 @@ import { checkResendKey, resendProvider } from '@/lib/crm/email-provider';
 import type { CrmFormState } from '@/lib/crm/form-state';
 import { runCrmWrite } from '@/lib/crm/run-write';
 import { originFromHeaders } from '@/lib/reach/form-submissions';
+import { errorCodeOf } from '@/lib/ai/call-log';
 import { createClient } from '@/lib/supabase/server';
+import { CouldntLoad } from '@/components/crm/couldnt-load';
 import { serviceClient } from '@/lib/supabase/service';
 import SampleBroadcastScreen from './broadcast';
 import { BroadcastsView } from './broadcasts-view';
@@ -287,11 +289,19 @@ export default async function BroadcastsPage() {
     live = { broadcasts, ...audience, optOuts, emailKey };
   } catch (error) {
     // The migration is applied to a database separately from a deploy, so the
-    // tables can be missing for a while. Keep the page up meanwhile.
-    console.error('[crm/broadcast] could not load broadcasts', error);
+    // tables can be missing for a while. The page says so; it never shows sample data in its place.
+    console.error('[crm/broadcast] could not load broadcasts', errorCodeOf(error));
   }
 
-  if (!live) return <SampleBroadcastScreen />;
+  if (!live) {
+    return (
+      <CouldntLoad
+        title="Broadcast"
+        subtitle="Write a message once for a chosen set of contacts, and send it by email."
+        thing="broadcasts"
+      />
+    );
+  }
 
   const now = new Date();
   const canWrite = role !== 'viewer';

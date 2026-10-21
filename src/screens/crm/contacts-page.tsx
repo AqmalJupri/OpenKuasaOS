@@ -26,7 +26,9 @@ import {
 } from '@/lib/crm/invoice-links';
 import type { CrmContactActions, CrmFormState } from '@/lib/crm/form-state';
 import { runCrmWrite } from '@/lib/crm/run-write';
+import { errorCodeOf } from '@/lib/ai/call-log';
 import { createClient } from '@/lib/supabase/server';
+import { CouldntLoad } from '@/components/crm/couldnt-load';
 
 const CONTACTS_PATH = '/crm/contacts';
 
@@ -172,24 +174,32 @@ export default async function CrmContactsPage() {
       listCrmContacts(supabase, orgId, CONTACTS_LOADED),
       // Follow-ups are an extra; the contacts still show if they cannot load.
       listOpenFollowUps(supabase, orgId, CONTACTS_LOADED).catch((error) => {
-        console.error('[crm/contacts] could not load follow-ups', error);
+        console.error('[crm/contacts] could not load follow-ups', errorCodeOf(error));
         return {};
       }),
       // Only the form needs these; the contacts still show if they cannot load.
       role === 'viewer'
         ? []
         : listBillingCustomers(supabase, orgId).catch((error) => {
-            console.error('[crm/contacts] could not load billing customers', error);
+            console.error('[crm/contacts] could not load billing customers', errorCodeOf(error));
             return [];
           }),
     ]);
   } catch (error) {
     // The CRM migration is applied to a database separately from a deploy, so
-    // the table can be missing for a while. Keep the page up meanwhile.
-    console.error('[crm/contacts] could not load contacts', error);
+    // the table can be missing for a while. The page says so; it never shows sample data in its place.
+    console.error('[crm/contacts] could not load contacts', errorCodeOf(error));
   }
 
-  if (!live) return <ContactsScreen />;
+  if (!live) {
+    return (
+      <CouldntLoad
+        title="Contacts"
+        subtitle="All your leads and customers in one place, Saudara."
+        thing="contacts"
+      />
+    );
+  }
   return (
     <ContactsScreen
       contacts={live.contacts}
