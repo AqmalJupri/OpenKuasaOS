@@ -4,6 +4,9 @@
  * For owners and admins only: it is every contact the workspace has, in one
  * file. The contacts are read as the caller, so the database's own rules
  * decide what they may see; the role check here is the stricter rule on top.
+ * Every export is recorded in the activity log ('Exported contacts', for
+ * owners and admins) before the file is returned; if it cannot be recorded,
+ * no file is returned.
  */
 
 import { errorCodeOf } from '@/lib/ai/call-log';
@@ -11,9 +14,13 @@ import { getCurrentOrg } from '@/lib/auth/current-org';
 import { hasSupabaseEnv } from '@/lib/auth/viewer';
 import { contactsCsv, listContactsForExport } from '@/lib/crm/settings';
 import { klDay } from '@/lib/crm/deal-stats';
+import type { EventKey } from '@/lib/events';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+
+// Typed, so a misspelt key fails the type check.
+const EXPORT_EVENT: EventKey = 'contacts_exported';
 
 const refuse = (status: number, error: string) => Response.json({ error }, { status });
 
@@ -42,6 +49,17 @@ export async function GET() {
   } catch (error) {
     // The code only: a database message can quote a contact's details.
     console.error('[crm/contacts/export] could not read the contacts:', errorCodeOf(error));
+    return refuse(503, 'The export is unavailable right now. Please try again.');
+  }
+
+  // Recorded before the file leaves, and no file without the record. Not
+  // recordEvent: that one swallows its errors on purpose. This relies on
+  // getCurrentOrg and private.current_org choosing the same workspace.
+  try {
+    const { error } = await supabase.rpc('log_event', { p_key: EXPORT_EVENT });
+    if (error) throw error;
+  } catch (error) {
+    console.error('[crm/contacts/export] could not record the export:', errorCodeOf(error));
     return refuse(503, 'The export is unavailable right now. Please try again.');
   }
 
