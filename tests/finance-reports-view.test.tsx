@@ -318,6 +318,35 @@ describe('the Reports screen', () => {
     expect(html.match(/<div class="overflow-x-auto">/g)).toHaveLength(6);
   });
 
+  it('says under the Balance Sheet when its month end holds foreign balances not revalued, and links to FX Revaluation', () => {
+    const books = { firstForeignDate: '2026-09-02', revaluedMonthEnds: [] };
+    const html = renderToStaticMarkup(
+      <ReportsView accounts={accounts} totals={sampleTotals} cash={sampleCash} receivables={SAMPLE_RECEIVABLES} payables={SAMPLE_PAYABLES} fxBooks={books} today={SAMPLE_TODAY} followClock={false} />,
+    );
+    expect(text(html)).toContain(
+      'Foreign-currency items open at 31 October 2026, if any, are at the rates they were booked at until the month ends and they are revalued. ' +
+        'FX Revaluation shows whether there is anything to post. Open FX Revaluation',
+    );
+    expect(html).toContain('href="/finance/fx-revaluation"');
+  });
+
+  it('has no revaluation note for a ringgit-only workspace, the sample, or a revalued month end', () => {
+    expect(render()).not.toContain('FX Revaluation');
+    const revalued = renderToStaticMarkup(
+      <ReportsView
+        accounts={accounts}
+        totals={sampleTotals}
+        cash={sampleCash}
+        receivables={SAMPLE_RECEIVABLES}
+        payables={SAMPLE_PAYABLES}
+        fxBooks={{ firstForeignDate: '2026-09-02', revaluedMonthEnds: ['2026-10-31'] }}
+        today={SAMPLE_TODAY}
+        followClock={false}
+      />,
+    );
+    expect(revalued).not.toContain('FX Revaluation');
+  });
+
   it('uses no purple or violet in its markup', () => {
     expect(render()).not.toMatch(/purple|violet|indigo|fuchsia/i);
   });

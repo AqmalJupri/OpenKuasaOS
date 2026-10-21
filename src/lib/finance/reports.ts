@@ -105,6 +105,32 @@ export function monthEndLabel(month: Month): string {
   return `${lastDayOfMonth(month).slice(8)} ${MONTH_NAMES[index]} ${year}`;
 }
 
+/**
+ * The note under the Balance Sheet when its month end holds foreign-currency balances that are not revalued
+ * (stage 6b, plan decision 16): the workspace had a foreign item in its books on or before that month end, and no
+ * FX revaluation is posted for it. Null otherwise, and when what the books hold could not be read (`books` null).
+ * Approximate by design: it does not know whether anything foreign is still open at that month end (a workspace
+ * whose foreign items are all settled keeps the note), so it is worded "if any" and sends the person to FX
+ * Revaluation, which says whether there is anything to post; and a run made stale by a later entry dated in its
+ * month is not noticed here. `today` is YYYY-MM-DD: a month not yet ended cannot be revalued yet.
+ */
+export function revaluationNote(
+  asAt: Month,
+  books: { firstForeignDate: string | null; revaluedMonthEnds: string[] } | null,
+  today: string,
+): string | null {
+  if (!books || books.firstForeignDate === null) return null;
+  const end = lastDayOfMonth(asAt);
+  if (end < books.firstForeignDate || books.revaluedMonthEnds.includes(end)) return null;
+  const label = monthEndLabel(asAt);
+  // Said so that it is true whether or not anything foreign is still open: a workspace whose foreign items are all
+  // settled (or already at the closing rate) has nothing to post, and the sentence must not ask for a run.
+  if (end > today) {
+    return `Foreign-currency items open at ${label}, if any, are at the rates they were booked at until the month ends and they are revalued. FX Revaluation shows whether there is anything to post.`;
+  }
+  return `Foreign-currency items open at ${label}, if any, are at the rates they were booked at: no FX revaluation is posted for that month end. FX Revaluation shows whether there is anything to post.`;
+}
+
 /** "October 2026", "January to October 2026" or "July 2025 to June 2026". */
 export function periodLabel(period: Period): string {
   const from = parts(period.from);
