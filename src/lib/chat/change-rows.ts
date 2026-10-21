@@ -18,7 +18,7 @@ export type ChangeRow = {
   /** `record`: which row the change is about, or which row it points at. Its text comes from that row, not from the change. */
   kind: 'record' | 'field';
   label: string;
-  /** What will be saved, or for a record its name (its id when no lookup named it). */
+  /** What will be saved, or for a record its name (`unnamed(id)` for an id no lookup named). */
   to: string;
   /** What is there now, when a lookup in the conversation showed it. */
   from?: string;
@@ -29,6 +29,11 @@ export const LONG_VALUE_CHARS = 140;
 
 export const CLEARED = '(cleared)';
 export const EMPTY = '(empty)';
+/**
+ * A record no lookup named. The full id means nothing to a person, so only a short ref is shown, enough to tell
+ * two such cards apart. The change still carries the whole id.
+ */
+export const unnamed = (id: string): string => `(no name found · ref ${id.slice(0, 8)})`;
 const NONE = '(none)';
 
 const UPPER: Record<string, string> = {
@@ -208,8 +213,7 @@ function fromRow(row: Record<string, unknown> | null, path: string[]): unknown {
 
 /**
  * Every value a change carries, as rows. The row the change is about comes
- * first (by its name when a lookup in the conversation named it, else by its
- * id); then one row per argument, in the order they were given, nested ones
+ * first (by its name when a lookup in the conversation named it); then one row per argument, in the order they were given, nested ones
  * under their parent's label. `before` supplies the row as a lookup last
  * showed it, for "was → will be".
  */
@@ -235,8 +239,8 @@ export function changeRows(toolName: string, input: unknown, find?: NameFinder, 
           key: at.join('.'),
           kind: 'record',
           label: subject ? kindLabel(kind) : [...labels, kind ? kindLabel(kind) : fieldLabel(key)].join(' › '),
-          // No lookup named it: the id itself is shown, so the row is never blank.
-          to: name ?? (UUID.test(inner) ? `id ${inner}` : inner),
+          // No lookup named it: a raw database id is no help to a person, so the row says so, with a short ref.
+          to: name ?? (UUID.test(inner) ? unnamed(inner) : inner),
         });
         continue;
       }
