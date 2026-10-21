@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { TUAH_SYSTEM, tuahSystem } from '@/lib/ai/agents/prompts';
+import {
+  BENDAHARA_SYSTEM,
+  JEBAT_SYSTEM,
+  KASTURI_SYSTEM,
+  LEKIR_SYSTEM,
+  LEKIU_SYSTEM,
+  TUAH_SYSTEM,
+  tuahSystem,
+} from '@/lib/ai/agents/prompts';
 
 describe('TUAH_SYSTEM', () => {
   const t = TUAH_SYSTEM.toLowerCase();
@@ -43,6 +51,15 @@ describe('TUAH_SYSTEM', () => {
     expect(t).toContain('that card is the confirmation');
   });
 
+  it('words a gated change as prepared for approval, not as done', () => {
+    // A manager asked to approve a leave and was told "Approving now." while it sat pending.
+    expect(t).toContain('until they tap approve the change is not made');
+    expect(t).toContain('prepared it for them to approve on the card');
+    expect(t).toContain('before a change tool, that line says you are preparing the change for the user to approve');
+    expect(t).toContain('never "approving now", "done"');
+    expect(t).toContain('in the words the result gave');
+  });
+
   it('reads a rejected change as the user saying no, not as missing permission', () => {
     expect(t).toContain('the user tapped reject');
     expect(t).toContain('never a permissions problem');
@@ -81,4 +98,15 @@ describe('tuahSystem', () => {
     expect(system).toContain('Bendahara › Invoices');
     expect(system.toLowerCase()).toContain('does not show you its records');
   });
+});
+
+describe('product assistants word a gated change as prepared for approval', () => {
+  const prompts = { JEBAT_SYSTEM, KASTURI_SYSTEM, LEKIR_SYSTEM, LEKIU_SYSTEM, BENDAHARA_SYSTEM };
+  for (const [name, prompt] of Object.entries(prompts)) {
+    it(name, () => {
+      const p = prompt.toLowerCase();
+      expect(p).toMatch(/before a change tool, that line says you are preparing the change for the (owner|user|person) to approve/);
+      expect(p).toContain('never "approving now", "done"');
+    });
+  }
 });
