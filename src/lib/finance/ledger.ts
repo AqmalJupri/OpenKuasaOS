@@ -179,6 +179,7 @@ export type LedgerAccount = {
 export type LedgerSource =
   | 'invoice'
   | 'credit_note'
+  | 'supplier_credit_note'
   | 'payment_in'
   | 'refund'
   | 'bill'
