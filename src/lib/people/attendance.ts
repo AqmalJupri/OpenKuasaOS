@@ -8,6 +8,8 @@ import { todayState } from './attendance-forms';
 import { addDays, clockTime, formatDate, formatDay, hoursBetween, monthStart, weekStart } from './dates';
 import { isTeamView, leaveDaysByTypeInYear, ownRows } from './own';
 import { overtimeModel, type OvertimeModel } from './overtime';
+import { reportsOf, teamIds } from './reporting';
+import { cellKey, mayEditHours, weekNav, type WeekNav } from './roster';
 import { percent } from './series';
 import { timesheetByEmployee } from './summaries';
 import type {
@@ -21,7 +23,7 @@ import type {
   PeopleData,
   PeopleViewer,
   Shift,
-  ShiftKind,
+  ShiftType,
   TimesheetEntry,
   Weekday,
 } from './types';
@@ -268,6 +270,37 @@ export function clockButtonLabel(action: 'in' | 'out', pending: boolean): string
 }
 
 /* ---------------------------------------------------------------- */
+/* Whose rows a week screen shows                                    */
+/* ---------------------------------------------------------------- */
+
+/** Who is looking at a week screen. The demo first: there everything is drawn and nothing is editable. */
+export type WeekView = 'hr' | 'manager' | 'self' | 'demo';
+
+export function weekView(viewer: PeopleViewer): WeekView {
+  if (viewer.isDemo) return 'demo';
+  if (viewer.isHr) return 'hr';
+  return viewer.managesTeam === true ? 'manager' : 'self';
+}
+
+/**
+ * The employees whose rows the viewer may see, or null for everyone (HR, the demo). A manager sees their own and
+ * their direct reports'; anyone else their own. The database already returns no more than that; this keeps a
+ * report's rows out of a member's screen even if the team lookup failed.
+ */
+function visibleIds(viewer: PeopleViewer, employees: Employee[]): Set<string> | null {
+  const view = weekView(viewer);
+  if (view === 'hr' || view === 'demo') return null;
+  const ids = new Set<string>();
+  if (viewer.employeeId) ids.add(viewer.employeeId);
+  if (view === 'manager') for (const id of teamIds(employees, viewer)) ids.add(id);
+  return ids;
+}
+
+/** The viewer's own row first, then by name. */
+const byOwnThenName = (ownId: string | null) => (a: { employee_id: string; name: string }, b: { employee_id: string; name: string }) =>
+  Number(b.employee_id === ownId) - Number(a.employee_id === ownId) || a.name.localeCompare(b.name);
+
+/* ---------------------------------------------------------------- */
 /* Timesheet                                                       */
 /* ---------------------------------------------------------------- */
 
@@ -276,17 +309,27 @@ export type TimesheetRow = {
   name: string;
   /** Hours for Monday to Sunday; null where nothing was logged. */
   per_day: (number | null)[];
+  /** Billable hours for Monday to Sunday; null where nothing was logged. */
+  billable_per_day: (number | null)[];
   billable: number;
   total: number;
+  /** The viewer's own record. */
+  own: boolean;
+  /** Per day: whether the viewer may type hours there. The database decides again on save. */
+  editable: boolean[];
 };
 
 export type TimesheetModel = {
-  /** True for HR and the demo; false means the rows are the viewer's own and nothing is the team's. */
+  /** True for HR and the demo; false means the rows are the viewer's own (and a manager's reports') and not the whole team's. */
   team: boolean;
+  view: WeekView;
   week_start: string;
   week_end: string;
+  nav: WeekNav;
   days: { date: string; label: string }[];
   rows: TimesheetRow[];
+  /** At least one cell takes input. */
+  editable: boolean;
   totals: { hours: number; billable_hours: number; billable_share: number | null; members: number };
   by_employee: { employee: string; hours: number; billable_hours: number }[];
 };
@@ -299,34 +342,69 @@ export function buildTimesheet(input: {
   employees: Employee[];
   viewer: PeopleViewer;
   today: string;
+  /** The Monday to show; this week when left out. */
+  week?: string;
 }): TimesheetModel {
-  const { start, end } = currentWeek(input.today);
+  const { viewer, today } = input;
+  const start = input.week ?? currentWeek(today).start;
+  const end = addDays(start, 6);
   const days = weekDays(start);
+  const view = weekView(viewer);
   const names = nameMap(input.employees);
-  const entries = input.entries.filter((e) => e.work_date >= start && e.work_date <= end);
+  const visible = visibleIds(viewer, input.employees);
+  const entries = input.entries.filter(
+    (e) => e.work_date >= start && e.work_date <= end && (visible === null || visible.has(e.employee_id)),
+  );
 
+  const blank = (employeeId: string): TimesheetRow => {
+    const own = employeeId === viewer.employeeId;
+    return {
+      employee_id: employeeId,
+      name: names.get(employeeId) ?? UNKNOWN,
+      per_day: Array(7).fill(null),
+      billable_per_day: Array(7).fill(null),
+      billable: 0,
+      total: 0,
+      own,
+      editable: days.map((d) => mayEditHours({ date: d.date, today, isHr: viewer.isHr, isDemo: viewer.isDemo, own })),
+    };
+  };
   const byPerson = new Map<string, TimesheetRow>();
+  const rowFor = (employeeId: string) => {
+    const row = byPerson.get(employeeId) ?? blank(employeeId);
+    byPerson.set(employeeId, row);
+    return row;
+  };
+  // Rows with nothing logged yet: every active employee for HR to fill in; the viewer's own row, and a manager's
+  // active reports, for everyone else outside the demo.
+  if (view === 'hr') for (const e of input.employees) if (e.status === 'active') rowFor(e.id);
+  if (view === 'self' || view === 'manager') {
+    if (viewer.employeeId) rowFor(viewer.employeeId);
+    if (view === 'manager') for (const e of reportsOf(input.employees, viewer.employeeId)) if (e.status === 'active') rowFor(e.id);
+  }
   for (const entry of entries) {
-    const row =
-      byPerson.get(entry.employee_id) ??
-      { employee_id: entry.employee_id, name: names.get(entry.employee_id) ?? UNKNOWN, per_day: Array(7).fill(null), billable: 0, total: 0 };
+    const row = rowFor(entry.employee_id);
     const index = days.findIndex((d) => d.date === entry.work_date);
     row.per_day[index] = round2((row.per_day[index] ?? 0) + entry.hours);
+    row.billable_per_day[index] = round2((row.billable_per_day[index] ?? 0) + entry.billable_hours);
     row.billable = round2(row.billable + entry.billable_hours);
     row.total = round2(row.total + entry.hours);
-    byPerson.set(entry.employee_id, row);
   }
-  const rows = [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const rows = [...byPerson.values()].sort(byOwnThenName(view === 'hr' || view === 'demo' ? null : viewer.employeeId));
   const hours = round2(rows.reduce((sum, r) => sum + r.total, 0));
   const billable = round2(rows.reduce((sum, r) => sum + r.billable, 0));
+  const logged = new Set(entries.map((e) => e.employee_id));
 
   return {
-    team: isTeamView(input.viewer),
+    team: isTeamView(viewer),
+    view,
     week_start: start,
     week_end: end,
+    nav: weekNav(start, today),
     days,
     rows,
-    totals: { hours, billable_hours: billable, billable_share: percent(billable, hours), members: rows.length },
+    editable: rows.some((r) => r.editable.some(Boolean)),
+    totals: { hours, billable_hours: billable, billable_share: percent(billable, hours), members: logged.size },
     by_employee: timesheetByEmployee(entries, input.employees),
   };
 }
@@ -335,51 +413,122 @@ export function buildTimesheet(input: {
 /* Shift Calendar                                                    */
 /* ---------------------------------------------------------------- */
 
-export const SHIFT_LABEL: Record<ShiftKind, string> = { morning: 'Morning', night: 'Night', off: 'Off' };
-
-export type ShiftRow = { employee_id: string; name: string; department: string | null; cells: (ShiftKind | null)[] };
+export type ShiftRow = {
+  employee_id: string;
+  name: string;
+  department: string | null;
+  /** Monday to Sunday: the shift type's id, or null for no shift. */
+  cells: (string | null)[];
+  /** HR may change this row: an active employee, outside the demo. */
+  editable: boolean;
+};
 
 export type ShiftCalendarModel = {
   team: boolean;
+  view: WeekView;
   week_start: string;
   week_end: string;
+  nav: WeekNav;
   days: { date: string; label: string }[];
-  /** Only people with at least one shift this week. */
+  /** People with at least one shift this week; for HR also every active employee, to fill in. */
   rows: ShiftRow[];
-  morning_count: number;
-  night_count: number;
+  /** HR outside the demo: the grid takes edits. */
+  editable: boolean;
+  /** Every type of the workspace, archived ones too (they stay on past shifts), by id. */
+  types: Record<string, ShiftType>;
+  /** The workspace's types as listed, archived ones too, by name: for the types panel. */
+  type_list: ShiftType[];
+  /** The types a cell may be set to: not archived, by name. */
+  active_types: ShiftType[];
+  /** Last week's shifts by cell key (`employee|date`), for "Copy last week": only those on a type still active. Empty unless editable. */
+  previous: Record<string, string>;
+  /** Shifts this week on a working type, and on an off type. */
+  working_count: number;
+  off_count: number;
+  /** How many shifts each type has this week, most first; types not used are left out. */
+  by_type: { type: ShiftType; count: number }[];
 };
+
+/** A type the rows point at but the list lacks (it should not happen): drawn by name only. */
+const unknownType = (id: string): ShiftType => ({
+  id, name: UNKNOWN, start_time: null, end_time: null, is_off: false, color: 'slate', archived: true,
+});
 
 export function buildShiftCalendar(input: {
   shifts: Shift[];
   employees: Employee[];
   viewer: PeopleViewer;
   today: string;
+  /** The workspace's shift types; none for a workspace that has not set any up. */
+  types?: ShiftType[];
+  /** The Monday to show; this week when left out. */
+  week?: string;
 }): ShiftCalendarModel {
-  const { start, end } = currentWeek(input.today);
+  const { viewer, today } = input;
+  const start = input.week ?? currentWeek(today).start;
+  const end = addDays(start, 6);
   const days = weekDays(start);
+  const view = weekView(viewer);
+  const editable = view === 'hr';
   const people = new Map(input.employees.map((e) => [e.id, e]));
-  const shifts = input.shifts.filter((s) => s.work_date >= start && s.work_date <= end);
+  const types: Record<string, ShiftType> = {};
+  for (const t of input.types ?? []) types[t.id] = t;
+  const typeOf = (id: string) => types[id] ?? unknownType(id);
+  const visible = visibleIds(viewer, input.employees);
+  const seen = input.shifts.filter((s) => visible === null || visible.has(s.employee_id));
+  const shifts = seen.filter((s) => s.work_date >= start && s.work_date <= end);
 
   const byPerson = new Map<string, ShiftRow>();
+  const rowFor = (employeeId: string) => {
+    const person = people.get(employeeId);
+    const row = byPerson.get(employeeId) ?? {
+      employee_id: employeeId,
+      name: person?.name ?? UNKNOWN,
+      department: person?.department_name ?? null,
+      cells: Array(7).fill(null),
+      editable: editable && person?.status === 'active',
+    };
+    byPerson.set(employeeId, row);
+    return row;
+  };
+  if (editable) for (const e of input.employees) if (e.status === 'active') rowFor(e.id);
   for (const shift of shifts) {
-    const person = people.get(shift.employee_id);
-    const row =
-      byPerson.get(shift.employee_id) ??
-      { employee_id: shift.employee_id, name: person?.name ?? UNKNOWN, department: person?.department_name ?? null, cells: Array(7).fill(null) };
     const index = days.findIndex((d) => d.date === shift.work_date);
-    row.cells[index] = shift.shift;
-    byPerson.set(shift.employee_id, row);
+    rowFor(shift.employee_id).cells[index] = shift.shift_type_id;
+    if (!types[shift.shift_type_id]) types[shift.shift_type_id] = unknownType(shift.shift_type_id);
   }
 
+  const previous: Record<string, string> = {};
+  if (editable) {
+    const from = addDays(start, -7);
+    for (const s of seen) {
+      const type = types[s.shift_type_id];
+      if (s.work_date >= from && s.work_date < start && type && !type.archived) previous[cellKey(s.employee_id, s.work_date)] = s.shift_type_id;
+    }
+  }
+
+  const counts = new Map<string, number>();
+  for (const s of shifts) counts.set(s.shift_type_id, (counts.get(s.shift_type_id) ?? 0) + 1);
+  const byType = [...counts.entries()]
+    .map(([id, count]) => ({ type: typeOf(id), count }))
+    .sort((a, b) => b.count - a.count || a.type.name.localeCompare(b.type.name));
+
   return {
-    team: isTeamView(input.viewer),
+    team: isTeamView(viewer),
+    view,
     week_start: start,
     week_end: end,
+    nav: weekNav(start, today),
     days,
-    rows: [...byPerson.values()].sort((a, b) => a.name.localeCompare(b.name)),
-    morning_count: shifts.filter((s) => s.shift === 'morning').length,
-    night_count: shifts.filter((s) => s.shift === 'night').length,
+    rows: [...byPerson.values()].sort(byOwnThenName(view === 'manager' ? viewer.employeeId : null)),
+    editable,
+    types,
+    type_list: [...(input.types ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    active_types: (input.types ?? []).filter((t) => !t.archived).sort((a, b) => a.name.localeCompare(b.name)),
+    previous,
+    working_count: shifts.filter((s) => !typeOf(s.shift_type_id).is_off).length,
+    off_count: shifts.filter((s) => typeOf(s.shift_type_id).is_off).length,
+    by_type: byType,
   };
 }
 
