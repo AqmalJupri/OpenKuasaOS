@@ -63,9 +63,11 @@ describe('LEKIU_SYSTEM', () => {
     const attendanceTools = ['clockIn', 'clockOut', 'correctAttendance', 'saveHoliday', 'removeHoliday', 'saveAttendanceSettings'];
     const payrollTools = ['runPayroll', 'recalculatePayroll', 'savePayslipLine', 'removePayslipLine', 'setPayslipStatutory', 'removePayslip'];
     const letterWriteTools = ['saveLetter', 'startLetterFromTemplate', 'issueLetter', 'requestAcknowledgement'];
+    const rosterTools = ['setShifts', 'logHours', 'saveShiftType', 'archiveShiftType', 'requestShiftSwap', 'replyShiftSwap', 'decideShiftSwap', 'cancelShiftSwap'];
     const others = PEOPLE_WRITE_TOOL_NAMES.filter(
       (name) =>
         !letterWriteTools.includes(name) &&
+        !rosterTools.includes(name) &&
         !leaveTools.includes(name) &&
         !payTools.includes(name) &&
         !attendanceTools.includes(name) &&
@@ -74,9 +76,9 @@ describe('LEKIU_SYSTEM', () => {
     );
     expect(others.every((name) => /Employee(Status|ToMember)?$|Department$|^setReportsTo$/.test(name))).toBe(true);
     expect(others).toHaveLength(9);
-    expect(PEOPLE_WRITE_TOOL_NAMES).toHaveLength(54);
-    // Each leave, claim, overtime and attendance tool is named in the rules for using it.
-    for (const name of [...leaveTools, ...payTools, ...attendanceTools, ...payrollTools, ...PERFORMANCE_TOOLS, ...letterWriteTools, 'previewOvertime', 'getMyAttendanceToday', 'getAttendanceSettings']) {
+    expect(PEOPLE_WRITE_TOOL_NAMES).toHaveLength(62);
+    // Each leave, claim, overtime, attendance and roster tool is named in the rules for using it.
+    for (const name of [...leaveTools, ...payTools, ...attendanceTools, ...payrollTools, ...PERFORMANCE_TOOLS, ...letterWriteTools, ...rosterTools, 'previewOvertime', 'getMyAttendanceToday', 'getAttendanceSettings', 'listShiftTypes', 'listShiftSwaps', 'listSwapOptions']) {
       expect(LEKIU_SYSTEM, name).toContain(name);
     }
     expect(t).toContain('attendance, public holidays and the attendance settings');
@@ -792,5 +794,23 @@ describe('LEKIU_SYSTEM, the three kinds of asker', () => {
     // The rule is fixed text in the cached prompt, before the dated TODAY block.
     const now = new Date('2026-10-22T02:00:00Z');
     expect(lekiuSystem(now).startsWith(LEKIU_SYSTEM)).toBe(true);
+  });
+});
+
+describe('the roster, hours and shift swap rules', () => {
+  it('say where each thing really is, and never name a screen that is not listed', async () => {
+    const { subAgentSystem } = await import('@/lib/ai/agents/prompts');
+    for (const text of [LEKIU_SYSTEM, subAgentSystem('people', true)]) {
+      expect(text).toContain('"Shift types" panel opened from the Shift Calendar');
+      expect(text).toContain('Timesheet screen');
+      expect(text).toContain('Approvals > Shift Swaps');
+      expect(text.toLowerCase()).toMatch(/never name a screen(, panel)? or menu (that is )?not listed/);
+      expect(text).not.toMatch(/Shifts screen|under Settings/);
+    }
+  });
+
+  it('word the line before logging hours as put up for approval, never as done', () => {
+    expect(LEKIU_SYSTEM).toContain('"I\'ll put those hours up for you to approve."');
+    expect(t).toContain('never "approving now", "done"');
   });
 });
