@@ -287,7 +287,7 @@ function applyGate(products: ProductToolkit[], team: TeamContext, turn: TurnStat
         ? (product?.checkDeletion ? cardDecision(await product.checkDeletion(proposal.action, target), was) : 'user-approval')
         : kind === 'pool'
           ? (product?.checkPoolChange ? poolCardDecision(await product.checkPoolChange(proposal.action, target), was) : 'user-approval')
-          // The whole input, not an id: two of the six name an application and four an interview, and the check knows which.
+          // The whole input, not an id: two of the eight name an application and six an interview, and the check knows which.
           : (product?.checkInterviewChange ? interviewCardDecision(await product.checkInterviewChange(proposal.action, proposal.input), was) : 'user-approval');
     if (typeof decision === 'object' && decision.type === 'denied') {
       // Stopped after the user's yes (the card had been shown): it will not run, so it stops being the turn's one,
@@ -301,7 +301,8 @@ function applyGate(products: ProductToolkit[], team: TeamContext, turn: TurnStat
     shown.set(proposal.id, toolCallId);
     // The record was seen and every check of its kind ran on it in this request: only now may `apply` take it.
     gated.add(proposal.id);
-    return decision;
+    // What a check binds is the record's (kept when the change was prepared), never the SDK's: the answer goes on without it.
+    return typeof decision === 'object' ? { type: 'user-approval', reason: decision.reason } : decision;
   };
 }
 
@@ -444,7 +445,7 @@ function specialistTools(
           }
         }
         if (INTERVIEW_CHANGES.has(name)) {
-          // A new interview names an application, from listApplications; the other four name an interview, from
+          // A new interview names an application, from listApplications; the other six name an interview, from
           // listInterviews or from the result of the change that made it. In this delegation or an earlier turn;
           // never an id seen as the other kind.
           const id = interviewTarget(name, input);
@@ -523,7 +524,10 @@ function specialistTools(
         // Its place is held above without a pause; now it is recorded. An approval is answered from this record,
         // so a change that could not be recorded is withdrawn and never reaches a card: a deletion or a talent
         // pool change gives its one place in the turn back, like any other.
-        const kept = await team.store.record({ id: proposal.id, product: product.key, action: name, input });
+        // With what the server read binds to it (the version of the feedback the card was made from): kept on the
+        // record, never on the proposal the browser and the models see.
+        const bound = checkedInterview?.ok ? checkedInterview.bound : undefined;
+        const kept = await team.store.record({ id: proposal.id, product: product.key, action: name, input, ...(bound ? { bound } : {}) });
         if (!kept) {
           team.proposals.delete(proposal.id);
           prepared.splice(prepared.indexOf(proposal), 1);
@@ -681,7 +685,8 @@ async function apply(
   if (!parsed.success) {
     return { ok: false, error: 'That prepared change is no longer valid. Ask for it again.' };
   }
-  const output = await run(parsed.data, options);
+  // What the server bound when it prepared the change goes beside the SDK's options, where no argument can reach.
+  const output = await run(parsed.data, stored.bound ? { ...(options as object), bound: stored.bound } : options);
   if (team.names) collectNames([{ tool: proposal.action, output }], team.names);
   // An AI-applied finance write bypasses the finance forms' own revalidatePath calls, so refresh the screens
   // it changed here — only on success, and only for finance (see finance-revalidate.ts).

@@ -10,7 +10,7 @@ import type { InterviewFeedbackChange } from './capabilities';
 import { MENU_WORDS, menuGroups, rowMenu } from './interview-dialog-state';
 import {
   FEEDBACK_INPUT_MESSAGES, FEEDBACK_LIMITS, FEEDBACK_NOT_LOADED, FEEDBACK_SAVE_FAILED, RECOMMENDATIONS, feedbackBlocksReopen, feedbackMenuFor, feedbackMessage,
-  ratingWords, type Feedback, type FeedbackMenuItem, type Recommendation,
+  feedbackSummary, ratingWords, type Feedback, type FeedbackMenuItem, type Recommendation,
 } from './interview-feedback';
 import { clock12, longDate } from './interview-time';
 import { INTERVIEW_NOT_READ_BACK, interviewMessage, type InterviewMenuItem } from './interviews';
@@ -282,6 +282,34 @@ export function reopenRefusal(row: Pick<InterviewRow, 'statusKey' | 'feedback'>)
 
 export const clearTitle = (name: string): string => `Clear the feedback on the interview with ${name}?`;
 export const CLEAR_BODY = 'The rating, the recommendation and the comments are removed. The interview stays completed. This can\'t be undone.';
+/** How much of the comments the clear confirm shows: enough to recognise them. */
+export const COMMENTS_ON_CLEAR = 80;
+/**
+ * "Feedback to clear: 4 out of 5 · Advance · “Strong on key accounts…”": what the clear confirm will remove, from the
+ * row the confirm was opened on. The comments on one line, cut. Null when the row has no feedback to show.
+ */
+export function clearingLine(feedback: Feedback | null | undefined): string | null {
+  if (!feedback) return null;
+  const text = (feedback.comments ?? '').replace(/\s+/g, ' ').trim();
+  const comments = !text ? 'No comments' : text.length > COMMENTS_ON_CLEAR ? `“${text.slice(0, COMMENTS_ON_CLEAR).trimEnd()}…”` : `“${text}”`;
+  return `Feedback to clear: ${feedbackSummary(feedback)} · ${comments}`;
+}
+/** True when a clear was refused because the feedback was saved again after the confirm opened. */
+export const clearRefusedAsChanged = (result: unknown): boolean =>
+  !!result && typeof result === 'object' && (result as { ok?: unknown }).ok === false &&
+  (result as { error?: unknown }).error === feedbackMessage('changed', 'clear');
+
+/**
+ * What the open clear confirm shows after that refusal, from the feedback as stored now (`getInterviewFeedbackAction`),
+ * as the edit form loads it: the feedback, null when it was cleared meanwhile, or 'keep' when it could not be read
+ * (the confirm keeps what it showed; closing and opening it again still works). The person then presses again, on
+ * what they now see.
+ */
+export function clearingFromCurrent(answer: unknown, id: string): Feedback | null | 'keep' {
+  const current = currentFeedbackResult(answer, id);
+  if (current.ok) return current.current;
+  return current.error === FEEDBACK_CLEARED_MEANWHILE ? null : 'keep';
+}
 export const KEEP_FEEDBACK = 'Keep feedback';
 export const clearLabel = (busy: boolean): string => (busy ? 'Clearing…' : 'Clear feedback');
 
