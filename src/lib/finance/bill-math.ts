@@ -18,7 +18,18 @@ export type LineNumbers = {
    */
   discount_pct?: number | null;
   discount_amount?: number | null;
+  /**
+   * This line's share of a discount on the whole document, in ringgit (sales
+   * only; 0 or unset otherwise). It comes off the line after its own discount:
+   * amount = round(v, 2) - share, and the SST is on greatest(v - share, 0), unrounded.
+   */
+  doc_discount_share?: number;
 };
+/** A discount on a whole sales document: a percentage (0–100] or a fixed amount, at most one set. */
+export type DocDiscount = { pct: number | null; amount: number | null };
+export type DocumentTotals = { subtotal: number; discount: number; sst: number; total: number };
+
+export const DOC_DISCOUNT_LEAVES_NOTHING = 'A discount on the whole document must leave something to pay.';
 export type LineAmounts = { amount: number; sst: number };
 export type BillTotals = { subtotal: number; sst: number; total: number };
 
@@ -34,40 +45,120 @@ function divideRounded(value: bigint, by: bigint): bigint {
   return (value + by / BigInt(2)) / by;
 }
 
-export function lineSen(line: LineNumbers): { amount: bigint; sst: bigint } {
+/**
+ * A line's value after its own discount, unrounded, as a whole number of
+ * units, with how many of those units make a sen.
+ */
+function lineNet(line: LineNumbers): { net: bigint; perSen: bigint } {
   // Quantity keeps 3 decimals, unit price 4 and the SST rate 2, as saveBillInput rounds them.
   const product = units(line.quantity, 3) * units(line.unit_price, 4); // qty * price, in 10^-7 ringgit
-  const rate = units(roundRate(line.sst_rate), 2);
   const pct = line.discount_pct;
   const fixed = line.discount_amount;
 
   // A percentage discount scales the whole product by (1 - pct/100), kept exact
-  // as (10000 - pct*100)/10000. Mirrors amount = round(qty*price*(1-pct/100), 2).
+  // as (10000 - pct*100)/10000. Mirrors qty*price*(1-pct/100).
   if (pct != null && pct > 0) {
     let keep = BigInt(10_000) - units(pct, 2);
     if (keep < BigInt(0)) keep = BigInt(0); // a pct over 100 (the schema refuses it) means nothing left
-    const net = product * keep; // in 10^-11 ringgit
-    return {
-      amount: divideRounded(net, BigInt(100_000) * BigInt(10_000)),
-      sst: divideRounded(net * rate, BigInt(1_000_000_000) * BigInt(10_000)),
-    };
+    return { net: product * keep, perSen: BigInt(100_000) * BigInt(10_000) }; // in 10^-11 ringgit
   }
 
   // A fixed discount is taken off the line, never below zero. Mirrors
-  // amount = round(greatest(qty*price - discount_amount, 0), 2).
+  // greatest(qty*price - discount_amount, 0).
   if (fixed != null && fixed > 0) {
-    let net = product - units(fixed, 2) * BigInt(100_000); // discount sen -> 10^-7 ringgit
-    if (net < BigInt(0)) net = BigInt(0);
-    return {
-      amount: divideRounded(net, BigInt(100_000)),
-      sst: divideRounded(net * rate, BigInt(1_000_000_000)),
-    };
+    const net = product - units(fixed, 2) * BigInt(100_000); // discount sen -> 10^-7 ringgit
+    return { net: net < BigInt(0) ? BigInt(0) : net, perSen: BigInt(100_000) };
   }
 
+  return { net: product, perSen: BigInt(100_000) };
+}
+
+/**
+ * amount = round(v, 2) - share and sst = round(greatest(v - share, 0) * rate / 100, 2), in sen.
+ * The share is at most round(v, 2), so the amount never drops below 0, and the
+ * amounts after the shares add up to exactly Σ net - D.
+ */
+function lineSenWithShare(line: LineNumbers, shareSen: bigint): { amount: bigint; sst: bigint } {
+  const { net, perSen } = lineNet(line);
+  let value = net - shareSen * perSen;
+  if (value < BigInt(0)) value = BigInt(0); // v on a half sen, with its whole rounded net as its share
+  const rate = units(roundRate(line.sst_rate), 2); // percent, in 10^-2
   return {
-    amount: divideRounded(product, BigInt(100_000)),
-    sst: divideRounded(product * rate, BigInt(1_000_000_000)),
+    amount: divideRounded(net, perSen) - shareSen,
+    sst: divideRounded(value * rate, perSen * BigInt(10_000)),
   };
+}
+
+export function lineSen(line: LineNumbers): { amount: bigint; sst: bigint } {
+  return lineSenWithShare(line, units(line.doc_discount_share ?? 0, 2));
+}
+
+/**
+ * The document discount D and each line's share of it, in sen, in the lines'
+ * order. Mirrors private.finance_doc_discount_split: each line's net is its
+ * rounded amount after its own discount (any doc_discount_share it carries is
+ * ignored); D is round(Σ net × pct / 100, 2) or the fixed amount, capped at
+ * Σ net; share = floor(D × net / Σ net), and the sen left over go one each to
+ * the largest remainders, ties to the lower index.
+ */
+export function docDiscountSen(lines: LineNumbers[], d: DocDiscount): { discount: bigint; shares: bigint[] } {
+  const zero = BigInt(0);
+  const nets = lines.map((line) => lineSenWithShare(line, zero).amount);
+  const sum = nets.reduce((a, b) => a + b, zero);
+
+  // The schema allows only one of the two; a percentage wins if both are given.
+  let discount = zero;
+  if (d.pct != null && d.pct > 0) discount = divideRounded(sum * units(d.pct, 2), BigInt(10_000));
+  else if (d.amount != null && d.amount > 0) discount = units(d.amount, 2);
+  if (discount > sum) discount = sum; // the form shows DOC_DISCOUNT_LEAVES_NOTHING; the split itself never fails
+  if (discount === zero) return { discount, shares: nets.map(() => zero) };
+
+  const shares = nets.map((net) => (discount * net) / sum);
+  const remainders = nets.map((net) => (discount * net) % sum);
+  let left = discount - shares.reduce((a, b) => a + b, zero);
+  const order = nets
+    .map((_, i) => i)
+    .sort((a, b) => (remainders[a] === remainders[b] ? a - b : remainders[a] > remainders[b] ? -1 : 1));
+  for (const i of order) {
+    if (left === zero) break;
+    shares[i] += BigInt(1);
+    left -= BigInt(1);
+  }
+  return { discount, shares };
+}
+
+/**
+ * A sales document's totals with its whole-document discount: the subtotal of
+ * the lines before their shares, D, the SST on each line after its share, and
+ * subtotal - D + SST. With no document discount these are billTotals' figures.
+ */
+export function documentTotals(lines: LineNumbers[], d: DocDiscount): DocumentTotals {
+  const { discount, shares } = docDiscountSen(lines, d);
+  let subtotal = BigInt(0);
+  let sst = BigInt(0);
+  lines.forEach((line, i) => {
+    subtotal += lineSenWithShare(line, BigInt(0)).amount;
+    sst += lineSenWithShare(line, shares[i]).sst;
+  });
+  return {
+    subtotal: Number(subtotal) / 100,
+    discount: Number(discount) / 100,
+    sst: Number(sst) / 100,
+    total: Number(subtotal - discount + sst) / 100,
+  };
+}
+
+/**
+ * True when a discount on the whole document is set and leaves nothing to pay: D at least the lines' net
+ * total, including any discount on lines that already net to 0. The database refuses it (FIN62) with
+ * DOC_DISCOUNT_LEAVES_NOTHING. Pass the lines in position order.
+ */
+export function docDiscountLeavesNothing(lines: LineNumbers[], d: DocDiscount): boolean {
+  const set = (d.pct != null && d.pct > 0) || (d.amount != null && d.amount > 0);
+  if (!set) return false;
+  const totals = documentTotals(lines, d);
+  // D is capped at the subtotal, so nothing is left exactly when they are equal.
+  return Math.round(totals.subtotal * 100) - Math.round(totals.discount * 100) <= 0;
 }
 
 /**
