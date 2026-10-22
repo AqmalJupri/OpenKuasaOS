@@ -509,7 +509,10 @@ export type PoolModel = {
   search: string | null;
   /** How many pool members fit the search, before the cut to ROWS_SHOWN. The pool's size when nothing is searched for. */
   matched: number;
-  /** True when the read came back with its full HIRE_READ_CAP candidates: an older pool member may be missing. */
+  /**
+   * True when the read came back with its full HIRE_READ_CAP rows (the pool itself, or everyone on file for a
+   * provider without a pool read): an older pool member may be missing.
+   */
   readCapped: boolean;
 };
 
@@ -527,8 +530,13 @@ function tally<T>(items: T[], pick: (item: T) => string): { label: string; value
  * tallies are always figures for the whole pool.
  */
 export async function buildPoolModel(data: HireData, search?: string | null): Promise<PoolModel> {
-  const [candidates, apps, jobs] = await Promise.all([data.listCandidates(), data.listApplications(), data.listJobs()]);
-  const pool = candidates.filter((c) => c.pool_status !== 'none');
+  // The pool itself when the provider can read it; else everyone on file, then filtered (the sample data).
+  const [read, apps, jobs] = await Promise.all([
+    data.listPool ? data.listPool() : data.listCandidates(),
+    data.listApplications(),
+    data.listJobs(),
+  ]);
+  const pool = read.filter((c) => c.pool_status !== 'none');
   // "Shortlisted": has a live application at interview or beyond. Best rating across their applications.
   const shortlisted = new Set<string>();
   const rating = new Map<string, number>();
@@ -564,7 +572,7 @@ export async function buildPoolModel(data: HireData, search?: string | null): Pr
       .sort((a, b) => a.title.localeCompare(b.title)),
     search: text,
     matched: matches.length,
-    readCapped: candidates.length >= HIRE_READ_CAP,
+    readCapped: read.length >= HIRE_READ_CAP,
   };
 }
 
@@ -572,19 +580,3 @@ export async function buildPoolModel(data: HireData, search?: string | null): Pr
 export type PickerPerson = {
   id: string; name: string; headline: string | null; location: string | null; skills: string[]; source: string | null;
 };
-export type PoolPicker = {
-  people: PickerPerson[];
-  /** True when the read came back with its full HIRE_READ_CAP candidates: someone added long ago may be missing. */
-  capped: boolean;
-};
-
-/** Everyone on file who is not in the pool, newest on file first. Each field is named: an email or a phone can never ride along. */
-export async function buildPoolPicker(data: HireData): Promise<PoolPicker> {
-  const candidates = await data.listCandidates();
-  return {
-    people: candidates
-      .filter((c) => c.pool_status === 'none')
-      .map((c) => ({ id: c.id, name: c.name, headline: c.headline, location: c.location, skills: c.skills, source: c.source })),
-    capped: candidates.length >= HIRE_READ_CAP,
-  };
-}

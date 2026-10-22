@@ -211,7 +211,37 @@ export type HireData = {
    * sample data) may leave it out: `searchCandidatesFromList` over the candidates list is then used.
    */
   searchCandidates?(query: CandidateSearch): Promise<CandidateSearchResult>;
+  /**
+   * Everyone in the talent pool (pool status other than none), newest first, at most HIRE_READ_CAP rows, read as the
+   * pool so that people on file long ago are not cut off by the newest page of everyone. A provider over a database
+   * must have it. One that holds every row in memory (the sample data) may leave it out: the candidates list is then
+   * filtered.
+   */
+  listPool?(): Promise<Candidate[]>;
+  /**
+   * The applications whose candidate's name (and, with `alsoJob`, whose job's title) contains this text, in any
+   * letter case, newest first, read by the text so that no page size can hide an older one. A provider over a
+   * database must have it. One that holds every row in memory (the sample data) may leave it out:
+   * `searchApplicationsFromList` over the applications list is then used.
+   */
+  searchApplications?(query: ApplicationSearch): Promise<ApplicationSearchResult>;
+  /**
+   * The email and phone of these candidates, read by id, for the rows a lookup shows. A provider that holds every
+   * row in memory (the sample data) may leave it out: the candidates list is then used.
+   */
+  contactsOf?(ids: string[]): Promise<Pick<Candidate, 'id' | 'email' | 'phone'>[]>;
 };
+
+/**
+ * A lookup of applications by the candidate's name. `alsoJob`: the job's title may match instead. `stage`,
+ * `outcome`: only those. `limit`: how many rows to keep (APPLICATION_SEARCH_LIMIT when left out, at most
+ * HIRE_READ_CAP), for a caller that narrows the rows further in memory.
+ */
+export type ApplicationSearch = {
+  name: string; alsoJob?: boolean; stage?: ApplicationStage; outcome?: ApplicationOutcome; limit?: number;
+};
+/** At most the lookup's limit of rows, newest first. `more` when there were more matches than that. */
+export type ApplicationSearchResult = { rows: Application[]; more: boolean };
 
 /**
  * A lookup of candidates by name. `inPool`: only talent pool members; `poolStatus`: only that pool status. `limit`:

@@ -53,10 +53,11 @@ import {
 } from '@/lib/hire/capabilities';
 import { isPdf, removeCv, signedCvUrl, storeCv } from '@/lib/hire/cv-store';
 import type { Removal } from '@/lib/hire/deletion';
-import { buildPoolPicker, type PoolPicker } from '@/lib/hire/lists';
-import { PICKER_FAILED } from '@/lib/hire/pool';
+import { readApplicationSearch } from '@/lib/hire/application-search';
+import { cleanSearchName, readPoolPicker } from '@/lib/hire/candidate-search';
+import type { PickerApplication, PickerPerson } from '@/lib/hire/lists';
+import { PICKER_FAILED, POOL_SEARCH_MAX } from '@/lib/hire/pool';
 import { careersPath } from '@/lib/hire/public-careers';
-import { createSupabaseHireData } from '@/lib/hire/supabase';
 import { createClient } from '@/lib/supabase/server';
 import { serviceClient } from '@/lib/supabase/service';
 
@@ -514,16 +515,19 @@ export async function moveToPipelineAction(input: unknown): Promise<CapResult<Mo
 }
 
 /**
- * The people the "Add to Pool" picker offers: everyone on file who is not in
- * the pool. Only for someone who may edit, read with their own client inside
- * their own workspace, when they open the picker. Names, headlines, places,
- * skills and sources: never an email or a phone number. Nothing is changed.
+ * The people the "Add to Pool" picker offers for what was typed: up to 50 on
+ * file who are not in the pool, whose name or headline holds the text, newest first (the
+ * newest 50 for an empty box), and `more` when there are more. Only for someone
+ * who may edit, read with their own client inside their own workspace. Names,
+ * headlines, places, skills and sources: never an email or a phone number.
+ * Nothing is changed.
  */
-export async function listPoolPickerAction(): Promise<CapResult<PoolPicker>> {
+export async function searchPoolPickerAction(query: unknown): Promise<CapResult<{ people: PickerPerson[]; more: boolean }>> {
   const ctx = await writeCtx();
   if (!ctx) return FORBIDDEN;
+  const text = cleanSearchName(typeof query === 'string' ? query : '').slice(0, POOL_SEARCH_MAX).trim();
   try {
-    return { ok: true, data: await buildPoolPicker(createSupabaseHireData(ctx.client, ctx.orgId)) };
+    return { ok: true, data: await readPoolPicker(ctx.client, ctx.orgId, text) };
   } catch (error) {
     console.error('[hire/pool-picker] the read failed:', codeOf(error));
     return { ok: false, error: PICKER_FAILED };
@@ -531,6 +535,45 @@ export async function listPoolPickerAction(): Promise<CapResult<PoolPicker>> {
 }
 
 // ─── interviews ─────────────────────────────────────────────────────────────
+
+/** The longest text the interview picker's search sends on. */
+const INTERVIEW_SEARCH_MAX = 100;
+const INTERVIEW_PICKER_FAILED = 'The search could not be finished. Check your connection and try again.';
+
+/**
+ * The applications the Schedule and Record-a-past-interview pickers offer for
+ * what was typed, once the newest 1,000 read was cut: up to 50 whose
+ * candidate's name or job's title holds the text, newest first, and `more` when
+ * there are more. A schedule is for an active application only; anything other
+ * than `mode: 'past'` is read as a schedule. Only for someone who may edit,
+ * read with their own client inside their own workspace. Who, which job and
+ * where it stands: nothing to contact anyone by. Nothing is changed.
+ */
+export async function searchInterviewPickerAction(
+  input: unknown,
+): Promise<CapResult<{ applications: PickerApplication[]; more: boolean }>> {
+  const ctx = await writeCtx();
+  if (!ctx) return FORBIDDEN;
+  const { query, mode } = (input && typeof input === 'object' ? input : {}) as { query?: unknown; mode?: unknown };
+  const text = cleanSearchName(typeof query === 'string' ? query : '').slice(0, INTERVIEW_SEARCH_MAX).trim();
+  if (!text) return { ok: true, data: { applications: [], more: false } };
+  try {
+    const found = await readApplicationSearch(ctx.client, ctx.orgId, {
+      name: text, alsoJob: true, ...(mode !== 'past' && { outcome: 'active' as const }),
+    });
+    return {
+      ok: true,
+      data: {
+        // Each field is named: an email, a CV path or a cover letter can never ride along.
+        applications: found.rows.map((a) => ({ id: a.id, name: a.candidate_name, job: a.job_title, stage: a.stage, outcome: a.outcome })),
+        more: found.more,
+      },
+    };
+  } catch (error) {
+    console.error('[hire/interview-picker] the read failed:', codeOf(error));
+    return { ok: false, error: INTERVIEW_PICKER_FAILED };
+  }
+}
 
 /**
  * Guard, then the capability (which parses with its own schema), then every
