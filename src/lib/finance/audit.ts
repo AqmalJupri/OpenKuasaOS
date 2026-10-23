@@ -25,7 +25,7 @@ export const AUDIT_ENTITY_TYPES: { value: AuditEntityType; label: string; path: 
   { value: 'finance_quotation', label: 'Quotation', path: '/finance/quotations' },
   { value: 'finance_credit_note', label: 'Credit note', path: '/finance/credit-notes' },
   { value: 'finance_supplier_bill', label: 'Supplier bill', path: '/finance/supplier-bills' },
-  { value: 'finance_supplier_credit_note', label: 'Supplier credit note', path: '/finance/supplier-bills' },
+  { value: 'finance_supplier_credit_note', label: 'Supplier credit note', path: '/finance/supplier-credit-notes' },
   { value: 'finance_payment', label: 'Payment', path: '/finance/banking' },
   { value: 'finance_transfer', label: 'Transfer', path: '/finance/banking' },
   { value: 'finance_expense', label: 'Expense', path: '/finance/expenses' },

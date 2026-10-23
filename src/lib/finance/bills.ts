@@ -64,6 +64,8 @@ export const BILL_MESSAGES = {
   hasPayments: 'This bill has payments. Void or delete them before voiding it.',
   // FIN32
   hasContra: 'A contra entry sets this off. Void the contra entry first.',
+  // FIN59 (20261123110000): a supplier credit note is against the bill, or credit is applied to it.
+  hasCredit: 'A supplier credit note is against this bill, or credit is applied to it. Void or delete that credit note, or take the credit off, on Supplier Credit Notes first.',
   empty: 'A bill needs at least one line with an amount.',
   numberTaken: 'That bill number is already used.',
   missing: 'The supplier or a product on this bill no longer exists.',
@@ -145,6 +147,7 @@ const REFUSALS: Record<string, string> = {
   FIN01: M.locked,
   FIN02: M.hasPayments,
   FIN32: M.hasContra,
+  FIN59: M.hasCredit,
   FIN10: M.empty,
   FIN11: M.gone,
   FIN21: M.order,
@@ -183,7 +186,12 @@ export type BillListRow = {
    * optional so that rows made by hand (samples, tests) need not.
    */
   set_off?: number;
-  /** total − paid − set_off. */
+  /**
+   * Issued supplier credit applied to the bill (20261123110000): not money out, and not in `paid`. The reads always
+   * give it; it is optional so that rows made by hand (samples, tests) need not.
+   */
+  credited?: number;
+  /** total − paid − set_off − credited. */
   balance: number;
   display_status: BillDisplayStatus;
   /** The purchase order the bill is raised against, with its number; null when it has none. */
@@ -243,7 +251,7 @@ export type BillDetail = BillListRow & { supplier_ref: string | null; notes: str
 export type SaveAndPostResult = FinResult<{ id: string; bill_no: string }> & { draftId?: string };
 
 const LIST_COLUMNS =
-  'id,bill_no,supplier_id,supplier_name,bill_date,due_date,total,paid,set_off,balance,display_status,' +
+  'id,bill_no,supplier_id,supplier_name,bill_date,due_date,total,paid,set_off,credited,balance,display_status,' +
   // The rate twice: as a number to show, and as exact text (PostgREST's cast) to work money from.
   'currency,fx_rate,fx_rate_text:fx_rate::text,fx_rate_source,fx_rate_date,fx_rate_provider,fx_rate_reference,' +
   'subtotal_myr,sst_myr,total_myr,balance_myr,paid_myr';
@@ -333,6 +341,7 @@ function toListRow(row: Record<string, unknown>, links: BillOrderLinks, categori
     total: Number(row.total),
     paid: Number(row.paid),
     set_off: Number(row.set_off ?? 0),
+    credited: Number(row.credited ?? 0),
     balance: Number(row.balance),
     currency: (row.currency as string | undefined) ?? BASE_CURRENCY,
     fx_rate: numberOrNull(row.fx_rate),

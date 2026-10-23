@@ -43,7 +43,7 @@ describe('the words', () => {
       journal: 'Manual journal', contra: 'Contra entry', fx_revaluation: 'FX revaluation',
     });
     expect(SOURCE_PATHS).toEqual({
-      invoice: '/finance/invoices', credit_note: '/finance/credit-notes', supplier_credit_note: '/finance/supplier-bills',
+      invoice: '/finance/invoices', credit_note: '/finance/credit-notes', supplier_credit_note: '/finance/supplier-credit-notes',
       payment_in: '/finance/cash-receipts', refund: '/finance/refunds', bill: '/finance/supplier-bills', payment_out: '/finance/payment-vouchers', expense: '/finance/expenses', transfer: '/finance/banking',
       opening: '/finance/banking', journal: null, contra: '/finance/contra-entries',
       fx_revaluation: '/finance/fx-revaluation',

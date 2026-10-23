@@ -111,6 +111,7 @@ export const RECEIPT_BILL_PATHS = [
   '/finance/customers-suppliers',
   '/finance/payment-vouchers',
   '/finance/banking',
+  '/finance/supplier-credit-notes',
   '/finance/chart-of-accounts',
   '/finance/journals',
   '/finance/reports',

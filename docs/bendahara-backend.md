@@ -1851,8 +1851,8 @@ can still be; a void one offers nothing.
 
 ## Supplier credit notes
 
-`20261123110000_bendahara_supplier_credit_notes` (tables and rules only; the
-screen is not built yet). A supplier credit note is one
+`20261123110000_bendahara_supplier_credit_notes`; the screen is
+`/finance/supplier-credit-notes` (see below). A supplier credit note is one
 `finance_supplier_credit_notes` row: one amount against one posted supplier bill,
 a `reason` (`overpaid`, `returned_goods`, `short_delivery`, `other`), the
 supplier's own reference, and a `status` of `draft`, `issued` or `void`.
@@ -1900,6 +1900,36 @@ credit is applied to it (`FIN59`).
 `credited` off `balance`. Payments, posted contra entries and applied credit together may not pass a
 bill's total (`FIN05`): `finance_supplier_credit_application_guard`, `finance_allocation_guard_credit`
 and `finance_contra_guard_credit` each count the other two.
+
+**The screen.** Supplier Credit Notes (Purchases menu) is modelled on Credit
+Notes: figures (credited this month, open credit, issued, drafts), credited over
+time and by reason, and the table with No. (and the supplier's own number),
+Date, Supplier, Against bill, Reason, Amount, Applied (with the bills its credit
+is on), Open and Status. `src/lib/finance/supplier-credit-notes.ts` reads
+`finance_supplier_credit_note_totals` and the applications (and the numbers of
+bills credit was moved to) and writes through the two functions above, a
+status update to void, a delete for a draft, and an insert or delete on
+`finance_supplier_credit_applications` to apply credit or take it off.
+- The form offers posted bills in ringgit only (the notes have no
+  `amount_myr`, and the guard does not check the bill's currency), labelled with
+  what each has left to credit: its total less its issued notes.
+- **Apply to a bill** offers the note's supplier's posted ringgit bills that
+  still owe something after payments not yet made, oldest due first, and not one
+  already holding this note's credit; the amount starts at the smaller of the
+  open credit and what the bill owes. One row per note and bill, so changing the
+  credit on a bill is taking it off and applying it again: each is one write.
+- **Take off BILL-…** is offered once per later bill. A note's credit on its own
+  bill is taken off only by voiding it.
+- Anyone who may write saves and deletes drafts; issuing, voiding, applying and
+  taking off are an owner's or admin's (the menu offers them to nobody else, and
+  the subtitle tells a member so). "Save and issue" by a member saves the draft
+  and says who issues it.
+
+Supplier Bills reads `credited` and shows it under the balance ("Credited RM
+x"), shows "RM y credit open from this supplier" on bills that still owe, offers
+**Credit note** on posted ringgit bills that can still be credited (the same
+form, that bill chosen), and words `FIN59`. Journals, ledger links and the
+audit trail now send a supplier credit note to this screen.
 
 ## SST settings and tax type
 

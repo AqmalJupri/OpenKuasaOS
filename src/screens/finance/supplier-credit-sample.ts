@@ -1,0 +1,58 @@
+import type { SupplierCreditNoteRow } from '@/lib/finance/supplier-credit-notes';
+
+/* ---- sample data (Rimba Ventures Sdn Bhd), shown when there is no database ---- */
+// Against the sample bills on Supplier Bills.
+
+export const SAMPLE_SUPPLIER_CREDITS: SupplierCreditNoteRow[] = [
+  {
+    id: 'sample-scn-3',
+    credit_note_no: null,
+    bill_id: 'sample-228',
+    bill_no: 'BILL-0228',
+    supplier_id: 'Syarikat Maju Jaya',
+    supplier_name: 'Syarikat Maju Jaya',
+    credit_date: '2026-10-09',
+    reason: 'short_delivery',
+    amount: 300,
+    supplier_ref: null,
+    notes: '2 cartons short on DO-5512',
+    status: 'draft',
+    applied: 0,
+    open_amount: 0,
+    applications: [],
+  },
+  {
+    id: 'sample-scn-2',
+    credit_note_no: 'SCN-0002',
+    bill_id: 'sample-230',
+    bill_no: 'BILL-0230',
+    supplier_id: 'Printhub Enterprise',
+    supplier_name: 'Printhub Enterprise',
+    credit_date: '2026-10-03',
+    reason: 'overpaid',
+    amount: 150,
+    supplier_ref: 'PH-CN-118',
+    notes: 'Paid twice for the banner reprint',
+    status: 'issued',
+    applied: 0,
+    open_amount: 150,
+    applications: [],
+  },
+  {
+    id: 'sample-scn-1',
+    credit_note_no: 'SCN-0001',
+    bill_id: 'sample-231',
+    bill_no: 'BILL-0231',
+    supplier_id: 'Lim Hardware Sdn Bhd',
+    supplier_name: 'Lim Hardware Sdn Bhd',
+    credit_date: '2026-10-06',
+    reason: 'returned_goods',
+    amount: 420,
+    supplier_ref: 'LH/CN/2026/044',
+    notes: null,
+    status: 'issued',
+    applied: 420,
+    open_amount: 0,
+    applications: [{ bill_id: 'sample-231', bill_no: 'BILL-0231', amount: 420 }],
+  },
+];

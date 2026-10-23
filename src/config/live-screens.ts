@@ -104,6 +104,7 @@ export const LIVE_SCREENS: ReadonlySet<string> = new Set([
   'finance/credit-notes',
   'finance/refunds',
   'finance/supplier-bills',
+  'finance/supplier-credit-notes',
   'finance/payments-out',
   'finance/cash-receipts',
   'finance/payment-vouchers',

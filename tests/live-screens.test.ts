@@ -49,6 +49,10 @@ describe('live screens', () => {
     expect(isSampleScreen('/finance/contra-entries')).toBe(false);
   });
 
+  it('counts Supplier Credit Notes as live', () => {
+    expect(isSampleScreen('/finance/supplier-credit-notes')).toBe(false);
+  });
+
   it('counts the Bendahara Dashboard and Overview as live', () => {
     expect(isSampleScreen('/finance/dashboard')).toBe(false);
     expect(isSampleScreen('/finance/assistant')).toBe(false);

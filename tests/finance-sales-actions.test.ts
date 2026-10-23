@@ -167,7 +167,7 @@ describe('each write action', () => {
     expect(ctl.calls.map((c) => c.fn)).toEqual(['voidPayment']);
     expect(ctl.revalidated).toEqual([
       '/finance/supplier-bills', '/finance/payments-out', '/finance/customers-suppliers', '/finance/payment-vouchers',
-      '/finance/banking', '/finance/chart-of-accounts', '/finance/journals', '/finance/reports',
+      '/finance/banking', '/finance/supplier-credit-notes', '/finance/chart-of-accounts', '/finance/journals', '/finance/reports',
     ]);
     expect(ctl.revalidated).not.toContain('/finance/cash-receipts');
   });

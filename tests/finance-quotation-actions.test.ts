@@ -72,7 +72,7 @@ const QUOTATIONS = ['/finance/quotations'];
 const QUOTATIONS_AND_INVOICES = ['/finance/quotations', '/finance/invoices'];
 const PURCHASES = [
   '/finance/supplier-bills', '/finance/payments-out', '/finance/customers-suppliers', '/finance/payment-vouchers',
-  '/finance/banking',
+  '/finance/banking', '/finance/supplier-credit-notes',
   // Every document that posts, voids or pays also moves the books.
   '/finance/chart-of-accounts', '/finance/journals', '/finance/reports',
 ];

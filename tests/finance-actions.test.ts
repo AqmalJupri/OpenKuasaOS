@@ -68,6 +68,8 @@ const actions = await import('@/app/(app)/finance/actions');
 const PATHS = [
   '/finance/supplier-bills', '/finance/payments-out', '/finance/customers-suppliers', '/finance/payment-vouchers',
   '/finance/banking',
+  // Supplier Credit Notes offers the bills credit can go on, with what each still owes: a payment changes that.
+  '/finance/supplier-credit-notes',
   // Every document that posts, voids or pays also moves the books.
   '/finance/chart-of-accounts', '/finance/journals', '/finance/reports',
 ];

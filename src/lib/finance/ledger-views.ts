@@ -48,8 +48,7 @@ export const SOURCE_LABELS: Record<LedgerSource, string> = {
 export const SOURCE_PATHS: Record<LedgerSource, string | null> = {
   invoice: '/finance/invoices',
   credit_note: '/finance/credit-notes',
-  // A supplier credit note has no screen of its own yet; it is found on its bill.
-  supplier_credit_note: '/finance/supplier-bills',
+  supplier_credit_note: '/finance/supplier-credit-notes',
   payment_in: '/finance/cash-receipts',
   refund: '/finance/refunds',
   bill: '/finance/supplier-bills',

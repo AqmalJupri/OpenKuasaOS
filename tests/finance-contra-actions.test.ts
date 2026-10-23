@@ -55,6 +55,7 @@ const PATHS = [
   '/finance/credit-notes',
   '/finance/refunds',
   '/finance/supplier-bills',
+  '/finance/supplier-credit-notes',
   '/finance/payments-out',
   '/finance/payment-vouchers',
   '/finance/customers-suppliers',

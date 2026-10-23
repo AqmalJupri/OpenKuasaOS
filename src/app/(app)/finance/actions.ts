@@ -77,6 +77,19 @@ import {
   saveCreditNoteInput,
   voidCreditNote,
 } from '@/lib/finance/credit-notes';
+import {
+  type SaveAndIssueSupplierCreditResult,
+  applySupplierCredit,
+  applySupplierCreditInput,
+  deleteSupplierCreditNote,
+  issueSupplierCreditNote,
+  saveSupplierCreditNote,
+  saveSupplierCreditNoteInput,
+  supplierCreditNoteIdInput,
+  unapplySupplierCredit,
+  unapplySupplierCreditInput,
+  voidSupplierCreditNote,
+} from '@/lib/finance/supplier-credit-notes';
 import { markExpensePaid, markExpensePaidInput } from '@/lib/finance/expense-payment';
 import {
   EXPENSE_MESSAGES,
@@ -340,6 +353,8 @@ const CONTACT_PATHS = [
   '/finance/quotations',
   '/finance/credit-notes',
   '/finance/refunds',
+  // A supplier credit note names its bill's supplier.
+  '/finance/supplier-credit-notes',
   '/finance/cash-receipts',
   '/finance/payment-vouchers',
   '/finance/expenses',
@@ -384,13 +399,21 @@ const PURCHASE_PATHS = [
   '/finance/payment-vouchers',
   // Banking lists every movement of money and the balance of the account it left.
   '/finance/banking',
+  // Supplier Credit Notes offers the bills credit can go on, with what each still owes.
+  '/finance/supplier-credit-notes',
   ...LEDGER_PATHS,
 ];
 // A bill saved, posted, voided or deleted changes the billed total of the purchase order it is raised against
 // (drafts count), so Purchase Orders refreshes with the purchase screens. A payment does not, so it keeps PURCHASE_PATHS.
 // Receipts Inbox names the bill a receipt is tied to: posting gives a draft its number, and deleting a draft sends
 // its receipt back to Unmatched. KEEP IN STEP with RECEIPT_BILL_PATHS in src/lib/finance/receipt-match.ts.
+// Supplier Credit Notes (in PURCHASE_PATHS) also offers the posted bills a credit note can go against.
 const BILL_PATHS = [...PURCHASE_PATHS, '/finance/purchase-orders', '/finance/receipts-inbox'];
+// A supplier credit note that is issued or voided, and credit applied or taken off, change what a bill owes (Supplier
+// Bills, the payment forms, Payable), an order's billed total, and, for issue and void, the books: BILL_PATHS covers
+// all of them, Supplier Credit Notes included. A draft moves nothing but its own list.
+const SUPPLIER_CREDIT_PATHS = BILL_PATHS;
+const SUPPLIER_CREDIT_DRAFT_PATHS = ['/finance/supplier-credit-notes'];
 // An invoice or a payment in changes what customers owe, which Customers & Suppliers shows as Receivable.
 // It also shows on the three follow-on screens: Quotations names the invoice made from a quotation, Credit
 // Notes names each note's invoice, and Refunds adds up what customers are in credit from the invoices.
@@ -899,6 +922,36 @@ export async function saveAndIssueCreditNoteAction(input: unknown): Promise<Save
   return saveThenPost(CREDIT_PATHS, saveCreditNoteInput, input, saveCreditNote, issueCreditNote, true);
 }
 
+/* ---- supplier credit notes ---------------------------------------------- */
+
+/** Creates a draft supplier credit note, or changes one. Anyone who may write. */
+export async function saveSupplierCreditNoteAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_DRAFT_PATHS, saveSupplierCreditNoteInput, input, saveSupplierCreditNote);
+}
+/** Issues a draft: numbered, in the books, and applied to its own bill up to what it owes. An owner or admin. */
+export async function issueSupplierCreditNoteAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_PATHS, supplierCreditNoteIdInput, input, issueSupplierCreditNote, SIGN_OFF);
+}
+/** Voids an issued note. Refused while its credit is on a later bill. An owner or admin. */
+export async function voidSupplierCreditNoteAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_PATHS, supplierCreditNoteIdInput, input, voidSupplierCreditNote, SIGN_OFF);
+}
+export async function deleteSupplierCreditNoteAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_DRAFT_PATHS, supplierCreditNoteIdInput, input, deleteSupplierCreditNote);
+}
+/** Saves the note as a draft, then issues it; a member gets the draft and is told who issues it. */
+export async function saveAndIssueSupplierCreditNoteAction(input: unknown): Promise<SaveAndIssueSupplierCreditResult> {
+  return saveThenPost(SUPPLIER_CREDIT_PATHS, saveSupplierCreditNoteInput, input, saveSupplierCreditNote, issueSupplierCreditNote, true);
+}
+/** Puts some of a note's open credit on a later bill of the same supplier. An owner or admin. */
+export async function applySupplierCreditAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_PATHS, applySupplierCreditInput, input, applySupplierCredit, SIGN_OFF);
+}
+/** Takes a note's credit off one bill. An owner or admin. */
+export async function unapplySupplierCreditAction(input: unknown) {
+  return run(SUPPLIER_CREDIT_PATHS, unapplySupplierCreditInput, input, unapplySupplierCredit, SIGN_OFF);
+}
+
 /* ---- refunds ----------------------------------------------------------- */
 
 /** Records a refund against one invoice or one credit note, paid out now or left pending. */
@@ -1199,8 +1252,8 @@ const CONTRA_SIGN_OFF = { signOff: true, signOffError: CONTRA_MESSAGES.needsSign
 const CONTRA_DRAFT_PATHS = ['/finance/contra-entries'];
 // Posting or voiding one changes what its invoices and bills owe, as a payment would, with no money moving. That
 // shows on Invoices and Supplier Bills (Balance, status, Set off), in every form that offers an invoice or a bill
-// for what it still owes (Payments In, Cash Receipts, Credit Notes, Refunds, Payments Out, Payment Vouchers), on
-// Customers & Suppliers (Receivable and Payable) and in the books (LEDGER_PATHS: one entry on Accounts Receivable
+// for what it still owes (Payments In, Cash Receipts, Credit Notes, Refunds, Payments Out, Payment Vouchers,
+// Supplier Credit Notes), on Customers & Suppliers (Receivable and Payable) and in the books (LEDGER_PATHS: one entry on Accounts Receivable
 // and Accounts Payable, and its reversal when voided). Banking is not here: no bank or cash account moves.
 const CONTRA_PATHS = [
   '/finance/contra-entries',
@@ -1210,6 +1263,7 @@ const CONTRA_PATHS = [
   '/finance/credit-notes',
   '/finance/refunds',
   '/finance/supplier-bills',
+  '/finance/supplier-credit-notes',
   '/finance/payments-out',
   '/finance/payment-vouchers',
   '/finance/customers-suppliers',

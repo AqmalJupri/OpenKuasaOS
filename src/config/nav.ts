@@ -345,6 +345,7 @@ export const PRODUCTS: Product[] = [
           { label: 'RFQs', slug: 'rfqs', icon: MessageSquare },
           { label: 'Purchase Orders', slug: 'purchase-orders', icon: ClipboardCheck },
           { label: 'Supplier Bills', slug: 'supplier-bills', icon: Building2 },
+          { label: 'Supplier Credit Notes', slug: 'supplier-credit-notes', icon: RotateCcw },
           { label: 'Payments Out', slug: 'payments-out', icon: ArrowUpRight },
           { label: 'Banking', slug: 'banking', icon: Landmark },
         ],

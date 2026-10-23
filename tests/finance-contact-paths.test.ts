@@ -49,6 +49,8 @@ describe('a change to a contact', () => {
         '/finance/quotations',
         '/finance/credit-notes',
         '/finance/refunds',
+        // A supplier credit note names its bill's supplier.
+        '/finance/supplier-credit-notes',
         // The payer on a receipt, the payee on a voucher and the vendor on an expense.
         '/finance/cash-receipts',
         '/finance/payment-vouchers',

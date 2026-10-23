@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Ban, Banknote, ChartColumn, Download, FileCheck, FileText, Pencil, PieChart, Plus, Search, Trash2 } from 'lucide-react';
+import { Ban, Banknote, ChartColumn, Download, FileCheck, FileText, Pencil, PieChart, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { BentoCard, BentoGrid, BentoStat } from '@/components/bento/bento';
 import { BarGroup, DonutStat, type Series } from '@/components/charts';
 import { AgentNoteMarker } from '@/components/finance/agent-note-marker';
@@ -10,6 +10,8 @@ import { ConfirmRow } from '@/components/finance/confirm-row';
 import { downloadCsv } from '@/components/finance/download-csv';
 import { PaymentFormCard, type RecordPayment } from '@/components/finance/payment-form-card';
 import { RowMenu, type RowMenuItem } from '@/components/finance/row-menu';
+import { SavedNoteCard } from '@/components/finance/saved-note-card';
+import { SupplierCreditNoteFormCard, type SupplierCreditFormActions } from '@/components/finance/supplier-credit-note-form-card';
 import { type AttachedReceiptLinkOf, AttachedReceipts } from '@/components/finance/attached-receipts';
 import { useFinanceAction } from '@/components/finance/use-finance-action';
 import { PageHeader } from '@/components/screen/page-header';
@@ -23,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { NoteCounts } from '@/lib/finance/agent/notes';
 import { localIsoDate } from '@/lib/finance/bill-math';
 import type { BillOrderOption } from '@/lib/finance/bill-form';
+import { BASE_CURRENCY } from '@/lib/finance/currencies';
 import type { BillDetail, BillDisplayStatus, BillListRow } from '@/lib/finance/bills';
 import type { FinanceContact } from '@/lib/finance/contacts';
 import { csvFileName } from '@/lib/finance/csv';
@@ -42,6 +45,8 @@ import {
 } from '@/lib/finance/purchase-views';
 import type { ReceiptsByDocument } from '@/lib/finance/receipt-match';
 import type { FinResult } from '@/lib/finance/result';
+import { type SupplierCreditSaved, creditableBills, supplierCreditSavedNote } from '@/lib/finance/supplier-credit-note-form';
+import type { SupplierCreditNoteRow } from '@/lib/finance/supplier-credit-notes';
 import { cn } from '@/lib/utils';
 
 export type BillActions = BillFormActions & {
@@ -51,6 +56,8 @@ export type BillActions = BillFormActions & {
   /** Reads one draft with its lines, for the Edit form. */
   get: (input: unknown) => Promise<FinResult<BillDetail>>;
   recordPayment: RecordPayment;
+  /** Saves (and issues) a supplier credit note from a bill's row. Absent where the screen offers none. */
+  creditNote?: SupplierCreditFormActions;
 };
 
 /** What only a person who may edit is given: the actions, and what the two forms offer. */
@@ -69,6 +76,8 @@ export type BillsWriter = {
   accounts: FinanceAccount[];
   /** Every payment row, to know what scheduled payments already hold of each bill. */
   payments: PaymentOutRow[];
+  /** Every supplier credit note, to know what each bill can still be credited. */
+  creditNotes?: SupplierCreditNoteRow[];
 };
 
 const SUPPLIER_SERIES: Series[] = [{ key: 'value', label: 'Outstanding (RM)', color: 'var(--chart-1)' }];
@@ -90,6 +99,9 @@ type Open =
   | { kind: 'post'; bill: BillListRow }
   | { kind: 'void'; bill: BillListRow }
   | { kind: 'delete'; bill: BillListRow }
+  | { kind: 'credit'; bill: BillListRow; today: string }
+  /** A supplier credit note has just been saved from a bill's row. */
+  | { kind: 'credited'; saved: SupplierCreditSaved }
   | null;
 
 const billName = (bill: BillListRow) => `${bill.bill_no ?? 'the draft bill'} from ${bill.supplier_name}`;
@@ -98,6 +110,7 @@ export function BillsView({
   rows,
   view,
   held,
+  openCredit = {},
   receipts,
   receiptLinkOf,
   writer,
@@ -112,6 +125,8 @@ export function BillsView({
   view: BillsViewData;
   /** What payments not yet paid already hold of each bill, by bill id, from `heldByBill`. */
   held: Record<string, number>;
+  /** Open supplier credit, by supplier id: shown on that supplier's bills that still owe something. */
+  openCredit?: Record<string, number>;
   writer?: BillsWriter;
   /** Notes the agent left, by document id, for the ids shown. Absent with no database or when they could not be read. */
   agentNotes?: NoteCounts;
@@ -130,6 +145,8 @@ export function BillsView({
   const foreign = billsHaveForeign(rows);
   const billCount = view.byStatus.reduce((n, s) => n + s.value, 0);
   const payable = writer ? payableBills(rows, writer.payments) : [];
+  // The bills a supplier credit note can still go against (posted, in ringgit, not fully credited).
+  const creditable = writer?.actions.creditNote ? creditableBills(rows, writer.creditNotes ?? []) : [];
   const asking = open && (open.kind === 'post' || open.kind === 'void' || open.kind === 'delete') ? open : null;
   // A form holds what was typed, so nothing else opens over it: it is closed with its own Cancel first.
   const formOpen = open !== null && !asking;
@@ -187,6 +204,9 @@ export function BillsView({
         },
       ];
     }
+    const creditItem: RowMenuItem[] = creditable.some((b) => b.id === bill.id)
+      ? [{ label: 'Credit note', icon: RotateCcw, opens: true, onSelect: () => ask({ kind: 'credit', bill, today: now() }) }]
+      : [];
     if (bill.display_status === 'pending' || bill.display_status === 'overdue') {
       // A bill whose balance is already covered by scheduled payments can take no more.
       const canPay = payable.some((b) => b.id === bill.id);
@@ -194,11 +214,13 @@ export function BillsView({
         ...(canPay
           ? [{ label: 'Pay', icon: Banknote, opens: true, onSelect: () => ask({ kind: 'pay', bill, today: now() }) }]
           : []),
+        ...creditItem,
         voidItem,
       ];
     }
     // Voiding a paid bill is refused while its payments stand; the choice stays, and the refusal says why.
-    if (bill.display_status === 'paid') return [voidItem];
+    // A paid bill is the overpaid case for a supplier credit note.
+    if (bill.display_status === 'paid') return [...creditItem, voidItem];
     return [];
   };
 
@@ -315,6 +337,34 @@ export function BillsView({
             </Button>
           </div>
         </BentoCard>
+      );
+    }
+    if (open.kind === 'credit' && actions.creditNote) {
+      return (
+        <SupplierCreditNoteFormCard
+          key={open.bill.id}
+          bills={rows}
+          notes={writer.creditNotes ?? []}
+          today={open.today}
+          billId={open.bill.id}
+          actions={actions.creditNote}
+          onClose={close}
+          onSaved={(saved) => ask({ kind: 'credited', saved })}
+        />
+      );
+    }
+    if (open.kind === 'credited') {
+      const said = supplierCreditSavedNote(open.saved);
+      return (
+        <SavedNoteCard
+          title={said.title}
+          subtitle={said.subtitle}
+          href="/finance/supplier-credit-notes"
+          linkLabel="Supplier Credit Notes"
+          onClose={close}
+        >
+          {said.lead}
+        </SavedNoteCard>
       );
     }
     if (open.kind === 'pay') {
@@ -507,6 +557,16 @@ export function BillsView({
                         {/* A balance that dropped with no money out says why: a contra entry set part of it off. */}
                         {(b.set_off ?? 0) > 0 ? (
                           <span className="block text-xs text-muted-foreground">Set off {rm(b.set_off ?? 0)}</span>
+                        ) : null}
+                        {/* The same for supplier credit applied to it. */}
+                        {(b.credited ?? 0) > 0 ? (
+                          <span className="block text-xs text-muted-foreground">Credited {rm(b.credited ?? 0)}</span>
+                        ) : null}
+                        {/* Credit the supplier gave on another bill that could go on this one. Credit goes only on ringgit bills. */}
+                        {(b.display_status === 'pending' || b.display_status === 'overdue') &&
+                        b.currency === BASE_CURRENCY &&
+                        (openCredit[b.supplier_id] ?? 0) > 0 ? (
+                          <span className="block text-xs text-muted-foreground">{rm(openCredit[b.supplier_id])} credit open from this supplier</span>
                         ) : null}
                       </TableCell>
                       <TableCell>

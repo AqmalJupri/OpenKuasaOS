@@ -96,6 +96,7 @@ import RefundsScreen from '@/screens/finance/refunds';
 import ExpensesScreen from '@/screens/finance/expenses';
 import ReceiptsInboxScreen from '@/screens/finance/receipts-inbox';
 import SupplierBillsScreen from '@/screens/finance/supplier-bills';
+import SupplierCreditNotesScreen from '@/screens/finance/supplier-credit-notes';
 import PaymentsOutScreen from '@/screens/finance/payments-out';
 import BankingScreen from '@/screens/finance/banking';
 import EInvoiceScreen from '@/screens/finance/e-invoice';
@@ -203,6 +204,7 @@ export const SCREENS: Record<string, ComponentType> = {
   'finance/expenses': ExpensesScreen,
   'finance/receipts-inbox': ReceiptsInboxScreen,
   'finance/supplier-bills': SupplierBillsScreen,
+  'finance/supplier-credit-notes': SupplierCreditNotesScreen,
   'finance/payments-out': PaymentsOutScreen,
   'finance/banking': BankingScreen,
   'finance/e-invoice': EInvoiceScreen,
