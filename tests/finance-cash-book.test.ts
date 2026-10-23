@@ -23,6 +23,8 @@ const expenseRow = {
   id: 'e1', expense_date: '2026-10-04', category_id: 'c3', category_name: 'Rent', vendor_id: null, vendor_name: 'Landlord',
   amount: '4500.00', sst_amount: '0.00', notes: null, status: 'approved', display_status: 'paid', paid: '4500.00', held: '0.00',
   method: 'bank_transfer', paid_on: '2026-10-04', updated_at: '2026-10-04T09:00:00.123456+00:00',
+  // 20261125160000 (expense send back).
+  sent_back_at: null, sent_back_reason: null, in_books: true,
 };
 
 describe('listCashReceipts', () => {

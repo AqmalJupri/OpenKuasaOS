@@ -87,6 +87,8 @@ import {
   rejectExpense,
   saveExpense,
   saveExpenseInput,
+  sendBackExpense,
+  sendBackExpenseInput,
 } from '@/lib/finance/expenses';
 import { type FxDefault, fxRateForInput } from '@/lib/finance/fx-rates';
 import {
@@ -999,6 +1001,13 @@ export async function approveExpenseAction(input: unknown) {
 /** Rejects a pending expense, or an approved one that no payment stands against: an owner or admin only. */
 export async function rejectExpenseAction(input: unknown) {
   return run(EXPENSE_PATHS, expenseDecisionInput, input, rejectExpense, EXPENSE_DECIDE);
+}
+/** Sends an approved expense, with no payment against it, back to pending with a reason: an owner or admin only. */
+export async function sendBackExpenseAction(input: unknown) {
+  return run(EXPENSE_PATHS, sendBackExpenseInput, input, sendBackExpense, {
+    signOff: true,
+    signOffError: EXPENSE_MESSAGES.sendBackNeedsDecider,
+  });
 }
 /** Deletes a pending or rejected expense. */
 export async function deleteExpenseAction(input: unknown) {

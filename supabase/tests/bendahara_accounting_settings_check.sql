@@ -1,10 +1,12 @@
--- Bendahara accounting settings check. Run it after 20261125140000_bendahara_accounting_settings.sql, in the same
+-- Bendahara accounting settings check. Run it after 20261125140000_bendahara_accounting_settings.sql and
+-- 20261125160000_bendahara_expense_send_back.sql (which changes how the lock judges an expense), in the same
 -- transaction for a dry run, or by itself once applied. It leaves nothing behind either way: the block always ends
 -- with RAISE, so every row and the helper function below are rolled back. Read the message:
 --   BENDAHARA_ACCOUNTING_SETTINGS_CHECK PASSED ...   or   ... FAILED: <what went wrong>
 --
 --   begin;
 --   \i supabase/migrations/20261125140000_bendahara_accounting_settings.sql
+--   \i supabase/migrations/20261125160000_bendahara_expense_send_back.sql
 --   \i supabase/tests/bendahara_accounting_settings_check.sql
 --   rollback;
 --
@@ -20,7 +22,9 @@
 --   * the books lock, through the real RPCs: with books locked to 31 Dec 1999, every posting path refuses a 1999 date
 --     (FIN63) and takes today; drafts dated 1999 are still saved and edited; a posted 1999 document is not voided; a
 --     document dated after the lock is; with the lock at today a void (dated today) is refused even for a later
---     document; with no lock everything is as before;
+--     document; with no lock everything is as before; an approved expense dated in the locked period is rejected
+--     with its reversal dated today, and refused with the lock at today (20261125160000 judges an expense by the day
+--     its entry posts);
 --   * a workspace with a lock and posted rows is deleted (as its owner and through delete_test_org), and a person who
 --     posted an FX revaluation inside the locked period can still be deleted.
 --
@@ -623,9 +627,13 @@ begin
   update public.finance_settings set lock_date = lock1, year_end_month = 3 where org_id = org;
 
   -- ==== locked again to 31 Dec 1999: leaving the ledger, opening rates, deleting accounts ===========================
-  -- An approved expense dated in the locked period is not rejected (its entry would leave the closed period).
-  fails := fails || public.bendahara_check_try('an approved expense dated in the locked period rejected', 'FIN63',
+  -- An approved expense dated in the locked period is rejected (20261125160000): its entry stays in the closed period
+  -- and its reversal is dated today, after the lock. With the lock at today it is refused (below).
+  fails := fails || public.bendahara_check_try('an approved expense dated in the locked period rejected', 'ok',
     format('update public.finance_expenses set status = %L, updated_at = now() where id = %L', 'rejected', e_ok));
+  select count(*) into n from public.finance_ledger_lines
+   where source_id = e_ok and entry_key = 'expense:' || e_ok || ':reverse' and entry_date = kl;
+  if n <> 2 then fails := fails || format('an approved expense dated in the locked period rejected: %s reversal lines dated today, expected 2', n); end if;
   -- The rate of an opening balance dated in the locked period: changed is refused; the same rate marked as Bank
   -- Negara's for a day (the source and its date, not the rate) is not a ledger change.
   reset role;
@@ -683,7 +691,7 @@ begin
   if n <> 0 then fails := fails || format('settings log: %s rows with the wrong actor, category, audience or id', n); end if;
 
   -- ==== the lock at today's UTC date: the ledger dates a void's reversal by UTC ===================================
-  -- (After the log comparison: this change of lock date is logged but not in the list above.)
+  -- (After the log comparison: these changes of lock date are logged but not in the list above.)
   perform set_config('request.jwt.claims', owner_claims, true);
   set local role authenticated;
   -- The lock date in the message has no leading zero: 5 Dec 1999.
@@ -700,6 +708,12 @@ begin
   update public.finance_settings set lock_date = (now() at time zone 'UTC')::date where org_id = org;
   fails := fails || public.bendahara_check_try('lock at today (UTC): void of a later invoice', 'FIN63',
     format('update public.finance_invoices set status = %L, updated_at = now() where id = %L', 'void', inv_future));
+  -- The lock at today in Malaysia: an approved expense dated in the old period is not rejected, since its reversal
+  -- would be dated today (the TNB claim, approved when the books were reopened).
+  update public.finance_settings set lock_date = kl where org_id = org;
+  fails := fails || public.bendahara_check_try('lock at today: an approved expense dated in the locked period rejected', 'FIN63',
+    format('update public.finance_expenses set status = %L, updated_at = now() where org_id = %L and vendor_name = %L and status = %L',
+      'rejected', org, 'TNB', 'approved'));
   reset role;
 
   -- ==== a person who posted inside the locked period is deleted ==================================================

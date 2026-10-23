@@ -167,7 +167,7 @@ describe('the Expenses page while the card is open', () => {
 });
 
 describe('the Categories button on Expenses', () => {
-  const expenseActions = { save: never, approve: never, reject: never, remove: never, pay: never };
+  const expenseActions = { save: never, approve: never, reject: never, sendBack: never, remove: never, pay: never };
   const member: ExpensesWriter = { actions: expenseActions, canDecide: false, contacts: [], categories: [], accounts: [] };
   const owner: ExpensesWriter = { ...member, canDecide: true, categoryAdmin: { rows: ROWS, actions } };
   const render = (writer?: ExpensesWriter) =>

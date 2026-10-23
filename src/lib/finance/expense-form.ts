@@ -146,29 +146,32 @@ export function expenseLeft(row: ExpenseRow): number {
   return Math.max(0, Math.round((row.amount - row.paid - row.held) * 100) / 100);
 }
 
-export type ExpenseAction = 'edit' | 'approve' | 'reject' | 'delete' | 'pay';
+export type ExpenseAction = 'edit' | 'approve' | 'reject' | 'sendBack' | 'delete' | 'pay';
 
 /**
  * What an expense's row menu offers, by its status and by whether the person
  * may decide (an owner or admin). The database's rules, so nothing is offered
  * that it would refuse:
- *  - pending: anyone who may write edits or deletes it, whoever entered it;
+ *  - pending: anyone who may write edits or deletes it, whoever entered it,
+ *    unless it has been in the books (approved once), which is never deleted;
  *    an owner or admin also approves or rejects it;
  *  - rejected: edited (which sends it for approval again) or deleted;
  *    it is not approved as it stands;
  *  - approved, for an owner or admin: marked paid while anything is left of
- *    it (paying is a sign-off), and rejected while nothing is paid and
- *    nothing is held by a payment, which is its only way back; nobody edits
- *    or deletes it;
+ *    it (paying is a sign-off), and, while nothing is paid and nothing is held
+ *    by a payment, sent back to pending to be corrected, or rejected; nobody
+ *    edits or deletes it;
  *  - approved, for anyone else, and paid in full: nothing.
  */
 export function expenseActions(row: ExpenseRow, canDecide: boolean): ExpenseAction[] {
-  if (row.status === 'pending') return canDecide ? ['edit', 'approve', 'reject', 'delete'] : ['edit', 'delete'];
-  if (row.status === 'rejected') return ['edit', 'delete'];
+  // An expense that has been in the books is kept (FIN68): it is never offered for deleting.
+  const remove: ExpenseAction[] = row.in_books ? [] : ['delete'];
+  if (row.status === 'pending') return canDecide ? ['edit', 'approve', 'reject', ...remove] : ['edit', ...remove];
+  if (row.status === 'rejected') return ['edit', ...remove];
   if (!canDecide) return [];
   const actions: ExpenseAction[] = [];
   if (expenseLeft(row) > 0) actions.push('pay');
-  if (row.paid === 0 && row.held === 0) actions.push('reject');
+  if (row.paid === 0 && row.held === 0) actions.push('sendBack', 'reject');
   return actions;
 }
 
@@ -232,7 +235,7 @@ export type QuestionPart = { text: string; strong?: boolean };
  * The question asked in an expense's row before it is approved, rejected or deleted, in the words the owner
  * approved. The figures are the row's, as it is now.
  */
-export function expenseQuestion(kind: 'approve' | 'reject' | 'delete', row: ExpenseRow): QuestionPart[] {
+export function expenseQuestion(kind: 'approve' | 'reject' | 'sendBack' | 'delete', row: ExpenseRow): QuestionPart[] {
   const who = (before: string, after: string): QuestionPart[] => [
     { text: before },
     { text: rm(row.amount), strong: true },
@@ -243,13 +246,27 @@ export function expenseQuestion(kind: 'approve' | 'reject' | 'delete', row: Expe
   if (kind === 'approve') {
     return who(
       'Approve the expense of ',
-      `, dated ${displayDate(row.expense_date)}? It is then locked: it can be paid, and only rejected while nothing has been paid.`,
+      `, dated ${displayDate(row.expense_date)}? It is then locked: it can be paid, and only sent back or rejected while nothing has been paid.`,
     );
   }
   if (kind === 'reject') {
+    if (row.status === 'approved') {
+      return who(
+        'Reject this approved expense of ',
+        '? Its entry in the books is reversed today. It stays in the list as Rejected, and whoever entered it can edit it and send it again.',
+      );
+    }
     return who(
-      row.status === 'approved' ? 'Reject this approved expense of ' : 'Reject the expense of ',
-      '? It stays in the list as Rejected. Whoever entered it can edit it and send it again, or delete it.',
+      'Reject the expense of ',
+      row.in_books
+        ? '? It stays in the list as Rejected. Whoever entered it can edit it and send it again.'
+        : '? It stays in the list as Rejected. Whoever entered it can edit it and send it again, or delete it.',
+    );
+  }
+  if (kind === 'sendBack') {
+    return who(
+      'Send back the approved expense of ',
+      '? It goes back to Pending to be corrected, and its entry in the books is reversed today. Approved again, it is a new entry.',
     );
   }
   return who('Delete the expense of ', '? This cannot be undone.');

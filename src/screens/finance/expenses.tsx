@@ -6,6 +6,7 @@ import {
   rejectExpenseAction,
   renameCategoryAction,
   saveExpenseAction,
+  sendBackExpenseAction,
   setCategoryActiveAction,
 } from '@/app/(app)/finance/actions';
 import { receiptLinkAction } from '@/app/(app)/finance/receipt-inbox-actions';
@@ -27,6 +28,7 @@ const ACTIONS: ExpenseActions = {
   save: saveExpenseAction,
   approve: approveExpenseAction,
   reject: rejectExpenseAction,
+  sendBack: sendBackExpenseAction,
   remove: deleteExpenseAction,
   pay: markExpensePaidAction,
 };

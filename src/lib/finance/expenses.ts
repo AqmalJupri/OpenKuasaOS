@@ -8,8 +8,12 @@
  * sends it for approval again. Approving and rejecting are an owner's or
  * admin's: one change of status, which the expense's own guard checks (FIN14
  * for anyone else) and signs with who decided and when. An approved expense
- * is locked; it can be rejected while no payment stands against it (FIN02).
- * It is paid by a payment voucher. org_id comes from the context.
+ * is locked; while no payment stands against it (FIN02) it can be rejected, or
+ * sent back to pending with a reason (`finance_send_back_expense`) to be
+ * corrected and approved again. Each approval is kept, as posted, in
+ * `finance_expense_approvals`, and leaves the books by a reversal on the day it
+ * was sent back or rejected; an expense that has been in the books is never
+ * deleted (FIN68). It is paid by a payment voucher. org_id comes from the context.
  */
 import { z } from 'zod';
 import { LINE_MESSAGES, isoDate, optionalText, ringgitAmount } from './document-lines';
@@ -62,6 +66,11 @@ export type ExpenseRow = {
    * back, so that what is decided is the expense the person was shown.
    */
   updated_at: string;
+  /** While pending because an owner or admin sent it back: when, and why. Absent from sample data. */
+  sent_back_at?: string | null;
+  sent_back_reason?: string | null;
+  /** Approved at least once, so it has entries in the books and is never deleted (FIN68). Absent from sample data. */
+  in_books?: boolean;
 };
 
 export const EXPENSE_MESSAGES = {
@@ -107,6 +116,14 @@ export const EXPENSE_MESSAGES = {
   missing: 'The category or the vendor on this expense no longer exists.',
   // 23503 from deleting: a payment that was voided still names the expense, and a voided payment is kept.
   keptForPayment: 'This expense has a voided payment against it, so it is kept.',
+  // FIN68 from deleting: it was approved once, so its entries, and it, stay in the books.
+  inBooks: 'This expense has been in the books, so it is kept and cannot be deleted.',
+  // Sending back: the reason box.
+  reason: 'Say why the expense is sent back.',
+  // FIN02 from sending back.
+  sendBackHasPayments: 'This expense has a payment against it, paid or still to be paid, so it cannot be sent back.',
+  // FIN14 from sending back.
+  sendBackNeedsDecider: 'Only an owner or admin can send back an expense. Ask one of them to do this.',
   // 23514: a check constraint. The schema refuses everything that could meet one, so only a direct call does.
   invalid: 'Check the vendor, the amount and the SST, then try again.',
 } as const;
@@ -161,6 +178,16 @@ export const saveExpenseInput = z
 
 export const expenseIdInput = z.object({ id }, { error: M.gone });
 
+/** Sending an approved expense back: which one, its `updated_at` as the screen was given it, and why. */
+export const sendBackExpenseInput = z.object(
+  {
+    id,
+    updated_at: z.iso.datetime({ offset: true, error: M.changed }),
+    reason: z.string({ error: M.reason }).trim().min(1, M.reason).max(200, M.tooLong),
+  },
+  { error: M.gone },
+);
+
 /**
  * Approving or rejecting an expense: which one, and what the screen showed of it. `updated_at` is kept as the text
  * the database gave (microseconds and offset included). The database does not move `updated_at` on every direct
@@ -209,8 +236,16 @@ const REJECT_REFUSALS: Record<string, string> = {
   [FIN_SIGN_OFF]: M.needsDecider,
   [PG_FORBIDDEN]: NOT_ALLOWED,
 };
+const SEND_BACK_REFUSALS: Record<string, string> = {
+  FIN02: M.sendBackHasPayments,
+  FIN69: M.reason,
+  [FIN_SIGN_OFF]: M.sendBackNeedsDecider,
+  [PG_CHECK]: M.tooLong,
+  [PG_FORBIDDEN]: NOT_ALLOWED,
+};
 const DELETE_REFUSALS: Record<string, string> = {
   FIN01: M.cannotDelete,
+  FIN68: M.inBooks,
   [PG_FOREIGN_KEY]: M.keptForPayment,
   [PG_FORBIDDEN]: NOT_ALLOWED,
 };
@@ -224,7 +259,7 @@ function expenseWriteFailed(fnName: string, error: unknown, refusals: Record<str
 
 const EXPENSE_COLUMNS =
   'id,expense_date,category_id,category_name,vendor_id,vendor_name,amount,sst_amount,notes,status,display_status,' +
-  'paid,held,method,paid_on,updated_at';
+  'paid,held,method,paid_on,updated_at,sent_back_at,sent_back_reason,in_books';
 
 /** Every expense in the workspace, newest first, read a page at a time. */
 export async function listExpenses(ctx: FinanceWriteContext): Promise<ExpenseRow[]> {
@@ -350,7 +385,34 @@ export async function rejectExpense(
   return decide(ctx, 'rejectExpense', expenseDecisionInput.parse(input), 'rejected', REJECT_REFUSALS);
 }
 
-/** Deletes a pending or rejected expense. An approved one is refused (FIN01): it is rejected first. */
+/**
+ * Sends an approved expense back to pending, with a reason, as the person was shown it (`updated_at`). An owner or
+ * admin only (FIN14), and only while no payment stands against it (FIN02). Its entry is reversed today; once
+ * corrected and approved again it is a new entry. When nothing matched, one more read tells why.
+ */
+export async function sendBackExpense(
+  ctx: FinanceWriteContext,
+  input: z.input<typeof sendBackExpenseInput>,
+): Promise<FinResult<{ id: string }>> {
+  const { id: expenseId, updated_at, reason } = sendBackExpenseInput.parse(input);
+  const { data, error } = await ctx.client.rpc('finance_send_back_expense', {
+    target_org: ctx.orgId,
+    target_expense: expenseId,
+    seen_updated_at: updated_at,
+    reason,
+  });
+  if (error) return expenseWriteFailed('sendBackExpense', error, SEND_BACK_REFUSALS);
+  if (data) return { ok: true, data: { id: data as string } };
+  const still = await ctx.client.from('finance_expenses').select('id,status').eq('id', expenseId).eq('org_id', ctx.orgId).maybeSingle();
+  if (still.error) return expenseWriteFailed('sendBackExpense', still.error, SEND_BACK_REFUSALS);
+  if (!still.data) return { ok: false, error: M.gone };
+  const now = (still.data as { status?: ExpenseStatus }).status;
+  if (now === 'rejected') return { ok: false, error: M.alreadyRejected };
+  if (now === 'pending') return { ok: false, error: M.pendingAgain };
+  return { ok: false, error: M.changed };
+}
+
+/** Deletes a pending or rejected expense. An approved one is refused (FIN01): it is rejected first. One that was ever approved is kept (FIN68). */
 export async function deleteExpense(
   ctx: FinanceWriteContext,
   input: z.input<typeof expenseIdInput>,

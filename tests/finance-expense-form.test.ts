@@ -163,8 +163,13 @@ describe('what a row offers', () => {
     expect(expenseActions(rejected, true)).toEqual(['edit', 'delete']);
     expect(expenseActions(rejected, false)).toEqual(['edit', 'delete']);
   });
+  it('an expense that has been in the books is never offered for deleting (FIN68)', () => {
+    expect(expenseActions(row({ in_books: true }), true)).toEqual(['edit', 'approve', 'reject']);
+    expect(expenseActions(row({ in_books: true }), false)).toEqual(['edit']);
+    expect(expenseActions(row({ status: 'rejected', display_status: 'rejected', in_books: true }), true)).toEqual(['edit']);
+  });
   it('an approved expense: an owner or admin marks it paid while anything is left, and rejects it while no payment stands against it', () => {
-    expect(expenseActions(approved(), true)).toEqual(['pay', 'reject']);
+    expect(expenseActions(approved(), true)).toEqual(['pay', 'sendBack', 'reject']);
     expect(expenseActions(approved(), false)).toEqual([]);
     // All of it is held by a payment still to be paid: nothing is left to pay, and it cannot be rejected.
     expect(expenseActions(approved({ held: 120 }), true)).toEqual([]);
@@ -204,7 +209,7 @@ describe('the questions asked in a row', () => {
   it('asks before approving, in the owner-approved words', () => {
     const parts = expenseQuestion('approve', row());
     expect(text(parts)).toBe(
-      'Approve the expense of RM 120.00 to Kedai Ali, dated 05 Oct 2026? It is then locked: it can be paid, and only rejected while nothing has been paid.',
+      'Approve the expense of RM 120.00 to Kedai Ali, dated 05 Oct 2026? It is then locked: it can be paid, and only sent back or rejected while nothing has been paid.',
     );
     expect(strong(parts)).toEqual(['RM 120.00', 'Kedai Ali']);
   });
@@ -213,7 +218,10 @@ describe('the questions asked in a row', () => {
       'Reject the expense of RM 120.00 to Kedai Ali? It stays in the list as Rejected. Whoever entered it can edit it and send it again, or delete it.',
     );
     expect(text(expenseQuestion('reject', approved()))).toBe(
-      'Reject this approved expense of RM 120.00 to Kedai Ali? It stays in the list as Rejected. Whoever entered it can edit it and send it again, or delete it.',
+      'Reject this approved expense of RM 120.00 to Kedai Ali? Its entry in the books is reversed today. It stays in the list as Rejected, and whoever entered it can edit it and send it again.',
+    );
+    expect(text(expenseQuestion('reject', row({ in_books: true })))).toBe(
+      'Reject the expense of RM 120.00 to Kedai Ali? It stays in the list as Rejected. Whoever entered it can edit it and send it again.',
     );
     expect(strong(expenseQuestion('reject', row()))).toEqual(['RM 120.00', 'Kedai Ali']);
   });

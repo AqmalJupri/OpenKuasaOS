@@ -536,14 +536,22 @@ testWithSupabase('purchases side: bills by category, one payment for two bills, 
     [bank, 0, 40],
   ]);
 
-  // A rejected expense and a scheduled payment produce nothing.
+  // A rejected expense produces nothing it did not undo: approved as the owner saved it, then rejected, its entry
+  // is reversed (20261125160000), and a scheduled payment produces nothing.
   const refused = await o.c.rpc('finance_save_expense', {
     target_org: o.orgId,
     expense: { expense_date: today(), category_id: o.rent, vendor_name: 'Landlord', amount: 77 },
   });
   expect(refused.error, refused.error?.message).toBeNull();
   expect((await o.c.from('finance_expenses').update({ status: 'rejected' }).eq('id', refused.data).select('id')).error).toBeNull();
-  await expectNoEntry(o, `expense:${refused.data}`);
+  await expectEntry(o, `expense:${refused.data}`, [
+    [rent, 77, 0],
+    [accrued, 0, 77],
+  ]);
+  await expectEntry(o, `expense:${refused.data}:reverse`, [
+    [rent, 0, 77],
+    [accrued, 77, 0],
+  ]);
   const third = await postedBill(o);
   const scheduled = await payBills(o, [{ bill_id: third, amount: 132.5 }], 'scheduled');
   expect(scheduled.error, scheduled.error?.message).toBeNull();
@@ -1006,6 +1014,128 @@ testWithSupabase('accrued expenses: an approved expense is owed on its own accou
   expect(now[accrued]).toBe(sen(33));
   expect(now[accrued]).toBe(await owedOnExpenses(o));
   expect(now[payable]).toBe(sen(100));
+});
+
+// ---- 9b ----------------------------------------------------------------------
+
+/** Today in Malaysia, YYYY-MM-DD: the day an expense is sent back, rejected or approved again. */
+const malaysianToday = () => new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
+
+testWithSupabase('an expense sent back: what was posted is reversed today, the corrected one is a new entry, and once paid it stays', async () => {
+  const o = await ownerWithOrg(`Ledger send back ${Date.now()}`);
+  const ch = await chart(o);
+  const accrued = ch.system('accrued_expenses').id;
+  const rent = ch.ofCategory(o.rent).id;
+  const purchases = ch.ofCategory(o.purchases).id;
+  const sendBack = (id: string, seen: string, reason: string) =>
+    o.c.rpc('finance_send_back_expense', { target_org: o.orgId, target_expense: id, seen_updated_at: seen, reason });
+  const shown = async (id: string) => {
+    const { data, error } = await o.c.from('finance_expense_totals').select('status, updated_at, sent_back_at, sent_back_reason').eq('id', id).single();
+    expect(error, error?.message).toBeNull();
+    return data!;
+  };
+
+  // RM 100 of Rent, approved as the owner saves it.
+  const saved = await saveExpense(o, 100);
+  expect(saved.error, saved.error?.message).toBeNull();
+  const id = saved.data as string;
+  let row = await shown(id);
+  expect(row).toMatchObject({ status: 'approved', sent_back_at: null, sent_back_reason: null });
+
+  // Never without a reason: not through the function, not by a plain update.
+  expect((await sendBack(id, row.updated_at, '  ')).error?.code).toBe('FIN69');
+  expect((await o.c.from('finance_expenses').update({ status: 'pending' }).eq('id', id).select('id')).error?.code).toBe('FIN69');
+  // Not as it was shown before a change: nothing matches.
+  const stale = await sendBack(id, '2000-01-01T00:00:00Z', 'Wrong category');
+  expect(stale.error, stale.error?.message).toBeNull();
+  expect(stale.data).toBeNull();
+
+  const sent = await sendBack(id, row.updated_at, '  Wrong category ');
+  expect(sent.error, sent.error?.message).toBeNull();
+  expect(sent.data).toBe(id);
+  row = await shown(id);
+  expect(row).toMatchObject({ status: 'pending', sent_back_reason: 'Wrong category' });
+  expect(row.sent_back_at).not.toBeNull();
+  await expectEntry(o, `expense:${id}`, [
+    [rent, 100, 0],
+    [accrued, 0, 100],
+  ]);
+  const reversal = await expectEntry(o, `expense:${id}:reverse`, [
+    [rent, 0, 100],
+    [accrued, 100, 0],
+  ]);
+  for (const line of reversal) {
+    expect(line).toMatchObject({ entry_date: malaysianToday(), description: 'Sent back: Expense to Landlord', source: 'expense', source_id: id });
+  }
+  let now = await balances(o);
+  expect(now[rent]).toBe(0);
+  expect(now[accrued]).toBe(0);
+  expect(await owedOnExpenses(o)).toBe(0);
+
+  // Corrected to RM 80 of Purchases and saved by the owner: approved again, a new entry on today's date.
+  const again = await o.c.rpc('finance_save_expense', {
+    target_org: o.orgId,
+    expense: { id, expense_date: today(-40), category_id: o.purchases, vendor_name: 'Landlord', amount: 80 },
+  });
+  expect(again.error, again.error?.message).toBeNull();
+  expect((await shown(id))).toMatchObject({ status: 'approved', sent_back_reason: null });
+  const second = await expectEntry(o, `expense:${id}:2`, [
+    [purchases, 80, 0],
+    [accrued, 0, 80],
+  ]);
+  // Never written into a past month: the day it was approved, not the expense date.
+  for (const line of second) expect(line.entry_date).toBe(malaysianToday());
+  await expectNoEntry(o, `expense:${id}:2:reverse`);
+  now = await balances(o);
+  expect(now[rent]).toBe(0);
+  expect(now[purchases]).toBe(sen(80));
+  expect(now[accrued]).toBe(sen(80));
+  expect(now[accrued]).toBe(await owedOnExpenses(o));
+
+  // The approvals, as posted, one row each.
+  const { data: rounds, error: roundsErr } = await o.c
+    .from('finance_expense_approvals')
+    .select('round_no, amount, category_id, reversed_as, reason')
+    .eq('expense_id', id)
+    .order('round_no');
+  expect(roundsErr, roundsErr?.message).toBeNull();
+  expect(rounds).toEqual([
+    { round_no: 1, amount: 100, category_id: o.rent, reversed_as: 'sent_back', reason: 'Wrong category' },
+    { round_no: 2, amount: 80, category_id: o.purchases, reversed_as: null, reason: null },
+  ]);
+  // Nobody writes them by hand.
+  expect((await o.c.from('finance_expense_approvals').update({ amount: 1 }).eq('expense_id', id).select('round_no')).data ?? []).toEqual([]);
+
+  // The send-back is in the audit trail, with its reason.
+  const { data: logged } = await o.c.from('activity_log').select('action, details').eq('entity_id', id).eq('details->>event', 'sent_back');
+  expect(logged).toEqual([{ action: 'Sent back an expense', details: expect.objectContaining({ event: 'sent_back', reason: 'Wrong category' }) }]);
+
+  // It has been in the books, so it is not deleted, even once it is pending again.
+  row = await shown(id);
+  expect((await sendBack(id, row.updated_at, 'Duplicate')).error).toBeNull();
+  expect((await o.c.from('finance_expenses').delete().eq('id', id).select('id')).error?.code).toBe('FIN68');
+  await expectEntry(o, `expense:${id}:2:reverse`, [
+    [purchases, 0, 80],
+    [accrued, 80, 0],
+  ]);
+
+  // Approved and paid in part: it is not sent back.
+  const third = await o.c.rpc('finance_save_expense', {
+    target_org: o.orgId,
+    expense: { id, expense_date: today(), category_id: o.rent, vendor_name: 'Landlord', amount: 50 },
+  });
+  expect(third.error, third.error?.message).toBeNull();
+  const paid = await payExpenses(o, [{ expense_id: id, amount: 10 }]);
+  expect(paid.error, paid.error?.message).toBeNull();
+  row = await shown(id);
+  expect((await sendBack(id, row.updated_at, 'Too late')).error?.code).toBe('FIN02');
+  await expectEntry(o, `expense:${id}:3`, [
+    [rent, 50, 0],
+    [accrued, 0, 50],
+  ]);
+  now = await balances(o);
+  expect(now[accrued]).toBe(sen(40));
+  expect(now[accrued]).toBe(await owedOnExpenses(o));
 });
 
 // ---- 10 -----------------------------------------------------------------------

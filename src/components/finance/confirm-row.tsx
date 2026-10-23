@@ -18,6 +18,7 @@ export function ConfirmRow({
   onCancel,
   tone = 'destructive',
   icon: Icon = Trash2,
+  disabled = false,
 }: {
   colSpan: number;
   /** Names the question for screen readers, e.g. "Delete Lim Hardware". */
@@ -34,6 +35,8 @@ export function ConfirmRow({
   tone?: 'destructive' | 'default';
   /** The icon on the confirm button; a bin unless given. */
   icon?: LucideIcon;
+  /** True while the question's own field is not filled in: the confirm button does nothing. */
+  disabled?: boolean;
 }) {
   const destructive = tone === 'destructive';
   return (
@@ -65,10 +68,10 @@ export function ConfirmRow({
             type="button"
             variant={destructive ? 'destructive' : 'default'}
             size="sm"
-            aria-disabled={pending}
+            aria-disabled={pending || disabled}
             className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
             onClick={() => {
-              if (!pending) onConfirm();
+              if (!pending && !disabled) onConfirm();
             }}
           >
             <Icon className="size-4" />

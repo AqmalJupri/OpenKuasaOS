@@ -8,6 +8,8 @@ import {
   rejectExpense,
   saveExpense,
   saveExpenseInput,
+  sendBackExpense,
+  sendBackExpenseInput,
 } from '@/lib/finance/expenses';
 import { type FinanceAnswer, type FinanceCall, fakeFinance } from './setup/fake-finance';
 
@@ -326,6 +328,47 @@ describe('approveExpense, rejectExpense', () => {
   });
 });
 
+describe('sendBackExpense', () => {
+  const asked = { id: EXPENSE, updated_at: SEEN, reason: '  Duplicate of the 3 Oct claim ' };
+  it('asks for a reason, trimmed and short', () => {
+    const first = (v: unknown) => sendBackExpenseInput.safeParse(v).error?.issues[0]?.message;
+    expect(first({ ...asked, reason: '   ' })).toBe('Say why the expense is sent back.');
+    expect(first({ ...asked, reason: undefined })).toBe('Say why the expense is sent back.');
+    expect(first({ ...asked, reason: 'x'.repeat(201) })).toBe('That is too long. Keep it to 200 characters or fewer.');
+    expect(first({ ...asked, updated_at: '2026-10-12' })).toBe(CHANGED);
+    expect(sendBackExpenseInput.parse(asked).reason).toBe('Duplicate of the 3 Oct claim');
+  });
+  it('calls the function with the expense as it was shown, and the reason', async () => {
+    const { ctx, calls } = fakeFinance({ data: EXPENSE, error: null });
+    expect(await sendBackExpense(ctx, asked)).toEqual({ ok: true, data: { id: EXPENSE } });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ kind: 'rpc', name: 'finance_send_back_expense' });
+    expect(calls[0].args).toEqual({ target_org: 'org-1', target_expense: EXPENSE, seen_updated_at: SEEN, reason: 'Duplicate of the 3 Oct claim' });
+  });
+  it('reads why when nothing matched', async () => {
+    const answer = (status: unknown) =>
+      fakeFinance((call: FinanceCall) => (call.kind === 'rpc' ? { data: null, error: null } : { data: status, error: null })).ctx;
+    expect(await sendBackExpense(answer(null), asked)).toEqual({ ok: false, error: 'That expense no longer exists.' });
+    expect(await sendBackExpense(answer({ id: EXPENSE, status: 'pending' }), asked)).toEqual({ ok: false, error: 'This expense is pending again.' });
+    expect(await sendBackExpense(answer({ id: EXPENSE, status: 'rejected' }), asked)).toEqual({ ok: false, error: 'This expense has already been rejected.' });
+    expect(await sendBackExpense(answer({ id: EXPENSE, status: 'approved' }), asked)).toEqual({ ok: false, error: CHANGED });
+  });
+  it('words each refusal', async () => {
+    const cases: [string, string][] = [
+      ['FIN02', 'This expense has a payment against it, paid or still to be paid, so it cannot be sent back.'],
+      ['FIN69', 'Say why the expense is sent back.'],
+      ['FIN14', 'Only an owner or admin can send back an expense. Ask one of them to do this.'],
+      ['42501', 'You do not have permission to make changes here.'],
+      ['XX000', 'That change could not be saved. Please try again.'],
+    ];
+    for (const [code, sentence] of cases) {
+      const { ctx, calls } = fakeFinance({ data: null, error: { code } });
+      expect(await sendBackExpense(ctx, asked), code).toEqual({ ok: false, error: sentence });
+      expect(calls).toHaveLength(1);
+    }
+  });
+});
+
 describe('deleteExpense', () => {
   it('deletes one row of the workspace', async () => {
     const { ctx, calls } = fakeFinance({ data: { id: EXPENSE }, error: null });
@@ -342,6 +385,10 @@ describe('deleteExpense', () => {
     expect(await deleteExpense(refused('23503'), { id: EXPENSE })).toEqual({
       ok: false,
       error: 'This expense has a voided payment against it, so it is kept.',
+    });
+    expect(await deleteExpense(refused('FIN68'), { id: EXPENSE })).toEqual({
+      ok: false,
+      error: 'This expense has been in the books, so it is kept and cannot be deleted.',
     });
     expect(await deleteExpense(refused('42501'), { id: EXPENSE })).toEqual({ ok: false, error: 'You do not have permission to make changes here.' });
     expect(await deleteExpense(fakeFinance({ data: null, error: null }).ctx, { id: EXPENSE })).toEqual({ ok: false, error: 'That expense no longer exists.' });

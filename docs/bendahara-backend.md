@@ -625,10 +625,67 @@ edit must itself set its status back to pending, as `finance_save_expense`
 does: an update that leaves it rejected is refused (`FIN01`).
 
 An approved expense is an entry in the books: through the view
-`finance_ledger_lines` (nothing is stored for it) it is a debit to its
-category's ledger account and a credit to Accrued Expenses, for the whole
-amount, SST included. Rejecting it removes that entry again, with no reversing
-entry and no trace in Journals.
+`finance_ledger_lines` it is a debit to its category's ledger account and a
+credit to Accrued Expenses, for the whole amount, SST included. Each approval
+is kept as it was posted in `finance_expense_approvals`
+(`20261125160000_bendahara_expense_send_back.sql`): one row per approval with
+its amount, SST, category and the date it is in the books, written only by the
+trigger `finance_expense_approvals_write`; members read it. The first approval
+is in the books on the expense date (key `expense:<id>`), a later one on the
+Malaysian day it was approved, or the expense date if that is later
+(`expense:<id>:<round>`).
+
+### Sending an approved expense back
+
+An owner or admin sends back an approved expense that no payment stands against
+(`finance_send_back_expense(target_org, target_expense, seen_updated_at,
+reason)`): it returns to pending, is corrected, and is approved again as any
+pending expense is. The reason is required (`FIN69`, also for a plain update of
+status), at most 200 characters, and shown on the pending row
+(`finance_expense_totals.sent_back_at` and `sent_back_reason`) until the
+expense is approved again or rejected (`finance_expense_approvals.reason_closed_at`):
+edited back to pending after a rejection, it no longer shows the old reason. A payment
+against it, paid or still to be paid, refuses it (`FIN02`); anyone else is
+`FIN14`. When no approved expense with that `updated_at` is found the function
+answers null, and the app reads whether it is gone, pending again or rejected.
+
+The approval that leaves the books, by a send-back or by rejecting an approved
+expense, gets a reversal of what it posted, not of what the expense says now:
+key `…:reverse`, dated the Malaysian day it left (never before the approval it
+undoes), described "Sent back: " or "Rejected: " and the original's
+description. So an expense approved at RM 100 under Rent, sent back, and
+approved again at RM 80 under Utilities reverses RM 100 of Rent on the
+send-back day and posts RM 80 of Utilities on the new approval day. Before
+this file, rejecting an approved expense took its entry out of the books with
+no reversal. An expense that has been in the books is never deleted (`FIN68`):
+it is rejected instead. `finance_expense_totals.in_books` says which expenses
+those are, and the Expenses screen offers Delete only on the others. The audit trail logs "Sent back an expense" (event
+`sent_back`, with the reason) and "Rejected an approved expense".
+`supabase/tests/bendahara_expense_send_back_check.sql` proves it.
+
+The books lock (`private.finance_period_lock`, restated in the same file)
+judges an expense by the day its entry posts, not by its expense date alone.
+Both use one rule, `private.finance_expense_posts_on`. A first approval posts
+on the expense date, so it is refused (`FIN63`) when that date is on or before
+the lock date. A later approval posts on the later of the expense date and the
+Malaysian day it was approved, and a send-back or rejection posts its reversal
+on the later of the approval's day and today in Malaysia; each is refused only
+when that day is on or before the lock date. So with the books locked to
+yesterday, an expense dated last month can still be sent back, rejected or
+approved again: the old entry stays in the closed period and the new lines are
+dated today. With the lock at today, all three are refused. Moving an expense
+between pending and rejected has no entry, so the lock never refuses it.
+
+Two things read live, not as posted. The description of an expense's lines
+("Expense to <vendor>") takes the vendor's name as the expense has it now, so
+correcting the vendor of a sent-back expense renames the earlier approval's
+lines too; their amounts, category and dates do not change. And the Expenses
+screen's charts group expenses by `expense_date`, while an expense approved
+again after a send-back is in the books on its approval day: in a month's
+total the two can differ for an expense corrected in a later month. Expense reversals
+use the Malaysian day, while every void (invoices, credit notes, supplier bills
+and credit notes, payments, transfers, contras) is dated by the UTC date of
+`voided_at`.
 
 An expense's `amount` and `sst_amount` cannot be NaN
 (`finance_expenses_amount_not_nan`, `finance_expenses_sst_amount_not_nan`,
