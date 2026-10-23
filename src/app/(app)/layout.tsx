@@ -14,10 +14,11 @@ export default async function AppLayout({
 }) {
   let viewer = await getViewer();
 
-  // A live pending-proposals count for the AI Agents nav badge. A failed count must
-  // never break the app shell, so it falls back to zero.
+  // Each product's AI Agents nav item gets its own live pending-suggestions count. A failed
+  // count must never break the app shell, so it falls back to zero.
   const badges: NavBadges = {
     pendingProposals: 0,
+    pendingCrmProposals: 0,
     unreadAnnouncements: 0,
     awaitingAcknowledgement: 0,
     waitingLeave: 0,
@@ -32,11 +33,13 @@ export default async function AppLayout({
       const supabase = await createClient();
       // Lekiu: does this member manage a team? That decides which approval pages the nav shows them. Owners and
       // admins see those pages by role. A failed read is "no team" (readMyTeam never throws).
-      const [pending, team] = await Promise.all([
-        countPendingProposals(supabase, viewer.orgId).catch(() => 0),
+      const [pending, pendingCrm, team] = await Promise.all([
+        countPendingProposals(supabase, viewer.orgId, 'reach').catch(() => 0),
+        countPendingProposals(supabase, viewer.orgId, 'crm').catch(() => 0),
         can(viewer.role, 'approve') ? Promise.resolve([] as string[]) : readMyTeam(supabase, viewer.orgId),
       ]);
       badges.pendingProposals = pending;
+      badges.pendingCrmProposals = pendingCrm;
       if (team.length > 0) viewer = { ...viewer, managesTeam: true };
     } catch {
       // keep the defaults
