@@ -44,6 +44,7 @@ export type AgentRunAsset = {
 };
 
 export const WEEKLY_STUDIO = 'weekly-studio';
+export const CRM_FOCUS = 'crm-focus';
 
 /**
  * Thrown when a run cannot start because the workspace already has one in
@@ -93,6 +94,8 @@ export type AgentProposal = {
   title: string;
   detail: string | null;
   rationale: string | null;
+  /** The check that raised it (Kasturi's focus checks); null for Jebat's rows. */
+  check_key: string | null;
   status: ProposalStatus;
   result: unknown;
   created_at: string;
