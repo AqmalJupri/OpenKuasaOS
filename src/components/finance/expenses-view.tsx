@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Ban, Banknote, Check, Download, FileText, Pencil, PieChart, Plus, Search, Tags, Trash2, TrendingUp, Undo2 } from 'lucide-react';
 import { BentoCard, BentoGrid, BentoStat } from '@/components/bento/bento';
 import { AreaTrend, DonutStat, type Series } from '@/components/charts';
+import { AgentNoteMarker } from '@/components/finance/agent-note-marker';
 import { type CategoryActions, CategoriesCard } from '@/components/finance/categories-card';
 import { ConfirmRow } from '@/components/finance/confirm-row';
 import { downloadCsv } from '@/components/finance/download-csv';
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { LiveDot } from '@/components/ui/live-dot';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { NoteCounts } from '@/lib/finance/agent/notes';
 import { localIsoDate } from '@/lib/finance/bill-math';
 import {
   EXPENSE_STATUS_LABELS,
@@ -121,6 +123,7 @@ export function ExpensesView({
   receipts,
   receiptLinkOf,
   writer,
+  agentNotes,
 }: {
   /** Every expense, newest first; pending and rejected ones included. */
   rows: ExpenseRow[];
@@ -133,6 +136,8 @@ export function ExpensesView({
   /** False for sample data, which keeps its own fixed date. */
   followClock?: boolean;
   writer?: ExpensesWriter;
+  /** Notes the agent left, by document id, for the ids shown. Absent with no database or when they could not be read. */
+  agentNotes?: NoteCounts;
 }) {
   const today = useLocalToday(serverToday, followClock);
   const [query, setQuery] = useState('');
@@ -568,7 +573,10 @@ export function ExpensesView({
                   return (
                     <TableRow key={e.id} className={cn('group/row', e.display_status === 'rejected' && 'opacity-60')}>
                       <TableCell className="whitespace-nowrap text-muted-foreground">{displayDate(e.expense_date)}</TableCell>
-                      <TableCell className="min-w-24 whitespace-normal break-words font-medium">{e.category_name}</TableCell>
+                      <TableCell className="min-w-24 whitespace-normal break-words font-medium">
+                        {e.category_name}
+                        <AgentNoteMarker note={agentNotes?.[e.id]} />
+                      </TableCell>
                       {/* A long vendor name wraps; it is never cut off behind a tooltip. */}
                       <TableCell className="min-w-28 max-w-72 whitespace-normal break-words">
                         {e.vendor_name}
