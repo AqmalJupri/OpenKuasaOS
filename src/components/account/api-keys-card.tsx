@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReadOnlyNotice } from '@/components/account/settings-form';
+import { ActionNotice } from '@/components/account/action-notice';
+import { formatDate } from '@/components/account/dates';
 import { CopyButton } from '@/components/account/mcp-setup-card';
 import { createKeyAction, revokeKeyAction } from '@/app/account/developers/actions';
 
@@ -21,17 +23,15 @@ export type KeyListing = {
   lastUsedAt: string | null;
 };
 
-const DATE = new Intl.DateTimeFormat('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-
 function when(iso: string | null): string {
   if (!iso) return 'Never used';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '—' : `Last used ${DATE.format(date)}`;
+  const date = formatDate(iso);
+  return date ? `Last used ${date}` : '—';
 }
 
 function created(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : `Made ${DATE.format(date)}`;
+  const date = formatDate(iso);
+  return date ? `Made ${date}` : '';
 }
 
 /**
@@ -106,8 +106,14 @@ function CreateKeyForm({ needsCode, keys }: { needsCode: boolean; keys: KeyListi
   );
 }
 
-function RevokeKeyButton({ id, name }: { id: string; name: string }) {
-  const [state, formAction, pending] = useActionState(revokeKeyAction, undefined);
+function RevokeKeyButton({ id, name, onNotice }: { id: string; name: string; onNotice: (text: string | null) => void }) {
+  const [state, formAction, pending] = useActionState(async (prev: Awaited<ReturnType<typeof revokeKeyAction>>, formData: FormData) => {
+    onNotice(null);
+    const next = await revokeKeyAction(prev, formData);
+    // The row is dropped from the list once the key is revoked, so the list keeps the notice.
+    if (next?.notice) onNotice(next.notice);
+    return next;
+  }, undefined);
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -139,9 +145,19 @@ function RevokeKeyButton({ id, name }: { id: string; name: string }) {
 }
 
 function KeyRows({ keys, showOwner, canRevoke }: { keys: KeyListing[] | null; showOwner: boolean; canRevoke: boolean }) {
+  const [notice, setNotice] = useState<string | null>(null);
   if (keys === null) return <p className="grid min-h-16 place-items-center text-sm text-muted-foreground">Couldn&apos;t load</p>;
-  if (keys.length === 0) return <p className="text-sm text-muted-foreground">No keys yet.</p>;
+  if (keys.length === 0) {
+    return (
+      <div className="space-y-2">
+        <ActionNotice text={notice} />
+        <p className="text-sm text-muted-foreground">No keys yet.</p>
+      </div>
+    );
+  }
   return (
+    <div className="space-y-2">
+    <ActionNotice text={notice} />
     <ul className="space-y-1">
       {keys.map((key) => (
         <li
@@ -156,10 +172,11 @@ function KeyRows({ keys, showOwner, canRevoke }: { keys: KeyListing[] | null; sh
                 .join(' · ')}
             </p>
           </div>
-          {canRevoke ? <RevokeKeyButton id={key.id} name={key.name} /> : null}
+          {canRevoke ? <RevokeKeyButton id={key.id} name={key.name} onNotice={setNotice} /> : null}
         </li>
       ))}
     </ul>
+    </div>
   );
 }
 

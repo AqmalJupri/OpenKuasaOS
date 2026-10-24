@@ -4,6 +4,8 @@ import { useActionState, useState } from 'react';
 import { Plug } from 'lucide-react';
 import { BentoCard } from '@/components/bento/bento';
 import { Button } from '@/components/ui/button';
+import { ActionNotice } from '@/components/account/action-notice';
+import { formatDate } from '@/components/account/dates';
 import { ReadOnlyNotice } from '@/components/account/settings-form';
 import { disconnectAppAction } from '@/app/account/developers/actions';
 
@@ -16,15 +18,19 @@ export type ConnectedApp = {
   workspace: string | null;
 };
 
-const DATE = new Intl.DateTimeFormat('en-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-
 function connectedOn(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : `Connected ${DATE.format(date)}`;
+  const date = formatDate(iso);
+  return date ? `Connected ${date}` : '';
 }
 
-function DisconnectButton({ clientId, name }: { clientId: string; name: string }) {
-  const [state, formAction, pending] = useActionState(disconnectAppAction, undefined);
+function DisconnectButton({ clientId, name, onNotice }: { clientId: string; name: string; onNotice: (text: string | null) => void }) {
+  const [state, formAction, pending] = useActionState(async (prev: Awaited<ReturnType<typeof disconnectAppAction>>, formData: FormData) => {
+    onNotice(null);
+    const next = await disconnectAppAction(prev, formData);
+    // The row is dropped from the list once the app is disconnected, so the card keeps the notice.
+    if (next?.notice) onNotice(next.notice);
+    return next;
+  }, undefined);
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -55,7 +61,7 @@ function DisconnectButton({ clientId, name }: { clientId: string; name: string }
   );
 }
 
-function AppList({ apps }: { apps: ConnectedApp[] }) {
+function AppList({ apps, onNotice }: { apps: ConnectedApp[]; onNotice: (text: string | null) => void }) {
   return (
     <ul className="space-y-1">
       {apps.map((app) => (
@@ -71,7 +77,7 @@ function AppList({ apps }: { apps: ConnectedApp[] }) {
                 .join(' · ')}
             </p>
           </div>
-          <DisconnectButton clientId={app.clientId} name={app.name} />
+          <DisconnectButton clientId={app.clientId} name={app.name} onNotice={onNotice} />
         </li>
       ))}
     </ul>
@@ -92,6 +98,7 @@ export function ConnectedAppsCard({
   readOnly: boolean;
   comingSoon?: boolean;
 }) {
+  const [notice, setNotice] = useState<string | null>(null);
   return (
     <BentoCard
       title="Connected apps"
@@ -99,6 +106,7 @@ export function ConnectedAppsCard({
       icon={Plug}
       className="col-span-2 md:col-span-12"
     >
+      {readOnly ? null : <ActionNotice text={notice} />}
       {readOnly ? (
         comingSoon ? (
           <p className="text-sm text-muted-foreground">Coming soon.</p>
@@ -111,7 +119,7 @@ export function ConnectedAppsCard({
             <p className="text-sm text-muted-foreground">
               New sign-in connections aren&apos;t available. You can still disconnect these.
             </p>
-            <AppList apps={apps} />
+            <AppList apps={apps} onNotice={setNotice} />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Coming soon.</p>
@@ -121,7 +129,7 @@ export function ConnectedAppsCard({
       ) : apps.length === 0 ? (
         <p className="text-sm text-muted-foreground">No apps connected yet.</p>
       ) : (
-        <AppList apps={apps} />
+        <AppList apps={apps} onNotice={setNotice} />
       )}
     </BentoCard>
   );
