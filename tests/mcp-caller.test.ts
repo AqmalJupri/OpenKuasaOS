@@ -454,10 +454,111 @@ describe('resolveCaller', () => {
     expect(await resolveCaller(req(`Bearer ${oauthToken(ALICE, { client_id: 'claude-desktop', aal: 'aal1' })}`), 'Claude')).toMatchObject({
       ok: true,
     });
-    // An API key is not affected.
+    // An API key whose session was raised to aal2 is not affected.
     factorsOf.set(ALICE, [{ id: 'f1', factor_type: 'totp', status: 'verified' }]);
-    keyResolvesTo(ALICE, ORG_A, 'alice-at-1');
+    keyResolvesTo(ALICE, ORG_A, jwt({ sub: ALICE, role: 'authenticated', aal: 'aal2' }));
     expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true });
+  });
+
+  test('a key made before two-step sign-in was turned on is told to make a new key, before anything is read', async () => {
+    const outdated = {
+      ok: false,
+      status: 401,
+      message: 'Two-step sign-in was turned on after this key was made. Make a new key in Account → Developers.',
+    };
+    factorsOf.set(ALICE, [{ id: 'f1', factor_type: 'totp', status: 'verified' }]);
+    // An aal1 session, and one with no aal claim at all.
+    const aal1 = jwt({ sub: ALICE, role: 'authenticated', aal: 'aal1' });
+    keyResolvesTo(ALICE, ORG_A, aal1);
+    // The membership and role reads would fail: the message comes first.
+    failing.add('org_members');
+    failing.add('profiles');
+    expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toEqual(outdated);
+    expect(getUserCalls).toEqual([aal1]);
+    tokens.set('alice-at-2', ALICE);
+    resolveApiKey.mockResolvedValue({ ok: true, id: 'key-row-2', userId: ALICE, orgId: ORG_A, accessToken: 'alice-at-2' });
+    expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toEqual(outdated);
+    failing.clear();
+
+    // An unverified enrolment is not a second factor.
+    factorsOf.set(ALICE, [{ id: 'f2', factor_type: 'totp', status: 'unverified' }]);
+    tokens.set('alice-at-3', ALICE);
+    resolveApiKey.mockResolvedValue({ ok: true, id: 'key-row-3', userId: ALICE, orgId: ORG_A, accessToken: 'alice-at-3' });
+    expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true, caller: { orgId: ORG_A } });
+  });
+
+  test('an aal1 key for a person without a second factor resolves as before', async () => {
+    const aal1 = jwt({ sub: ALICE, role: 'authenticated', aal: 'aal1' });
+    keyResolvesTo(ALICE, ORG_A, aal1);
+    expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({
+      ok: true,
+      caller: { userId: ALICE, orgId: ORG_A, role: 'member', credentialId: 'key:key-row-1' },
+    });
+    expect(getUserCalls).toEqual([aal1]);
+  });
+
+  test('an aal2 key asks the auth server nothing', async () => {
+    factorsOf.set(ALICE, [{ id: 'f1', factor_type: 'totp', status: 'verified' }]);
+    keyResolvesTo(ALICE, ORG_A, jwt({ sub: ALICE, role: 'authenticated', aal: 'aal2' }));
+    expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true, caller: { orgId: ORG_A } });
+    expect(getUserCalls).toEqual([]);
+  });
+
+  test('an aal1 key whose factors cannot be checked resolves as before, and logs nothing secret', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      // The auth server refuses the session (a hiccup): the check only changes wording, so it never blocks.
+      resolveApiKey.mockResolvedValue({ ok: true, id: 'key-row-1', userId: ALICE, orgId: ORG_A, accessToken: 'unknown-at' });
+      const out = await resolveCaller(req(`Bearer ${KEY}`), 'Claude');
+      // Neither "try again" nor the two-step message: a failed check passes the key through unchanged.
+      expect(out).not.toMatchObject({ status: 503 });
+      expect(JSON.stringify(out)).not.toContain('Two-step sign-in was turned on');
+      expect(getUserCalls).toEqual(['unknown-at']);
+      // Not cached: the next request asks again.
+      await resolveCaller(req(`Bearer ${KEY}`), 'Claude');
+      expect(getUserCalls).toEqual(['unknown-at', 'unknown-at']);
+      // With the auth server answering, the key resolves as before.
+      keyResolvesTo(ALICE, ORG_A, 'alice-at-1');
+      getUserCalls.length = 0;
+      expect(JSON.stringify(logged.mock.calls)).toContain('second factor check failed');
+      expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true, caller: { orgId: ORG_A } });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain('unknown-at');
+      expect(JSON.stringify(logged.mock.calls)).not.toContain('invalid JWT');
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('a key\'s second-factor answer is kept for a minute', async () => {
+    const outdated = {
+      ok: false,
+      status: 401,
+      message: 'Two-step sign-in was turned on after this key was made. Make a new key in Account → Developers.',
+    };
+    let now = Date.parse('2026-10-24T00:00:00Z');
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      const aal1 = jwt({ sub: ALICE, role: 'authenticated', aal: 'aal1' });
+      keyResolvesTo(ALICE, ORG_A, aal1);
+      expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true });
+      expect(getUserCalls).toEqual([aal1]);
+
+      // Within 60s: no call, even though a factor was turned on meanwhile.
+      factorsOf.set(ALICE, [{ id: 'f1', factor_type: 'totp', status: 'verified' }]);
+      now += 59_000;
+      expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toMatchObject({ ok: true });
+      expect(getUserCalls).toEqual([aal1]);
+
+      // After 60s it checks again, and a cached "true" keeps giving the message without a call.
+      now += 2_000;
+      expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toEqual(outdated);
+      expect(getUserCalls).toEqual([aal1, aal1]);
+      now += 30_000;
+      expect(await resolveCaller(req(`Bearer ${KEY}`), 'Claude')).toEqual(outdated);
+      expect(getUserCalls).toEqual([aal1, aal1]);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   test('first-use binding never happens when the connection already has a row', async () => {
