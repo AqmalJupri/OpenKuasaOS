@@ -35,6 +35,7 @@ import { buildFinanceOverview, type FinanceOverview } from '@/lib/finance/overvi
 import { displayDate } from '@/lib/finance/view-helpers';
 import { todayInMalaysia } from '@/lib/people/dates';
 import { cn } from '@/lib/utils';
+import { loadServerGreeting } from '@/lib/greeting/server';
 
 /* ---- mock data (Rimba Ventures Sdn Bhd · 201901027453) ------------ */
 
@@ -176,6 +177,9 @@ function overdueAge(days: number): string {
 /* ------------------------------------------------------------------ */
 
 export default async function OverviewScreen() {
+  // Started first so the greeting loads alongside the screen's own reads.
+  const greetingPromise = loadServerGreeting('finance');
+  void greetingPromise.catch(() => {});
   const supabase = await createClient();
   const {
     data: { user },
@@ -222,7 +226,7 @@ export default async function OverviewScreen() {
       <BentoGrid>
         {/* Ask-Bendahara hero */}
         <BentoCard tone="primary" className="col-span-2 md:col-span-12">
-          <AskBendaharaHero prompts={PROMPTS} isDemo={isDemo} />
+          <AskBendaharaHero prompts={PROMPTS} isDemo={isDemo} greeting={await greetingPromise} />
         </BentoCard>
 
         {/* KPI row */}

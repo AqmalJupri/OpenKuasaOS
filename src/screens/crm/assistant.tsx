@@ -27,6 +27,7 @@ import { formatRM, formatWinRate } from '@/lib/crm/deal-stats';
 import { loadCrmOverview, type CrmOverviewModel } from '@/lib/crm/overview';
 import { cn } from '@/lib/utils';
 import { AskKasturiHero } from './ask-kasturi-hero';
+import { loadServerGreeting } from '@/lib/greeting/server';
 
 /* ---- sample data (Rimba Ventures Sdn Bhd), shown when no database is configured ---- */
 
@@ -116,6 +117,9 @@ function Muted({ children }: { children: React.ReactNode }) {
 /* ------------------------------------------------------------------ */
 
 export default async function OverviewScreen() {
+  // Started first so the greeting loads alongside the screen's own reads.
+  const greetingPromise = loadServerGreeting('crm');
+  void greetingPromise.catch(() => {});
   // The workspace's own figures. With no database configured the screen shows
   // the sample; a workspace whose figures could not be read shows that instead.
   const isSample = !hasSupabaseEnv();
@@ -156,7 +160,7 @@ export default async function OverviewScreen() {
       <BentoGrid>
         {/* Ask-Kasturi hero */}
         <BentoCard tone="primary" className="col-span-2 md:col-span-12">
-          <AskKasturiHero prompts={PROMPTS} isDemo={isDemo} />
+          <AskKasturiHero prompts={PROMPTS} isDemo={isDemo} greeting={await greetingPromise} />
         </BentoCard>
 
         {/* KPI row: headline figures only, there is no history to compare them with */}
