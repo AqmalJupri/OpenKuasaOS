@@ -25,10 +25,11 @@ import { cn } from '@/lib/utils';
 const NO_PRODUCT = 'none';
 
 /**
- * The lines of a bill, invoice, quotation or RFQ, with live totals. On a phone each line
- * is a card with its fields stacked two to a row; from the md breakpoint a
- * line is one row. Nothing scrolls sideways. The arithmetic is in
- * src/lib/finance/bill-math.ts.
+ * The lines of a bill, invoice, quotation or RFQ, with live totals. On a phone or a tablet each line
+ * is a card with its fields stacked two to a row; once the form itself is wide enough a line is one
+ * row, and each box in it has a floor so nothing is squeezed below its own text. The row follows the
+ * width of the form and not the width of the screen, because the menu beside the form takes about
+ * 250px (issue #396). Nothing scrolls sideways. The arithmetic is in src/lib/finance/bill-math.ts.
  */
 export function LineItemsEditor({
   lines,
@@ -88,13 +89,13 @@ export function LineItemsEditor({
   };
 
   return (
-    <div className="space-y-3">
-      <ol className="space-y-3 md:space-y-2">
+    <div className="@container/lines space-y-3">
+      <ol className="space-y-3 @min-[52rem]/lines:space-y-2">
         {lines.map((line, index) => {
           const n = index + 1;
           const field = (name: string) => `${id}-${line.key}-${name}`;
-          // From md up only the first line shows its labels, like a table's header row.
-          const label = cn('text-xs text-muted-foreground', index > 0 && 'md:sr-only');
+          // Only the first line shows its labels once the lines are on one row, like a table's header row.
+          const label = cn('text-xs text-muted-foreground', index > 0 && '@min-[52rem]/lines:sr-only');
           // A product archived since the draft was saved is still this line's product.
           const known = line.product_id === '' || products.some((p) => p.id === line.product_id);
           return (
@@ -102,11 +103,15 @@ export function LineItemsEditor({
               key={line.key}
               aria-label={`Line ${n}`}
               className={cn(
-                'grid grid-cols-2 gap-2 rounded-lg border p-3 md:items-end md:border-0 md:p-0',
-                discount ? 'md:grid-cols-[repeat(14,minmax(0,1fr))]' : 'md:grid-cols-12',
+                'grid grid-cols-2 gap-2 rounded-lg border p-3 @min-[52rem]/lines:items-end @min-[52rem]/lines:border-0 @min-[52rem]/lines:p-0',
+                // One track per box, each with a floor its own text needs: the price box holds the longest
+                // placeholder, "Supplier price", in 8.5rem, and the number boxes in 3.5rem.
+                discount
+                  ? '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,3fr)_minmax(0,2fr)]'
+                  : '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,2fr)]',
               )}
             >
-              <div className="col-span-2 space-y-1 md:col-span-2">
+              <div className="col-span-2 space-y-1 @min-[52rem]/lines:col-span-1">
                 <Label htmlFor={field('product')} className={label}>
                   Product
                 </Label>
@@ -130,7 +135,7 @@ export function LineItemsEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1 md:col-span-3">
+              <div className="col-span-2 space-y-1 @min-[52rem]/lines:col-span-1">
                 <Label htmlFor={field('description')} className={label}>
                   Description
                 </Label>
@@ -148,7 +153,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, description: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1 md:col-span-1">
+              <div className="space-y-1">
                 <Label htmlFor={field('quantity')} className={label}>
                   Qty
                 </Label>
@@ -165,7 +170,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, quantity: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1 md:col-span-1">
+              <div className="space-y-1">
                 <Label htmlFor={field('uom')} className={label}>
                   Unit
                 </Label>
@@ -179,7 +184,8 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, uom: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1 md:col-span-2">
+              {/* The price box takes both columns on a phone, so the longest placeholder is whole. */}
+              <div className="col-span-2 space-y-1 @min-[52rem]/lines:col-span-1">
                 <Label htmlFor={field('price')} className={label}>
                   Unit price ({currencyLabel(currency)})
                 </Label>
@@ -197,7 +203,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, unit_price: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1 md:col-span-1">
+              <div className="space-y-1">
                 <Label htmlFor={field('sst')} className={label}>
                   SST %
                 </Label>
@@ -216,7 +222,7 @@ export function LineItemsEditor({
                 />
               </div>
               {discount ? (
-                <div className="col-span-2 space-y-1 md:col-span-2">
+                <div className="col-span-2 space-y-1 @min-[52rem]/lines:col-span-1">
                   <Label htmlFor={field('discount')} className={label}>
                     Discount
                   </Label>
@@ -261,7 +267,7 @@ export function LineItemsEditor({
                   </div>
                 </div>
               ) : null}
-              <div className="col-span-2 flex items-end justify-between gap-2 md:col-span-2">
+              <div className="col-span-2 flex items-end justify-between gap-2 @min-[52rem]/lines:col-span-1">
                 <div className="min-w-0 space-y-1">
                   <span className={cn('block', label)}>Amount</span>
                   <output
