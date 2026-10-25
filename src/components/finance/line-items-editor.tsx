@@ -105,10 +105,11 @@ export function LineItemsEditor({
               className={cn(
                 'grid grid-cols-2 gap-2 rounded-lg border p-3 @min-[52rem]/lines:items-end @min-[52rem]/lines:border-0 @min-[52rem]/lines:p-0',
                 // One track per box, each with a floor its own text needs: the price box holds the longest
-                // placeholder, "Supplier price", in 8.5rem, and the number boxes in 3.5rem.
+                // placeholder, "Supplier price", in 8.5rem, the number boxes in 3.5rem, and the amount box
+                // in 7.5rem because it shares its track with the remove button and the gap.
                 discount
-                  ? '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,3fr)_minmax(0,2fr)]'
-                  : '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,2fr)]',
+                  ? '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,4fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,2fr)_minmax(7.5rem,2fr)]'
+                  : '@min-[52rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)]',
               )}
             >
               <div className="col-span-2 space-y-1 @min-[52rem]/lines:col-span-1">

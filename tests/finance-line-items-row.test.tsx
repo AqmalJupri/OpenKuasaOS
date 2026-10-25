@@ -75,6 +75,25 @@ describe('a line of a document', () => {
     expect(row ? row.slice(row.indexOf('[') + 1, -1).split('_').length : 0).toBe(8);
   });
 
+  it('keeps room for the amount beside the remove button', () => {
+    // The amount shares its box with a 32px remove button and the 8px gap, so a five-figure
+    // total needs a floor of its own or it truncates ("RM 222.00" needs 75px of text).
+    for (const html of [markup(), markup(true)]) {
+      const row = rowOf(classesBefore(html, 'aria-label="Line 1"', 0, 'li').classes);
+      expect(row?.endsWith('minmax(7.5rem,2fr)]')).toBe(true);
+    }
+  });
+
+  it('gives the description more of the free width than the discount box beside it', () => {
+    // The description is the only free-text box in the line: "Arabica beans, roasted" needs 161px.
+    // Eight boxes still have to fit, but the description must not end up the narrowest of them.
+    const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
+    const fr = (track: string) => Number(track.match(/,([\d.]+)fr\)$/)?.[1] ?? 0);
+    const tracks = row?.slice(row.indexOf('[') + 1, -1).split('_') ?? [];
+    // Tracks in order: product, description, qty, unit, price, sst, discount, amount.
+    expect(fr(tracks[1] ?? '')).toBeGreaterThan(fr(tracks[6] ?? ''));
+  });
+
   it('gives the price box both columns on a phone, so "Supplier price" is not cut off', () => {
     const html = markup();
     expect(fieldClasses(html, 'price')).toContain('col-span-2');
