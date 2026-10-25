@@ -69,6 +69,23 @@ describe('a line of a document', () => {
     expect(row).toContain('minmax(8.5rem,2fr)');
   });
 
+  it('puts the eight boxes on one row only where the description fits', () => {
+    // At the switch the five fixed tracks hold their floors and the three free ones (product 2fr,
+    // description 4fr, discount 2fr) share what is left, so the description gets a quarter of that.
+    // At 52rem of form width it gets 155px of text room and "Arabica beans, roasted" needs 161px;
+    // it reaches 161px at 846px of form width, and the row waits for 54rem (864px) so the switch is
+    // not sitting on that exact edge.
+    const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
+    expect(row?.startsWith('@min-[54rem]/lines:')).toBe(true);
+  });
+
+  it('switches every part of the line at that same width', () => {
+    // A label or a box that changes at a different width than the row it sits in would leave a line
+    // with eight boxes and seven labels, or the row at one width and its spacing at another.
+    const widths = [...`${markup()}${markup(true)}`.matchAll(/@min-\[([\d.]+)rem\]\/lines/g)].map((match) => match[1]);
+    expect(new Set(widths)).toEqual(new Set(['54']));
+  });
+
   it('counts the per-line discount as an eighth box on a sales document', () => {
     const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
     expect(row).toBeDefined();
@@ -98,14 +115,14 @@ describe('a line of a document', () => {
     const html = markup();
     expect(fieldClasses(html, 'price')).toContain('col-span-2');
     // On the wide layout each box is one track of the row, so the double span is dropped again.
-    expect(fieldClasses(html, 'price')).toContain('@min-[52rem]/lines:col-span-1');
+    expect(fieldClasses(html, 'price')).toContain('@min-[54rem]/lines:col-span-1');
   });
 
   it('keeps the line cards whole on a phone: every field spans what it needs', () => {
     const html = markup(true);
     for (const name of ['product', 'description', 'discount']) {
       expect(fieldClasses(html, name)).toContain('col-span-2');
-      expect(fieldClasses(html, name)).toContain('@min-[52rem]/lines:col-span-1');
+      expect(fieldClasses(html, name)).toContain('@min-[54rem]/lines:col-span-1');
     }
     for (const name of ['quantity', 'uom', 'sst']) {
       expect(fieldClasses(html, name)).not.toContain('col-span-2');
