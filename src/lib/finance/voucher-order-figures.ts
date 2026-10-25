@@ -17,8 +17,8 @@
  *   (#273, `finance_purchase_order_totals`), so an order with credit reads lower
  *   than its bills add up to. The credit is therefore shown on its own line,
  *   again only when there is some, read off the bills' `credited`. A supplier
- *   credit note is ringgit only, so a foreign order has none and the line is
- *   not drawn for it.
+ *   credit note is measured against its bill's own total, so it is in the
+ *   bill's currency, which is the order's.
  * - Delivery order numbers are left out entirely: deliveries are not stored as
  *   records yet, only a running total per line (#190).
  */
@@ -39,7 +39,7 @@ export type FiguresBill = {
   paid: number;
   /** Settled by posted contra entries, in ringgit; 0 when none. */
   set_off?: number;
-  /** Credited by issued supplier credit notes, in ringgit; 0 when none. */
+  /** Credited by issued supplier credit notes, in the bill's currency; 0 when none. */
   credited?: number;
   purchase_order_id: string | null;
 };
@@ -79,7 +79,7 @@ export type VoucherFigureOrder = {
   /** Settled by posted contra entries, in ringgit; 0 when none, and the line is then not drawn. */
   setOff: number;
   /**
-   * Already taken off "billed so far" by issued supplier credit notes on the order's bills, in ringgit; 0 when
+   * Already taken off "billed so far" by issued supplier credit notes on the order's bills, in the order's currency; 0 when
    * none, and the line is then not drawn. Read off the bills' `credited`, the same figure the over-billing note uses.
    */
   creditNotes: number;
@@ -99,7 +99,7 @@ export function voucherFiguresShown(figures: VoucherFigures): boolean {
   return figures.orders.length > 0 || figures.withoutOrder.length > 0;
 }
 
-/** Where the purchase orders screen opens one order's dialog: the screen reads `?po=`. */
+/** Where the purchase orders screen shows one order above its list: the screen reads `?po=`. */
 export function orderScreenHref(orderId: string): string {
   return `/finance/purchase-orders?po=${encodeURIComponent(orderId)}`;
 }

@@ -389,7 +389,7 @@ export async function getBill(ctx: FinanceWriteContext, id: string): Promise<Bil
   if (!billIdInput.safeParse({ id }).success) return null;
   const { data: bill, error } = await ctx.client
     .from('supplier_bill_totals')
-    .select(`${LIST_COLUMNS},supplier_ref,notes`)
+    .select(`${LIST_COLUMNS},notes`)
     .eq('org_id', ctx.orgId)
     .eq('id', id)
     .maybeSingle();

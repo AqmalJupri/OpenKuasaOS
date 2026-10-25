@@ -36,8 +36,11 @@ export function VoucherOrderFigures({ figures }: { figures: VoucherFigures }) {
     <div role="group" aria-label="The purchase orders behind this payment" className="mt-2 space-y-3 border-t pt-2">
       {figures.orders.map((order) => (
         <div key={order.orderId} className="space-y-1">
+          {/* A new tab, so the approve question stays open here while the order is checked. */}
           <Link
             href={order.href}
+            target="_blank"
+            rel="noopener noreferrer"
             title={`Open ${order.poNo ?? 'the purchase order'} on Purchase orders`}
             className="group flex flex-wrap items-baseline justify-between gap-x-3 text-xs"
           >
