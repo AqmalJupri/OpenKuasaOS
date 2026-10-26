@@ -29,10 +29,9 @@ const NO_PRODUCT = 'none';
  * is a card with its fields stacked two to a row; once the form itself is wide enough a line is one
  * row, and each box in it has a floor so nothing is squeezed below its own text. The row follows the
  * width of the form and not the width of the screen, because the menu beside the form takes about
- * 250px (issue #396). An eight-box sales line needs 846px of form width before its description has
- * room for a product name, so the row waits for 54rem: the 2px a 53rem switch would leave is inside
- * the noise of a different font stack. Nothing scrolls sideways. The arithmetic is in
- * src/lib/finance/bill-math.ts.
+ * 250px (issue #396). The eight floors plus the seven gaps come to exactly 54rem, so that is the
+ * earliest form width where the eight-box sales line can honour all of them, and the row waits for
+ * it. Nothing scrolls sideways. The arithmetic is in src/lib/finance/bill-math.ts.
  */
 export function LineItemsEditor({
   lines,
@@ -107,12 +106,14 @@ export function LineItemsEditor({
               aria-label={`Line ${n}`}
               className={cn(
                 'grid grid-cols-2 gap-2 rounded-lg border p-3 @min-[54rem]/lines:items-end @min-[54rem]/lines:border-0 @min-[54rem]/lines:p-0',
-                // One track per box, each with a floor its own text needs: the price box holds the longest
-                // placeholder, "Supplier price", in 8.5rem, the number boxes in 3.5rem, and the amount box
-                // in 7.5rem because it shares its track with the remove button and the gap.
+                // One track per box, each with a floor its own text needs: the description holds a
+                // product name in 11.5rem, the price box the longest placeholder ("Supplier price")
+                // in 8.5rem, the discount box its input and unit select in 7.5rem, the number boxes
+                // 3.5rem, and the amount box 7.5rem because it shares its track with the remove
+                // button and the gap. The eight floors plus the seven gaps are exactly 54rem.
                 discount
-                  ? '@min-[54rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,4fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(0,2fr)_minmax(7.5rem,2fr)]'
-                  : '@min-[54rem]/lines:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)]',
+                  ? '@min-[54rem]/lines:grid-cols-[minmax(5rem,2fr)_minmax(11.5rem,4fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)_minmax(7.5rem,2fr)]'
+                  : '@min-[54rem]/lines:grid-cols-[minmax(5rem,2fr)_minmax(11.5rem,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)]',
               )}
             >
               <div className="col-span-2 space-y-1 @min-[54rem]/lines:col-span-1">

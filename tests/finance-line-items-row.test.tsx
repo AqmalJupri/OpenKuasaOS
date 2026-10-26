@@ -70,11 +70,11 @@ describe('a line of a document', () => {
   });
 
   it('puts the eight boxes on one row only where the description fits', () => {
-    // At the switch the five fixed tracks hold their floors and the three free ones (product 2fr,
-    // description 4fr, discount 2fr) share what is left, so the description gets a quarter of that.
-    // At 52rem of form width it gets 155px of text room and "Arabica beans, roasted" needs 161px;
-    // it reaches 161px at 846px of form width, and the row waits for 54rem (864px) so the switch is
-    // not sitting on that exact edge.
+    // The eight floors (5, 11.5, 3.5, 3.5, 8.5, 3.5, 7.5, 7.5rem) plus the seven 0.5rem gaps are
+    // exactly 54rem, so that is the earliest form width where every box can keep its own text: the
+    // description gets 162px of room for the 160px "Arabica beans, roasted" in Lexend, and the
+    // discount input 40px for the 26px "12.5" beside its unit select. Below 54rem the line stays a
+    // card, which is the whole point of the change.
     const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
     expect(row?.startsWith('@min-[54rem]/lines:')).toBe(true);
   });
@@ -90,6 +90,18 @@ describe('a line of a document', () => {
     const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
     expect(row).toBeDefined();
     expect(row ? row.slice(row.indexOf('[') + 1, -1).split('_').length : 0).toBe(8);
+  });
+
+  it('keeps the discount box wide enough for the value beside its unit select', () => {
+    // The discount box holds an input and a 64px unit select with a 4px gap, so the track has to
+    // hold all three. Without a floor the track took 2fr of what was left: at 54rem that left the
+    // input 16px of text room and "12.5" needs 26px in Lexend, the app's face. Measured in
+    // Chromium, the input was cut at 864px (16px of room), 880px (20px) and 895px (24px) of form
+    // width, and only cleared the value at 928px. 7.5rem gives the input 40px.
+    const row = rowOf(classesBefore(markup(true), 'aria-label="Line 1"', 0, 'li').classes);
+    const tracks = row?.slice(row.indexOf('[') + 1, -1).split('_') ?? [];
+    // Tracks in order: product, description, qty, unit, price, sst, discount, amount.
+    expect(tracks[6]).toBe('minmax(7.5rem,2fr)');
   });
 
   it('keeps room for the amount beside the remove button', () => {
