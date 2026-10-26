@@ -56,15 +56,20 @@ const fieldBox = (html: string, name: string) => {
   return opens.at(-1)?.[1].split(/\s+/) ?? [];
 };
 
-/** The line card's fields in order, each taking one or both of the card's two columns. */
+/** How many of the card's six columns a box takes. */
+const span = (classes: string[]) => Number(classes.find((c) => /^col-span-\d$/.test(c))?.slice(9) ?? 1);
+
+/** The amount box: it has no label `for`, so it is the box around the line's output. */
+const amountBox = (html: string) => {
+  const at = html.indexOf('aria-label="Amount for line 1"');
+  return [...html.slice(0, at).matchAll(/<div class="([^"]*)"/g)].at(-2)?.[1].split(/\s+/) ?? [];
+};
+
+/** The line card's boxes in order, each with the columns of the card's six it takes. */
 const cardSpans = (discount: boolean) => {
   const html = markup(discount);
   const names = ['product', 'description', 'quantity', 'uom', 'price', 'sst', ...(discount ? ['discount'] : [])];
-  const spans = names.map((name) => (fieldBox(html, name).includes('col-span-2') ? 2 : 1));
-  // The amount box has no label of its own `for`; it is the box holding the line's output.
-  const amountAt = html.indexOf('aria-label="Amount for line 1"');
-  const amountBox = [...html.slice(0, amountAt).matchAll(/<div class="([^"]*)"/g)].at(-2)?.[1] ?? '';
-  return [...spans, amountBox.split(/\s+/).includes('col-span-2') ? 2 : 1];
+  return [...names.map((name) => span(fieldBox(html, name))), span(amountBox(html))];
 };
 
 describe('a line of a document', () => {
@@ -137,17 +142,34 @@ describe('a line of a document', () => {
   it('leaves no half-empty row on a line card', () => {
     for (const discount of [false, true]) {
       let column = 0;
-      for (const span of cardSpans(discount)) {
-        // A two-column box that starts beside a one-column box would leave a hole before it.
-        if (span === 2) expect(column).toBe(0);
-        column = (column + span) % 2;
+      for (const taken of cardSpans(discount)) {
+        // A box that does not fit in what is left of a row would wrap and leave a hole behind it.
+        expect(column + taken).toBeLessThanOrEqual(6);
+        column = (column + taken) % 6;
       }
       expect(column).toBe(0);
     }
   });
 
-  it('gives the price box both columns on a phone, so "Supplier price" is not cut off', () => {
-    for (const discount of [false, true]) expect(fieldBox(markup(discount), 'price')).toContain('col-span-2');
+  it('keeps the price and the amount wide on a phone, so neither is cut off', () => {
+    // "Supplier price" is the longest placeholder (130px with the padding); two thirds of a 300px
+    // card is 181px. "RM 123,456.00" shares its box with the remove button: beside another box on a
+    // 300px card the amount lost 5px, so it takes the whole row.
+    for (const discount of [false, true]) {
+      const html = markup(discount);
+      expect(span(fieldBox(html, 'price'))).toBeGreaterThanOrEqual(4);
+      expect(span(amountBox(html))).toBe(6);
+    }
+  });
+
+  it('takes every box back to one track on the row layout', () => {
+    for (const discount of [false, true]) {
+      const html = markup(discount);
+      const oneTrack = `@${discount ? 'lines-row-sales' : 'lines-row'}/lines:col-span-1`;
+      const names = ['product', 'description', 'quantity', 'uom', 'price', 'sst', ...(discount ? ['discount'] : [])];
+      for (const name of names) expect(fieldBox(html, name)).toContain(oneTrack);
+      expect(amountBox(html)).toContain(oneTrack);
+    }
   });
 
   it('sizes the totals from the form too', () => {

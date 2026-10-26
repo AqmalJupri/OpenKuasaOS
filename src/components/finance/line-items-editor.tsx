@@ -91,7 +91,8 @@ const ROW = {
 
 /**
  * The lines of a bill, invoice, quotation or RFQ, with live totals. On a phone or a tablet each line
- * is a card with its fields two to a row, and no row is left half empty; once the form itself is wide
+ * is a card: quantity beside unit, price beside SST, and every other box on a row of its own, so no row
+ * is left half empty and the amount always has the card's full width. Once the form itself is wide
  * enough a line is one row, and each box in it has a floor so nothing is squeezed below its own text
  * (see `lineTracks`). The row follows the width of the form and not the width of the screen, because
  * the menu beside the form takes about 250px (issue #396). Nothing scrolls sideways. The arithmetic
@@ -171,10 +172,10 @@ export function LineItemsEditor({
             <li
               key={line.key}
               aria-label={`Line ${n}`}
-              className={cn('grid grid-cols-2 gap-2 rounded-lg border p-3', wide.row)}
+              className={cn('grid grid-cols-6 gap-2 rounded-lg border p-3', wide.row)}
               style={rowStyle}
             >
-              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
+              <div className={cn('col-span-6 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('product')} className={label}>
                   Product
                 </Label>
@@ -198,7 +199,7 @@ export function LineItemsEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
+              <div className={cn('col-span-6 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('description')} className={label}>
                   Description
                 </Label>
@@ -216,7 +217,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, description: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className={cn('col-span-3 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('quantity')} className={label}>
                   Qty
                 </Label>
@@ -233,7 +234,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, quantity: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className={cn('col-span-3 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('uom')} className={label}>
                   Unit
                 </Label>
@@ -247,8 +248,8 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, uom: e.target.value }))}
                 />
               </div>
-              {/* The price box takes both columns on a phone, so the longest placeholder is whole. */}
-              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
+              {/* On a card the price box takes two thirds of its row beside SST, room for the longest placeholder. */}
+              <div className={cn('col-span-4 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('price')} className={label}>
                   Unit price ({currencyLabel(currency)})
                 </Label>
@@ -266,7 +267,7 @@ export function LineItemsEditor({
                   onChange={(e) => change(line.key, (l) => ({ ...l, unit_price: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('sst')} className={label}>
                   SST %
                 </Label>
@@ -285,7 +286,7 @@ export function LineItemsEditor({
                 />
               </div>
               {discount ? (
-                <div className="space-y-1">
+                <div className={cn('col-span-6 space-y-1', wide.oneTrack)}>
                   <Label htmlFor={field('discount')} className={label}>
                     Discount
                   </Label>
@@ -330,7 +331,7 @@ export function LineItemsEditor({
                   </div>
                 </div>
               ) : null}
-              <div className={cn('flex items-end justify-between gap-2', discount && cn('col-span-2', wide.oneTrack))}>
+              <div className={cn('col-span-6 flex items-end justify-between gap-2', wide.oneTrack)}>
                 <div className="min-w-0 space-y-1">
                   <span className={cn('block', label)}>Amount</span>
                   <output
