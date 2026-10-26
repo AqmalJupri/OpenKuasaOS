@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef } from 'react';
+import { type CSSProperties, useId, useRef } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,14 +24,78 @@ import { cn } from '@/lib/utils';
 /** Radix Select has no empty value; this stands for "no product" and never leaves the component. */
 const NO_PRODUCT = 'none';
 
+/** One box of a line on the one-row layout: the narrowest it may get, in rem, and its share of the rest. */
+export type LineTrack = { box: string; floor: number; share: number };
+
+/** The space between two boxes on the row (`gap-2`), in rem. */
+export const LINE_GAP_REM = 0.5;
+
+/**
+ * The boxes of a line on the one-row layout, in order, each with a floor its own text needs. Measured
+ * in Lexend, the app's face:
+ * - product 8rem: "No product" (77px) beside the trigger's padding and chevron (42px);
+ * - description 11.5rem: "Arabica beans, roasted" (161px);
+ * - quantity, unit and SST 3.5rem: a short number or "kg";
+ * - price 8.5rem: the longest placeholder, "Supplier price";
+ * - discount 8.5rem: "12.5" (26px), the number arrows Chrome draws on hover and focus (about 15px) and
+ *   the input's padding (22px), beside the 64px unit select and its 4px gap;
+ * - amount 9.5rem: "USD 123,456.00" (106px) beside the 32px remove button and its 8px gap.
+ */
+export function lineTracks(discount: boolean): LineTrack[] {
+  return [
+    { box: 'product', floor: 8, share: 2 },
+    { box: 'description', floor: 11.5, share: discount ? 4 : 3 },
+    { box: 'quantity', floor: 3.5, share: 1 },
+    { box: 'unit', floor: 3.5, share: 1 },
+    { box: 'price', floor: 8.5, share: 2 },
+    { box: 'sst', floor: 3.5, share: 1 },
+    ...(discount ? [{ box: 'discount', floor: 8.5, share: 2 }] : []),
+    { box: 'amount', floor: 9.5, share: 2 },
+  ];
+}
+
+/** The row's `grid-template-columns`. */
+export function lineTemplate(tracks: LineTrack[]): string {
+  return tracks.map((t) => `minmax(${t.floor}rem,${t.share}fr)`).join(' ');
+}
+
+/**
+ * The form width, in rem, from which a line is one row: the theme's `--container-lines-row` (54rem)
+ * and `--container-lines-row-sales` (60rem) in globals.css, which the tests hold to these numbers.
+ * The seven purchase floors and their gaps come to 51rem; the eight sales floors and their gaps come
+ * to exactly 60rem, so a sales line waits for that.
+ */
+export function lineRowFromRem(discount: boolean): number {
+  return discount ? 60 : 54;
+}
+
+/**
+ * The classes that switch a line to one row. Tailwind only sees whole class names, so each width is
+ * written out once here and the rest of the file uses these. Named sizes keep the width itself in one
+ * place, the theme.
+ */
+const ROW = {
+  purchase: {
+    list: '@lines-row/lines:space-y-2',
+    row: '@lines-row/lines:grid-cols-(--line-tracks) @lines-row/lines:items-end @lines-row/lines:border-0 @lines-row/lines:p-0',
+    oneTrack: '@lines-row/lines:col-span-1',
+    header: '@lines-row/lines:sr-only',
+  },
+  sales: {
+    list: '@lines-row-sales/lines:space-y-2',
+    row: '@lines-row-sales/lines:grid-cols-(--line-tracks) @lines-row-sales/lines:items-end @lines-row-sales/lines:border-0 @lines-row-sales/lines:p-0',
+    oneTrack: '@lines-row-sales/lines:col-span-1',
+    header: '@lines-row-sales/lines:sr-only',
+  },
+} as const;
+
 /**
  * The lines of a bill, invoice, quotation or RFQ, with live totals. On a phone or a tablet each line
- * is a card with its fields stacked two to a row; once the form itself is wide enough a line is one
- * row, and each box in it has a floor so nothing is squeezed below its own text. The row follows the
- * width of the form and not the width of the screen, because the menu beside the form takes about
- * 250px (issue #396). The eight floors plus the seven gaps come to exactly 54rem, so that is the
- * earliest form width where the eight-box sales line can honour all of them, and the row waits for
- * it. Nothing scrolls sideways. The arithmetic is in src/lib/finance/bill-math.ts.
+ * is a card with its fields two to a row, and no row is left half empty; once the form itself is wide
+ * enough a line is one row, and each box in it has a floor so nothing is squeezed below its own text
+ * (see `lineTracks`). The row follows the width of the form and not the width of the screen, because
+ * the menu beside the form takes about 250px (issue #396). Nothing scrolls sideways. The arithmetic
+ * is in src/lib/finance/bill-math.ts.
  */
 export function LineItemsEditor({
   lines,
@@ -75,6 +139,9 @@ export function LineItemsEditor({
   const lessLabel = docNumbers.pct != null && docNumbers.pct > 0 ? `Less: discount ${docNumbers.pct}%` : 'Less: discount';
   const hasDocDiscount = (docNumbers.pct != null && docNumbers.pct > 0) || (docNumbers.amount != null && docNumbers.amount > 0);
 
+  const wide = discount ? ROW.sales : ROW.purchase;
+  const rowStyle = { '--line-tracks': lineTemplate(lineTracks(discount)) } as CSSProperties;
+
   const change = (key: string, next: (line: LineDraft) => LineDraft) =>
     onChange(lines.map((line) => (line.key === key ? next(line) : line)));
 
@@ -92,31 +159,22 @@ export function LineItemsEditor({
 
   return (
     <div className="@container/lines space-y-3">
-      <ol className="space-y-3 @min-[54rem]/lines:space-y-2">
+      <ol className={cn('space-y-3', wide.list)}>
         {lines.map((line, index) => {
           const n = index + 1;
           const field = (name: string) => `${id}-${line.key}-${name}`;
           // Only the first line shows its labels once the lines are on one row, like a table's header row.
-          const label = cn('text-xs text-muted-foreground', index > 0 && '@min-[54rem]/lines:sr-only');
+          const label = cn('text-xs text-muted-foreground', index > 0 && wide.header);
           // A product archived since the draft was saved is still this line's product.
           const known = line.product_id === '' || products.some((p) => p.id === line.product_id);
           return (
             <li
               key={line.key}
               aria-label={`Line ${n}`}
-              className={cn(
-                'grid grid-cols-2 gap-2 rounded-lg border p-3 @min-[54rem]/lines:items-end @min-[54rem]/lines:border-0 @min-[54rem]/lines:p-0',
-                // One track per box, each with a floor its own text needs: the description holds a
-                // product name in 11.5rem, the price box the longest placeholder ("Supplier price")
-                // in 8.5rem, the discount box its input and unit select in 7.5rem, the number boxes
-                // 3.5rem, and the amount box 7.5rem because it shares its track with the remove
-                // button and the gap. The eight floors plus the seven gaps are exactly 54rem.
-                discount
-                  ? '@min-[54rem]/lines:grid-cols-[minmax(5rem,2fr)_minmax(11.5rem,4fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)_minmax(7.5rem,2fr)]'
-                  : '@min-[54rem]/lines:grid-cols-[minmax(5rem,2fr)_minmax(11.5rem,3fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)_minmax(8.5rem,2fr)_minmax(3.5rem,1fr)_minmax(7.5rem,2fr)]',
-              )}
+              className={cn('grid grid-cols-2 gap-2 rounded-lg border p-3', wide.row)}
+              style={rowStyle}
             >
-              <div className="col-span-2 space-y-1 @min-[54rem]/lines:col-span-1">
+              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('product')} className={label}>
                   Product
                 </Label>
@@ -140,7 +198,7 @@ export function LineItemsEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-1 @min-[54rem]/lines:col-span-1">
+              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('description')} className={label}>
                   Description
                 </Label>
@@ -190,7 +248,7 @@ export function LineItemsEditor({
                 />
               </div>
               {/* The price box takes both columns on a phone, so the longest placeholder is whole. */}
-              <div className="col-span-2 space-y-1 @min-[54rem]/lines:col-span-1">
+              <div className={cn('col-span-2 space-y-1', wide.oneTrack)}>
                 <Label htmlFor={field('price')} className={label}>
                   Unit price ({currencyLabel(currency)})
                 </Label>
@@ -227,7 +285,7 @@ export function LineItemsEditor({
                 />
               </div>
               {discount ? (
-                <div className="col-span-2 space-y-1 @min-[54rem]/lines:col-span-1">
+                <div className="space-y-1">
                   <Label htmlFor={field('discount')} className={label}>
                     Discount
                   </Label>
@@ -272,7 +330,7 @@ export function LineItemsEditor({
                   </div>
                 </div>
               ) : null}
-              <div className="col-span-2 flex items-end justify-between gap-2 @min-[54rem]/lines:col-span-1">
+              <div className={cn('flex items-end justify-between gap-2', discount && cn('col-span-2', wide.oneTrack))}>
                 <div className="min-w-0 space-y-1">
                   <span className={cn('block', label)}>Amount</span>
                   <output
@@ -304,7 +362,7 @@ export function LineItemsEditor({
           <Plus className="size-4" />
           Add line
         </Button>
-        <div className="w-full space-y-3 sm:w-64">
+        <div className="w-full space-y-3 @sm/lines:w-64">
           {docDiscount && docDraft ? (
             <div className="space-y-1">
               <Label htmlFor={`${id}-doc-discount`} className="text-xs text-muted-foreground">

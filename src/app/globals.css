@@ -5,6 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* The form widths from which a document line is one row (line-items-editor.tsx, lineRowFromRem). */
+  --container-lines-row: 54rem;
+  --container-lines-row-sales: 60rem;
   --color-brand: var(--brand);
   --color-mk-bg: var(--mk-bg);
   --color-mk-surface: var(--mk-surface);
