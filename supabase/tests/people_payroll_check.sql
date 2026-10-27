@@ -1190,25 +1190,25 @@ begin
     select * from (values
       ('basic only', b1,
         'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none'),
-      -- 9 of the 25 working days: 311111 x 9 / 25 = 111999.96, so 112000 is paid and 199111 is not.
+      -- 11 of March's 31 days: 311111 x 11 / 31 = 110394.03, so 110394 is paid and 200717 is not (s.18A).
       ('a joiner on 21 March', ej,
-        'basic 311111 gross 112000 epf 12320 socso 560 eis 224 pcb 0 other 0 net 98896 set [] pending',
-        'joiner unpaid "Joined 21 Mar 2025" 199111'),
-      -- 400000 / 26 = 15384.6, so 15385 a day.
+        'basic 311111 gross 110394 epf 12143 socso 552 eis 221 pcb 0 other 0 net 97478 set [] pending',
+        'joiner unpaid "Joined 21 Mar 2025 (11 of 31 days)" 200717'),
+      -- 400000 x 2 / 31 = 25806.45, so 25806 off (s.18A, days in the wage period).
       ('two days of unpaid leave', u2,
-        'basic 400000 gross 369230 epf 40615 socso 1846 eis 738 pcb 0 other 0 net 326031 set [] pending',
-        'unpaid_leave unpaid "Unpaid leave, 2 days" 30770'),
-      -- Half of 15385 is 7692.5, which rounds up.
+        'basic 400000 gross 374194 epf 41161 socso 1871 eis 748 pcb 0 other 0 net 330414 set [] pending',
+        'unpaid_leave unpaid "Unpaid leave, 2 of 31 days" 25806'),
+      -- Half a day: 400000 x 0.5 / 31 = 6451.61, so 6452.
       ('half a day of unpaid leave', uh,
-        'basic 400000 gross 392307 epf 43154 socso 1962 eis 785 pcb 0 other 0 net 346406 set [] pending',
-        'unpaid_leave unpaid "Unpaid leave, 0.5 days" 7693'),
+        'basic 400000 gross 393548 epf 43290 socso 1968 eis 787 pcb 0 other 0 net 347503 set [] pending',
+        'unpaid_leave unpaid "Unpaid leave, 0.5 of 31 days" 6452'),
       ('unpaid leave that runs into April', us,
-        'basic 260000 gross 230000 epf 25300 socso 1150 eis 460 pcb 0 other 0 net 203090 set [] pending',
-        'unpaid_leave unpaid "Unpaid leave, 3 days" 30000'),
-      -- The joiner line leaves 112000; 18 days at 11966 would be 215388; the unpaid lines stop at basic.
+        'basic 260000 gross 234839 epf 25832 socso 1174 eis 470 pcb 0 other 0 net 207363 set [] pending',
+        'unpaid_leave unpaid "Unpaid leave, 3 of 31 days" 25161'),
+      -- 18 days is 311111 x 18 / 31 = 180645.09, but the joiner line leaves 110394, and the unpaid lines stop there.
       ('unpaid lines capped at basic', jc,
         'basic 311111 gross 0 epf 0 socso 0 eis 0 pcb 0 other 0 net 0 set [] pending',
-        'joiner unpaid "Joined 21 Mar 2025" 199111; unpaid_leave unpaid "Unpaid leave, 18 days" 112000'),
+        'joiner unpaid "Joined 21 Mar 2025 (11 of 31 days)" 200717; unpaid_leave unpaid "Unpaid leave, 18 of 31 days" 110394'),
       -- Overtime is not EPF wages: 11% of 3000.00, not of 3133.27. SOCSO and EIS still take the gross.
       ('overtime', ot,
         'basic 300000 gross 313327 epf 33000 socso 1567 eis 627 pcb 0 other 0 net 278133 set [] pending',
@@ -1329,16 +1329,16 @@ begin
       -- Joined in March: paid in full in April.
       ('last month''s joiner', ej,
         'basic 311111 gross 311111 epf 34222 socso 1556 eis 622 pcb 0 other 0 net 274711 set [] pending', 'none'),
-      -- 14 of April's 26 working days: 300000 x 14 / 26 = 161538.46.
+      -- 16 of April's 30 days: 300000 x 16 / 30 = 160000.00 (s.18A).
       ('a joiner on 15 April', fj,
-        'basic 300000 gross 161538 epf 17769 socso 808 eis 323 pcb 0 other 0 net 142638 set [] pending',
-        'joiner unpaid "Joined 15 Apr 2025" 138462'),
+        'basic 300000 gross 160000 epf 17600 socso 800 eis 320 pcb 0 other 0 net 141280 set [] pending',
+        'joiner unpaid "Joined 15 Apr 2025 (16 of 30 days)" 140000'),
       ('the April days of leave that began in March', us,
-        'basic 260000 gross 240000 epf 26400 socso 1200 eis 480 pcb 0 other 0 net 211920 set [] pending',
-        'unpaid_leave unpaid "Unpaid leave, 2 days" 20000'),
+        'basic 260000 gross 242667 epf 26693 socso 1213 eis 485 pcb 0 other 0 net 214276 set [] pending',
+        'unpaid_leave unpaid "Unpaid leave, 2 of 30 days" 17333'),
       ('one day of unpaid leave', u2,
-        'basic 400000 gross 384615 epf 42308 socso 1923 eis 769 pcb 0 other 0 net 339615 set [] pending',
-        'unpaid_leave unpaid "Unpaid leave, 1 day" 15385'),
+        'basic 400000 gross 386667 epf 42533 socso 1933 eis 773 pcb 0 other 0 net 341428 set [] pending',
+        'unpaid_leave unpaid "Unpaid leave, 1 of 30 days" 13333'),
       -- Only the record worked in April: March's three were paid in March.
       ('overtime worked in April', ot,
         'basic 300000 gross 309000 epf 33000 socso 1545 eis 618 pcb 0 other 0 net 273837 set [] pending',
