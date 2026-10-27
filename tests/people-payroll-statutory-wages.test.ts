@@ -56,23 +56,32 @@ function fn(qualified: string): string {
 }
 
 describe('payroll statutory wages and age', () => {
-  test('age is read from the date of birth on file, on the last day of the wage month', () => {
+  test('age is read from the date of birth, else the identity card, on the day before the wage month', () => {
     const age = fn('private.hr_payroll_age_on');
     expect(age).toContain('p_employee uuid, p_on date');
-    expect(age).toContain('extract(year from age(p_on, x.date_of_birth))::int');
-    // Nothing at all when there is no date of birth: the caller reads an empty answer as under 60.
-    expect(age).toContain('x.date_of_birth is not null');
+    expect(age).toContain('extract(year from age(p_on, born))::int');
+    // The identity card is read only when no date of birth is on file, and only a real date counts.
+    expect(age).toContain("born is null and card ~ '^[0-9]{12}$'");
+    expect(age).toContain('exception when datetime_field_overflow or invalid_datetime_format');
+    // Nothing at all when neither gives a date: the proposal reads an unknown age as keeping every share.
+    expect(age).toContain('if born is null or born > p_on then');
     expect(sql).toContain('revoke all on function private.hr_payroll_age_on(uuid, date) from public, anon, authenticated;');
-    // The month's contribution is paid after the month, so the last day of it decides the age.
+    // A birthday inside the month changes the shares from the next month.
     expect(fn('private.hr_payroll_refresh_payslip')).toContain(
-      'private.hr_payroll_age_on(slip.employee_id, (slip.period_month + interval \'1 month\')::date - 1)',
+      'private.hr_payroll_age_on(slip.employee_id, slip.period_month - 1)',
     );
   });
 
-  test('no employee EPF, SOCSO or EIS from the age of 60, and no contribution dropped on a guess', () => {
+  test('the ages each share covers are rule data: none from 60, no EIS below 18, an unknown age keeps the share', () => {
     const proposal = fn('private.hr_payroll_proposal');
     expect(proposal).toContain('p_scheme text, p_wage_cents bigint, p_age int');
-    expect(proposal).toContain("coalesce(p_age, 0) >= 60 and p_scheme in ('epf', 'socso', 'eis')");
+    expect(proposal).toContain('when p_age < s.employee_from_age or p_age >= s.employee_until_age then 0');
+    expect(proposal).not.toMatch(/\b(60|18)\b/);
+    expect(sql).toContain('add column employee_from_age int');
+    expect(sql).toContain('add column employee_until_age int');
+    expect(sql).toMatch(/set employee_until_age = 60,\s*note = '[^']*'\s*where scheme = 'epf';/);
+    expect(sql).toMatch(/set employee_until_age = 60,\s*note = '[^']*'\s*where scheme = 'socso';/);
+    expect(sql).toMatch(/set employee_from_age = 18, employee_until_age = 60,\s*note = '[^']*'\s*where scheme = 'eis';/);
     // The rate on the base it is handed, still capped, still in one place.
     expect(proposal).toContain('least(round(p_wage_cents * s.rate), s.max_cents)::bigint');
     expect(sql).toContain('drop function if exists private.hr_payroll_proposal(text, bigint);');
@@ -100,14 +109,21 @@ describe('payroll statutory wages and age', () => {
     );
   });
 
-  test('the migration changes these three functions and nothing else', () => {
+  test('the migration changes these three functions and two rule columns, and nothing else', () => {
     const replaced = [...sql.matchAll(/create or replace function ([a-z_.]+)\(/g)].map((m) => m[1]);
     expect(replaced.sort()).toEqual([
       'private.hr_payroll_age_on',
       'private.hr_payroll_proposal',
       'private.hr_payroll_refresh_payslip',
     ]);
-    expect(sql).not.toMatch(/(alter table|drop policy|create policy|create table|create index)\b/);
+    expect([...sql.matchAll(/alter table ([a-z_.]+)/g)].map((m) => m[1])).toEqual(['public.hr_statutory_rules']);
+    expect(sql).not.toMatch(/(drop policy|create policy|create table|create index|grant )\b/);
+  });
+
+  test('every draft payslip is worked out again, and no paid one', () => {
+    const tail = sql.slice(sql.lastIndexOf('do $$'));
+    expect(tail).toContain('perform private.hr_payroll_refresh_payslip(p.id)');
+    expect(tail).toContain("where r.status = 'draft'");
   });
 
   test('the workspace check calls the proposal with the age, and no figure is left on the old signature', () => {
@@ -118,8 +134,7 @@ describe('payroll statutory wages and age', () => {
       // Three arguments: the scheme, the wages and the age. A two-argument call names the signature this migration drops.
       expect(args.length, args.join(' | ')).toBe(3);
     }
-    // EPF is compared against its own wages there, not against gross: the overtime lines are not EPF wages.
-    expect(text).toContain("l.kind = 'earning' and l.source <> 'overtime'");
-    expect(text).toContain('private.hr_payroll_age_on(p.employee_id, (p.period_month + interval \'1 month\')::date - 1)');
+    // The demo's figures are compared with what the payslip function works out, not a copy of its rules.
+    expect(text).toContain('from private.hr_payroll_refresh_payslip(p.id) f)');
   });
 });

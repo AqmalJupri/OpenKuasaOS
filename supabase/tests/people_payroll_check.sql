@@ -55,7 +55,7 @@ declare
   feb date := date '2025-02-01';
   -- corg
   b1 uuid; ej uuid; u2 uuid; uh uuid; us uuid; jc uuid; ot uuid; hi uuid; lo uuid;
-  inact uuid; fj uuid; ns1 uuid; ns2 uuid; ns0 uuid; late uuid; turned60 uuid; turns60 uuid;
+  inact uuid; fj uuid; ns1 uuid; ns2 uuid; ns0 uuid; late uuid; turned60 uuid; turns60 uuid; icsixty uuid; teen uuid;
   r1 uuid; r2 uuid; r3 uuid; r4 uuid; r5 uuid; r6 uuid; r7 uuid;
   mar date := date '2025-03-01';
   apr date := date '2025-04-01';
@@ -1122,19 +1122,24 @@ begin
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N1', 'Zed No Salary') returning id into ns1;
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N2', 'Amy No Record') returning id into ns2;
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N0', 'Bob Zero Salary') returning id into ns0;
-  -- Two birthdays that matter: one turned 60 inside March, the other inside April.
+  -- Birthdays that matter. The employee share stops from the month after the
+  -- month someone turns 60, and EIS starts the same way after 18.
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'S60', 'Turned Sixty In March') returning id into turned60;
-  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N60', 'Turns Sixty In April') returning id into turns60;
+  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N60', 'Turns Sixty On 1 April') returning id into turns60;
+  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'IC60', 'Sixty By Identity Card') returning id into icsixty;
+  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'T17', 'Seventeen') returning id into teen;
   -- No salary, and not there yet in March: left out of March altogether, listed in April.
   insert into public.hr_employees (org_id, employee_no, name, join_date) values (corg, 'NC', 'Cal Joins Later', '2025-04-20') returning id into cal;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents)
   values (b1, corg, 300000), (ej, corg, 311111), (u2, corg, 400000), (uh, corg, 400000), (us, corg, 260000),
          (jc, corg, 311111), (ot, corg, 300000), (hi, corg, 800000), (lo, corg, 594000),
          (inact, corg, 300000), (fj, corg, 300000), (ns1, corg, null), (ns0, corg, 0);
-  -- A date of birth is what turns the employee share off at 60; these two differ
-  -- only in when they reach it.
-  insert into public.hr_employee_private (employee_id, org_id, base_salary_cents, date_of_birth)
-  values (turned60, corg, 500000, date '1965-03-15'), (turns60, corg, 300000, date '1965-04-15');
+  -- Age comes from the date of birth, or else from a Malaysian identity card
+  -- number (YYMMDD first). Sixty By Identity Card has no date of birth and was
+  -- born on 28 February 1965.
+  insert into public.hr_employee_private (employee_id, org_id, base_salary_cents, date_of_birth, nric)
+  values (turned60, corg, 500000, date '1965-03-15', null), (turns60, corg, 300000, date '1965-04-01', null),
+         (icsixty, corg, 400000, null, '650228-10-5551'), (teen, corg, 150000, date '2007-06-01', null);
   -- Unpaid leave, approved. Monday and Tuesday; a half day; and Friday 28 March
   -- to Wednesday 2 April, which is 3 working days of March and 2 of April.
   insert into public.hr_leave_requests (org_id, employee_id, leave_type, start_date, end_date, days, half_day, status)
@@ -1173,10 +1178,10 @@ begin
 
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, mar));
   mar_run := (r #>> '{run,id}')::uuid;
-  -- Eleven payslips. The inactive employee and the one who joins in April have
+  -- Thirteen payslips. The inactive employee and the one who joins in April have
   -- none; the three with no salary are listed, by name.
   -- One of its three overtime lines is for work done in February.
-  if r -> 'payslips' is distinct from '11'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  if r -> 'payslips' is distinct from '13'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
@@ -1185,7 +1190,7 @@ begin
   end if;
   select count(*) into n from public.hr_payslips p where p.payroll_run_id = mar_run;
   select count(*) into n2 from public.hr_payslips p where p.employee_id in (inact, fj, ns1, ns2, ns0, cal);
-  if n <> 11 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
+  if n <> 13 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
   for label, who, want, t in
     select * from (values
       ('basic only', b1,
@@ -1219,13 +1224,18 @@ begin
       -- Joining on the first of the month is not joining part-way through it.
       ('gross just below the maximum', lo,
         'basic 594000 gross 594000 epf 65340 socso 2970 eis 1188 pcb 0 other 0 net 524502 set [] pending', 'none'),
-      -- 60 on 31 March, so the employee shares are zero. Before the age rule this
-      -- was 55000, 2500 and 1000.
+      -- Turned 60 on 15 March: March still has every employee share. They stop in April.
       ('turned sixty inside the month', turned60,
-        'basic 500000 gross 500000 epf 0 socso 0 eis 0 pcb 0 other 0 net 500000 set [] pending', 'none'),
-      -- 59 on 31 March and 60 on 30 April: March keeps its shares, April does not.
-      ('fifty nine, sixty next month', turns60,
-        'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none')
+        'basic 500000 gross 500000 epf 55000 socso 2500 eis 1000 pcb 0 other 0 net 441500 set [] pending', 'none'),
+      -- Turns 60 on 1 April: March and April both keep their shares.
+      ('fifty nine all month', turns60,
+        'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none'),
+      -- Turned 60 in February, read from the identity card: no employee share in March.
+      ('sixty before the month began, by identity card', icsixty,
+        'basic 400000 gross 400000 epf 0 socso 0 eis 0 pcb 0 other 0 net 400000 set [] pending', 'none'),
+      -- 17: EPF and SOCSO as usual, no EIS below 18.
+      ('seventeen', teen,
+        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = who;
@@ -1247,12 +1257,34 @@ begin
      or private.hr_payroll_proposal('epf', 4, null) <> 0 or private.hr_payroll_proposal('pcb', 100000, null) <> 0 then
     fails := array_append(fails, 'EPF has a maximum, is not rounded to the sen, or a scheme with no rule is not zero');
   end if;
-  -- From the age of 60 there is no employee share of EPF, SOCSO or EIS, and no date of birth reads as under 60.
+  -- From the age of 60 there is no employee share of EPF, SOCSO or EIS, and none
+  -- of EIS below 18. An unknown age keeps every share.
   if private.hr_payroll_proposal('epf', 500000, 60) <> 0 or private.hr_payroll_proposal('epf', 500000, 61) <> 0
      or private.hr_payroll_proposal('epf', 500000, 59) <> 55000 or private.hr_payroll_proposal('epf', 500000, null) <> 55000
      or private.hr_payroll_proposal('socso', 500000, 60) <> 0 or private.hr_payroll_proposal('eis', 500000, 60) <> 0 then
     fails := array_append(fails, 'the employee share from the age of 60 is not zero, or a missing date of birth is not under 60');
   end if;
+  if private.hr_payroll_proposal('eis', 500000, 17) <> 0 or private.hr_payroll_proposal('eis', 500000, 18) <> 1000
+     or private.hr_payroll_proposal('eis', 500000, null) <> 1000 or private.hr_payroll_proposal('epf', 500000, 17) <> 55000
+     or private.hr_payroll_proposal('socso', 500000, 17) <> 2500 then
+    fails := array_append(fails, 'EIS below 18 is not zero, or an age below 18 changed EPF or SOCSO, or an unknown age dropped EIS');
+  end if;
+  -- Age from an identity card number: the date it encodes, with or without dashes;
+  -- nothing when it is not a real date or not twelve digits; a date of birth on file wins.
+  for n, want, t in select * from (values
+      (1, '60', '650228-10-5551'), (2, '59', '650301105551'), (3, '25', '000101-10-0000'),
+      (4, null, '651399-10-0000'), (5, null, 'A12345678'), (6, null, '650230-10-0000'), (7, null, null)) as c(k, w, ic) loop
+    update public.hr_employee_private set nric = t, date_of_birth = null where employee_id = ns1;
+    if private.hr_payroll_age_on(ns1, date '2025-02-28')::text is distinct from want then
+      fails := array_append(fails, format('identity card %s gives the age %s on 28 Feb 2025, expected %s', t,
+        private.hr_payroll_age_on(ns1, date '2025-02-28'), want));
+    end if;
+  end loop;
+  update public.hr_employee_private set nric = '650228-10-5551', date_of_birth = date '1990-01-01' where employee_id = ns1;
+  if private.hr_payroll_age_on(ns1, date '2025-02-28') is distinct from 35 then
+    fails := array_append(fails, 'the identity card number was used although a date of birth is on file');
+  end if;
+  update public.hr_employee_private set nric = null, date_of_birth = null where employee_id = ns1;
 
   -- A recalculation after things changed: a new salary, a new employee, a salary
   -- put on file, and someone made inactive (who keeps their payslip).
@@ -1267,7 +1299,7 @@ begin
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'LT', 'Added Late') returning id into late;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents) values (late, corg, 200000);
   r := pg_temp.pay_try(owner_id, format('select public.hr_recalculate_payroll(%L)', mar_run));
-  if r -> 'payslips' is distinct from '13'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  if r -> 'payslips' is distinct from '15'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary')) then
@@ -1312,7 +1344,7 @@ begin
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, apr));
   apr_run := (r #>> '{run,id}')::uuid;
   -- March is paid, so April can be made. Its one overtime line is April's own.
-  if r -> 'payslips' is distinct from '14'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
+  if r -> 'payslips' is distinct from '16'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
@@ -1343,11 +1375,16 @@ begin
       ('overtime worked in April', ot,
         'basic 300000 gross 309000 epf 33000 socso 1545 eis 618 pcb 0 other 0 net 273837 set [] pending',
         'overtime earning "Overtime, 1 Apr 2025, 3 h" 9000'),
-      -- Still 60 and over, and the one who turned 60 on 15 April.
-      ('still sixty and over', turned60,
+      -- Turned 60 in March, so April is the first month with no employee share.
+      ('the month after turning sixty', turned60,
         'basic 500000 gross 500000 epf 0 socso 0 eis 0 pcb 0 other 0 net 500000 set [] pending', 'none'),
-      ('turned sixty inside April', turns60,
-        'basic 300000 gross 300000 epf 0 socso 0 eis 0 pcb 0 other 0 net 300000 set [] pending', 'none')
+      -- Turned 60 on 1 April: April still has every share; May would not.
+      ('turned sixty on the first of the month', turns60,
+        'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none'),
+      ('still sixty and over, by identity card', icsixty,
+        'basic 400000 gross 400000 epf 0 socso 0 eis 0 pcb 0 other 0 net 400000 set [] pending', 'none'),
+      ('still seventeen', teen,
+        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = who;
@@ -1408,17 +1445,9 @@ begin
          - coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l where l.payslip_id = p.id and l.kind = 'unpaid'), 0), 0)
     or p.other_deductions_cents <> coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l where l.payslip_id = p.id and l.kind = 'deduction'), 0)
     or p.net_cents <> p.gross_cents - p.epf_cents - p.socso_cents - p.eis_cents - p.pcb_cents - p.other_deductions_cents
-    or p.epf_cents <> private.hr_payroll_proposal('epf',
-         greatest(p.basic_cents
-           + coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l
-                       where l.payslip_id = p.id and l.kind = 'earning' and l.source <> 'overtime'), 0)
-           - coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l
-                       where l.payslip_id = p.id and l.kind = 'unpaid'), 0), 0)::bigint,
-         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
-    or p.socso_cents <> private.hr_payroll_proposal('socso', p.gross_cents,
-         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
-    or p.eis_cents <> private.hr_payroll_proposal('eis', p.gross_cents,
-         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
+    -- The statutory figures are the ones the payslip function itself works out now.
+    or row(p.epf_cents, p.socso_cents, p.eis_cents) is distinct from (
+         select row(f.epf_cents, f.socso_cents, f.eis_cents) from private.hr_payroll_refresh_payslip(p.id) f)
     -- Zero is possible: someone who joined on the last day of a month, a rest day, is paid nothing for it.
     or p.net_cents < 0 or p.set_by_hr <> '{}');
   select count(*) into n2 from public.hr_payslips p where p.org_id = demo;
