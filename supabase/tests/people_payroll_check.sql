@@ -55,7 +55,7 @@ declare
   feb date := date '2025-02-01';
   -- corg
   b1 uuid; ej uuid; u2 uuid; uh uuid; us uuid; jc uuid; ot uuid; hi uuid; lo uuid;
-  inact uuid; fj uuid; ns1 uuid; ns2 uuid; ns0 uuid; late uuid;
+  inact uuid; fj uuid; ns1 uuid; ns2 uuid; ns0 uuid; late uuid; turned60 uuid; turns60 uuid;
   r1 uuid; r2 uuid; r3 uuid; r4 uuid; r5 uuid; r6 uuid; r7 uuid;
   mar date := date '2025-03-01';
   apr date := date '2025-04-01';
@@ -131,7 +131,7 @@ begin
   -- No hr_ helper in the private schema can be called directly, and the payroll ones exist.
   select count(*) into n from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
   where ns.nspname = 'private' and (p.proname like 'hr\_payroll\_%' or p.proname in ('hr_payslip_json', 'hr_employee_delete_guard'));
-  if n <> 13 then fails := array_append(fails, format('%s private payroll helpers exist, expected 13', n)); end if;
+  if n <> 14 then fails := array_append(fails, format('%s private payroll helpers exist, expected 14', n)); end if;
   for rec in
     select p.oid::regprocedure::text as sig from pg_proc p
     join pg_namespace ns on ns.oid = p.pronamespace
@@ -602,33 +602,33 @@ begin
   select p.id into pv from public.hr_payslips p where p.payroll_run_id = run_id and p.employee_id = ev;
   select l.id into ot_line from public.hr_payslip_lines l where l.payslip_id = pa and l.source = 'overtime';
   -- A starts from basic and the one overtime record.
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 305000 epf 33550 socso 1525 eis 610 pcb 0 other 0 net 269315 set [] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 305000 epf 33000 socso 1525 eis 610 pcb 0 other 0 net 269865 set [] pending' then
     fails := array_append(fails, 'A in January: ' || coalesce(pg_temp.pay_slip(pa), 'no payslip'));
   end if;
   -- An earning raises gross, and the proposals follow it.
   r := pg_temp.pay_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Commission'', 50000)', pa));
   line_id := (r #>> '{line,id}')::uuid;
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 39050 socso 1775 eis 710 pcb 0 other 0 net 313465 set [] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 38500 socso 1775 eis 710 pcb 0 other 0 net 314015 set [] pending' then
     fails := array_append(fails, 'A after an earning of 500.00: ' || pg_temp.pay_slip(pa));
   end if;
   -- A deduction changes net only. Its name is trimmed.
   r := pg_temp.pay_try(admin_id, format('select public.hr_save_payslip_line(%L, null, ''deduction'', ''  Advance  '', 20000)', pa));
   line2 := (r #>> '{line,id}')::uuid;
   if r #>> '{line,label}' is distinct from 'Advance'
-     or pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 39050 socso 1775 eis 710 pcb 0 other 20000 net 293465 set [] pending' then
+     or pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 38500 socso 1775 eis 710 pcb 0 other 20000 net 294015 set [] pending' then
     fails := array_append(fails, format('A after a deduction of 200.00: %s (%s)', pg_temp.pay_slip(pa), r -> 'line'));
   end if;
   -- Changing a line: its name and amount, and the totals follow.
   fails := fails || pg_temp.pay_expect(owner_id, 'the deduction is changed',
     format('select public.hr_save_payslip_line(%L, %L, ''deduction'', ''Salary advance'', 25000)', pa, line2), null);
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 39050 socso 1775 eis 710 pcb 0 other 25000 net 288465 set [] pending'
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 355000 epf 38500 socso 1775 eis 710 pcb 0 other 25000 net 289015 set [] pending'
      or pg_temp.pay_lines(pa) is distinct from 'overtime earning "Overtime, 10 Jan 2025, 2 h" 5000; hr earning "Commission" 50000; hr deduction "Salary advance" 25000' then
     fails := array_append(fails, format('A after the deduction became 250.00: %s / %s', pg_temp.pay_slip(pa), pg_temp.pay_lines(pa)));
   end if;
   -- A line can change its kind: the same line as an earning, and back.
   fails := fails || pg_temp.pay_expect(owner_id, 'the deduction becomes an earning',
     format('select public.hr_save_payslip_line(%L, %L, ''earning'', ''Salary advance'', 25000)', pa, line2), null);
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 380000 epf 41800 socso 1900 eis 760 pcb 0 other 0 net 335540 set [] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 380000 epf 41250 socso 1900 eis 760 pcb 0 other 0 net 336090 set [] pending' then
     fails := array_append(fails, 'A with the deduction turned into an earning: ' || pg_temp.pay_slip(pa));
   end if;
   fails := fails || pg_temp.pay_expect(owner_id, 'the earning becomes a deduction again',
@@ -717,14 +717,14 @@ begin
   end if;
   -- A null amount gives the figure back to the proposal.
   r := pg_temp.pay_try(admin_id, format('select public.hr_set_statutory(%L, ''epf'', null)', pa));
-  if r #> '{payslip,set_by_hr}' is distinct from '["socso", "pcb"]'::jsonb or r #> '{payslip,epf_cents}' is distinct from '40150'::jsonb
-     or pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 40150 socso 0 eis 730 pcb 1500 other 25000 net 297620 set [socso,pcb] pending' then
+  if r #> '{payslip,set_by_hr}' is distinct from '["socso", "pcb"]'::jsonb or r #> '{payslip,epf_cents}' is distinct from '39600'::jsonb
+     or pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 39600 socso 0 eis 730 pcb 1500 other 25000 net 298170 set [socso,pcb] pending' then
     fails := array_append(fails, format('A after EPF was reset: %s (%s)', pg_temp.pay_slip(pa), r));
   end if;
   fails := fails
     || pg_temp.pay_expect(admin_id, 'SOCSO is reset', format('select public.hr_set_statutory(%L, ''socso'', null)', pa), null)
     || pg_temp.pay_expect(admin_id, 'EIS, never set, is reset', format('select public.hr_set_statutory(%L, ''eis'', null)', pa), null);
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 40150 socso 1825 eis 730 pcb 1500 other 25000 net 295795 set [pcb] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 39600 socso 1825 eis 730 pcb 1500 other 25000 net 296345 set [pcb] pending' then
     fails := array_append(fails, 'A after SOCSO was reset: ' || pg_temp.pay_slip(pa));
   end if;
   fails := fails
@@ -734,7 +734,7 @@ begin
     || pg_temp.pay_expect(owner_id, 'no figure named, and no amount', format('select public.hr_set_statutory(%L, null, null)', pa), 'PAYROLL_BAD_INPUT')
     || pg_temp.pay_expect(owner_id, 'a figure below zero', format('select public.hr_set_statutory(%L, ''epf'', -1)', pa), 'PAYROLL_BAD_INPUT')
     || pg_temp.pay_expect(owner_id, 'a figure above a billion ringgit', format('select public.hr_set_statutory(%L, ''pcb'', 100000000001)', pa), 'PAYROLL_BAD_INPUT');
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 40150 socso 1825 eis 730 pcb 1500 other 25000 net 295795 set [pcb] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 39600 socso 1825 eis 730 pcb 1500 other 25000 net 296345 set [pcb] pending' then
     fails := array_append(fails, 'a refused statutory figure changed A: ' || pg_temp.pay_slip(pa));
   end if;
 
@@ -758,12 +758,12 @@ begin
   select p.id into pb from public.hr_payslips p where p.payroll_run_id = run_id and p.employee_id = eb;
   select count(*) into n from public.hr_overtime_records o where o.id = o2 and o.payslip_id = pb;
   if r -> 'added' is distinct from '1'::jsonb or r -> 'payslips' is distinct from '3'::jsonb or n <> 1
-     or pg_temp.pay_slip(pb) is distinct from 'basic 450000 gross 457500 epf 50325 socso 2288 eis 915 pcb 0 other 0 net 403972 set [] pending'
+     or pg_temp.pay_slip(pb) is distinct from 'basic 450000 gross 457500 epf 49500 socso 2288 eis 915 pcb 0 other 0 net 404797 set [] pending'
      or pg_temp.pay_lines(pb) is distinct from 'overtime earning "Overtime, 15 Jan 2025, 3 h" 7500' then
     fails := array_append(fails, format('recalculating after B was removed: %s / %s / %s', r, pg_temp.pay_slip(pb), pg_temp.pay_lines(pb)));
   end if;
   -- A's own lines and figure were not touched by that.
-  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 40150 socso 1825 eis 730 pcb 1500 other 25000 net 295795 set [pcb] pending' then
+  if pg_temp.pay_slip(pa) is distinct from 'basic 300000 gross 365000 epf 39600 socso 1825 eis 730 pcb 1500 other 25000 net 296345 set [pcb] pending' then
     fails := array_append(fails, 'a recalculation changed a payslip that had no reason to change: ' || pg_temp.pay_slip(pa));
   end if;
   -- Deleting the draft lets all of it go; a new run takes it again.
@@ -1122,12 +1122,19 @@ begin
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N1', 'Zed No Salary') returning id into ns1;
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N2', 'Amy No Record') returning id into ns2;
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N0', 'Bob Zero Salary') returning id into ns0;
+  -- Two birthdays that matter: one turned 60 inside March, the other inside April.
+  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'S60', 'Turned Sixty In March') returning id into turned60;
+  insert into public.hr_employees (org_id, employee_no, name) values (corg, 'N60', 'Turns Sixty In April') returning id into turns60;
   -- No salary, and not there yet in March: left out of March altogether, listed in April.
   insert into public.hr_employees (org_id, employee_no, name, join_date) values (corg, 'NC', 'Cal Joins Later', '2025-04-20') returning id into cal;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents)
   values (b1, corg, 300000), (ej, corg, 311111), (u2, corg, 400000), (uh, corg, 400000), (us, corg, 260000),
          (jc, corg, 311111), (ot, corg, 300000), (hi, corg, 800000), (lo, corg, 594000),
          (inact, corg, 300000), (fj, corg, 300000), (ns1, corg, null), (ns0, corg, 0);
+  -- A date of birth is what turns the employee share off at 60; these two differ
+  -- only in when they reach it.
+  insert into public.hr_employee_private (employee_id, org_id, base_salary_cents, date_of_birth)
+  values (turned60, corg, 500000, date '1965-03-15'), (turns60, corg, 300000, date '1965-04-15');
   -- Unpaid leave, approved. Monday and Tuesday; a half day; and Friday 28 March
   -- to Wednesday 2 April, which is 3 working days of March and 2 of April.
   insert into public.hr_leave_requests (org_id, employee_id, leave_type, start_date, end_date, days, half_day, status)
@@ -1166,10 +1173,10 @@ begin
 
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, mar));
   mar_run := (r #>> '{run,id}')::uuid;
-  -- Nine payslips. The inactive employee and the one who joins in April have
+  -- Eleven payslips. The inactive employee and the one who joins in April have
   -- none; the three with no salary are listed, by name.
   -- One of its three overtime lines is for work done in February.
-  if r -> 'payslips' is distinct from '9'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  if r -> 'payslips' is distinct from '11'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
@@ -1178,7 +1185,7 @@ begin
   end if;
   select count(*) into n from public.hr_payslips p where p.payroll_run_id = mar_run;
   select count(*) into n2 from public.hr_payslips p where p.employee_id in (inact, fj, ns1, ns2, ns0, cal);
-  if n <> 9 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
+  if n <> 11 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
   for label, who, want, t in
     select * from (values
       ('basic only', b1,
@@ -1202,15 +1209,23 @@ begin
       ('unpaid lines capped at basic', jc,
         'basic 311111 gross 0 epf 0 socso 0 eis 0 pcb 0 other 0 net 0 set [] pending',
         'joiner unpaid "Joined 21 Mar 2025" 199111; unpaid_leave unpaid "Unpaid leave, 18 days" 112000'),
+      -- Overtime is not EPF wages: 11% of 3000.00, not of 3133.27. SOCSO and EIS still take the gross.
       ('overtime', ot,
-        'basic 300000 gross 313327 epf 34466 socso 1567 eis 627 pcb 0 other 0 net 276667 set [] pending',
+        'basic 300000 gross 313327 epf 33000 socso 1567 eis 627 pcb 0 other 0 net 278133 set [] pending',
         'overtime earning "Overtime, 10 Feb 2025, 1.5 h" 3000; overtime earning "Overtime, 5 Mar 2025, 2 h" 4327; overtime earning "Overtime, 20 Mar 2025, 2.5 h" 6000'),
       -- 0.5% of 8000.00 is 40.00 and 0.2% is 16.00: both stop at the maximum. Leave on a Sunday and on the holiday costs nothing.
       ('gross above every maximum', hi,
         'basic 800000 gross 800000 epf 88000 socso 2975 eis 1190 pcb 0 other 0 net 707835 set [] pending', 'none'),
       -- Joining on the first of the month is not joining part-way through it.
       ('gross just below the maximum', lo,
-        'basic 594000 gross 594000 epf 65340 socso 2970 eis 1188 pcb 0 other 0 net 524502 set [] pending', 'none')
+        'basic 594000 gross 594000 epf 65340 socso 2970 eis 1188 pcb 0 other 0 net 524502 set [] pending', 'none'),
+      -- 60 on 31 March, so the employee shares are zero. Before the age rule this
+      -- was 55000, 2500 and 1000.
+      ('turned sixty inside the month', turned60,
+        'basic 500000 gross 500000 epf 0 socso 0 eis 0 pcb 0 other 0 net 500000 set [] pending', 'none'),
+      -- 59 on 31 March and 60 on 30 April: March keeps its shares, April does not.
+      ('fifty nine, sixty next month', turns60,
+        'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = who;
@@ -1223,14 +1238,20 @@ begin
   if n <> 7 then fails := array_append(fails, 'March did not take exactly the three overtime records it should'); end if;
   -- The maximum is reached exactly at 5950.00, and a sen above it changes nothing.
   for n, want in select * from (values (595000, '2975 1190'), (594999, '2975 1190'), (594800, '2974 1190'), (594700, '2974 1189'), (595001, '2975 1190'), (0, '0 0'), (1, '0 0')) as c(g, w) loop
-    if format('%s %s', private.hr_payroll_proposal('socso', n), private.hr_payroll_proposal('eis', n)) <> want then
+    if format('%s %s', private.hr_payroll_proposal('socso', n, null), private.hr_payroll_proposal('eis', n, null)) <> want then
       fails := array_append(fails, format('SOCSO and EIS on a gross of %s are %s %s, expected %s', n,
-        private.hr_payroll_proposal('socso', n), private.hr_payroll_proposal('eis', n), want));
+        private.hr_payroll_proposal('socso', n, null), private.hr_payroll_proposal('eis', n, null), want));
     end if;
   end loop;
-  if private.hr_payroll_proposal('epf', 100000000) <> 11000000 or private.hr_payroll_proposal('epf', 5) <> 1
-     or private.hr_payroll_proposal('epf', 4) <> 0 or private.hr_payroll_proposal('pcb', 100000) <> 0 then
+  if private.hr_payroll_proposal('epf', 100000000, null) <> 11000000 or private.hr_payroll_proposal('epf', 5, null) <> 1
+     or private.hr_payroll_proposal('epf', 4, null) <> 0 or private.hr_payroll_proposal('pcb', 100000, null) <> 0 then
     fails := array_append(fails, 'EPF has a maximum, is not rounded to the sen, or a scheme with no rule is not zero');
+  end if;
+  -- From the age of 60 there is no employee share of EPF, SOCSO or EIS, and no date of birth reads as under 60.
+  if private.hr_payroll_proposal('epf', 500000, 60) <> 0 or private.hr_payroll_proposal('epf', 500000, 61) <> 0
+     or private.hr_payroll_proposal('epf', 500000, 59) <> 55000 or private.hr_payroll_proposal('epf', 500000, null) <> 55000
+     or private.hr_payroll_proposal('socso', 500000, 60) <> 0 or private.hr_payroll_proposal('eis', 500000, 60) <> 0 then
+    fails := array_append(fails, 'the employee share from the age of 60 is not zero, or a missing date of birth is not under 60');
   end if;
 
   -- A recalculation after things changed: a new salary, a new employee, a salary
@@ -1246,7 +1267,7 @@ begin
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'LT', 'Added Late') returning id into late;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents) values (late, corg, 200000);
   r := pg_temp.pay_try(owner_id, format('select public.hr_recalculate_payroll(%L)', mar_run));
-  if r -> 'payslips' is distinct from '11'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  if r -> 'payslips' is distinct from '13'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary')) then
@@ -1262,7 +1283,7 @@ begin
       ('someone added since', late, 'basic 200000 gross 200000 epf 22000 socso 1000 eis 400 pcb 0 other 0 net 176600 set [] pending'),
       ('someone made inactive since, who keeps their payslip', hi, 'basic 800000 gross 800000 epf 88000 socso 2975 eis 1190 pcb 0 other 0 net 707835 set [] pending'),
       ('someone whose salary was taken off file, who keeps a payslip of nothing', lo, 'basic 0 gross 0 epf 0 socso 0 eis 0 pcb 0 other 0 net 0 set [] pending'),
-      ('overtime, unchanged', ot, 'basic 300000 gross 313327 epf 34466 socso 1567 eis 627 pcb 0 other 0 net 276667 set [] pending')
+      ('overtime, unchanged', ot, 'basic 300000 gross 313327 epf 33000 socso 1567 eis 627 pcb 0 other 0 net 278133 set [] pending')
     ) as c(label, employee, slip)
   loop
     select p.id into pb from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = who;
@@ -1291,7 +1312,7 @@ begin
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, apr));
   apr_run := (r #>> '{run,id}')::uuid;
   -- March is paid, so April can be made. Its one overtime line is April's own.
-  if r -> 'payslips' is distinct from '12'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
+  if r -> 'payslips' is distinct from '14'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
@@ -1320,8 +1341,13 @@ begin
         'unpaid_leave unpaid "Unpaid leave, 1 day" 15385'),
       -- Only the record worked in April: March's three were paid in March.
       ('overtime worked in April', ot,
-        'basic 300000 gross 309000 epf 33990 socso 1545 eis 618 pcb 0 other 0 net 272847 set [] pending',
-        'overtime earning "Overtime, 1 Apr 2025, 3 h" 9000')
+        'basic 300000 gross 309000 epf 33000 socso 1545 eis 618 pcb 0 other 0 net 273837 set [] pending',
+        'overtime earning "Overtime, 1 Apr 2025, 3 h" 9000'),
+      -- Still 60 and over, and the one who turned 60 on 15 April.
+      ('still sixty and over', turned60,
+        'basic 500000 gross 500000 epf 0 socso 0 eis 0 pcb 0 other 0 net 500000 set [] pending', 'none'),
+      ('turned sixty inside April', turns60,
+        'basic 300000 gross 300000 epf 0 socso 0 eis 0 pcb 0 other 0 net 300000 set [] pending', 'none')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = who;
@@ -1382,9 +1408,17 @@ begin
          - coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l where l.payslip_id = p.id and l.kind = 'unpaid'), 0), 0)
     or p.other_deductions_cents <> coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l where l.payslip_id = p.id and l.kind = 'deduction'), 0)
     or p.net_cents <> p.gross_cents - p.epf_cents - p.socso_cents - p.eis_cents - p.pcb_cents - p.other_deductions_cents
-    or p.epf_cents <> private.hr_payroll_proposal('epf', p.gross_cents)
-    or p.socso_cents <> private.hr_payroll_proposal('socso', p.gross_cents)
-    or p.eis_cents <> private.hr_payroll_proposal('eis', p.gross_cents)
+    or p.epf_cents <> private.hr_payroll_proposal('epf',
+         greatest(p.basic_cents
+           + coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l
+                       where l.payslip_id = p.id and l.kind = 'earning' and l.source <> 'overtime'), 0)
+           - coalesce((select sum(l.amount_cents) from public.hr_payslip_lines l
+                       where l.payslip_id = p.id and l.kind = 'unpaid'), 0), 0)::bigint,
+         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
+    or p.socso_cents <> private.hr_payroll_proposal('socso', p.gross_cents,
+         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
+    or p.eis_cents <> private.hr_payroll_proposal('eis', p.gross_cents,
+         private.hr_payroll_age_on(p.employee_id, (p.period_month + interval '1 month')::date - 1))
     -- Zero is possible: someone who joined on the last day of a month, a rest day, is paid nothing for it.
     or p.net_cents < 0 or p.set_by_hr <> '{}');
   select count(*) into n2 from public.hr_payslips p where p.org_id = demo;

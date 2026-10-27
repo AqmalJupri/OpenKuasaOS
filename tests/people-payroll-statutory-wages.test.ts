@@ -8,6 +8,40 @@ import { describe, expect, test } from 'vitest';
 
 const FILE = '20261126090000_people_payroll_statutory_age_wages.sql';
 
+/** The workspace's own arithmetic check, which calls the private functions the migration replaces. */
+const checks = () => readFileSync(join(process.cwd(), 'supabase/tests/people_payroll_check.sql'), 'utf8');
+
+/** The top-level arguments of each call of a function, ignoring commas inside a nested call or a string. */
+function callArguments(text: string, called: string): string[][] {
+  const found: string[][] = [];
+  for (let at = text.indexOf(called); at > -1; at = text.indexOf(called, at + 1)) {
+    let depth = 0;
+    let quoted = false;
+    const args: string[] = [];
+    let from = at + called.length + 1;
+    for (let i = from; i < text.length; i++) {
+      const c = text[i];
+      if (c === "'") quoted = !quoted;
+      if (quoted) continue;
+      if (c === '(') depth++;
+      if (c === ')') {
+        if (depth === 0) {
+          args.push(text.slice(from, i));
+          found.push(args);
+          break;
+        }
+        depth--;
+      }
+      if (c === ',' && depth === 0) {
+        args.push(text.slice(from, i));
+        from = i + 1;
+      }
+    }
+  }
+  return found;
+}
+
+
 /** The migration without its comment lines, so a promise in a comment cannot satisfy a check. */
 const sql = readFileSync(join(process.cwd(), 'supabase/migrations', FILE), 'utf8')
   .split('\n')
@@ -74,5 +108,18 @@ describe('payroll statutory wages and age', () => {
       'private.hr_payroll_refresh_payslip',
     ]);
     expect(sql).not.toMatch(/(alter table|drop policy|create policy|create table|create index)\b/);
+  });
+
+  test('the workspace check calls the proposal with the age, and no figure is left on the old signature', () => {
+    const text = checks();
+    const calls = callArguments(text, 'private.hr_payroll_proposal');
+    expect(calls.length).toBeGreaterThan(0);
+    for (const args of calls) {
+      // Three arguments: the scheme, the wages and the age. A two-argument call names the signature this migration drops.
+      expect(args.length, args.join(' | ')).toBe(3);
+    }
+    // EPF is compared against its own wages there, not against gross: the overtime lines are not EPF wages.
+    expect(text).toContain("l.kind = 'earning' and l.source <> 'overtime'");
+    expect(text).toContain('private.hr_payroll_age_on(p.employee_id, (p.period_month + interval \'1 month\')::date - 1)');
   });
 });
