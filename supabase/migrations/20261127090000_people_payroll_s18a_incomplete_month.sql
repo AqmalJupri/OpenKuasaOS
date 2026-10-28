@@ -28,8 +28,8 @@
 -- The Act does not say how rest days inside unpaid leave are counted; JTKSM's
 -- FAQ restates the formula with no example. Counting them is the reading under
 -- which a whole month of unpaid leave pays nothing, which counting only working
--- days does not give. The docs say so and tell HR to type a figure in where the
--- employer reads it otherwise.
+-- days does not give. The docs say so, and tell HR to give the difference back
+-- with an earning line where the employer reads it otherwise.
 --
 -- Before this, unpaid leave came off at basic / 26 per working day (the s.60I
 -- ordinary rate of pay, for overtime, rest days and public holidays, not s.18A),
@@ -390,8 +390,7 @@ begin
   -- Payroll: this month in draft, the seven before it paid. A payslip starts
   -- from the salary; its lines follow; then every figure is worked out by the
   -- function a real payslip is worked out by. PCB is an illustrative figure.
-  -- The settings row comes first: the joiner line counts working days, which
-  -- reads the work week from it.
+  -- The settings row comes first, as the rest of Lekiu expects one.
   insert into public.hr_settings (org_id, notifications)
   values (demo, '{"leave_requests":true,"payslip_ready":true,"document_expiry":true,"birthdays":false}'::jsonb);
 
