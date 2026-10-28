@@ -14,7 +14,8 @@
 --   + a travel allowance RM500        none
 --   + a service charge RM400          SOCSO and EIS, not EPF
 --   + a gratuity RM600                none
---   the bonus is changed to a travel allowance   every figure moves back down
+--   the bonus is changed to a travel allowance   EPF wages lose it too
+--   the service charge is renamed without a type  it stays a service charge
 --
 -- The rates are the ones hr_statutory_rules holds (a rate and a cap); the
 -- banded tables on #402 are a separate change and move only the money.
@@ -27,6 +28,7 @@ declare
   slip uuid;
   bonus uuid;
   line2 uuid;
+  service uuid;
   mar date := date '2025-03-01';
   r jsonb;
   n bigint;
@@ -69,7 +71,7 @@ begin
     $f$;
     execute $f$
       create function pg_temp.wt_types(p_slip uuid) returns text language sql as $body$
-        select coalesce(string_agg(format('%s %s', l.label, l.earning_type), '; ' order by l.created_at, l.label), 'none')
+        select coalesce(string_agg(format('%s %s', l.label, l.earning_type), '; ' order by l.label), 'none')
         from public.hr_payslip_lines l where l.payslip_id = p_slip
       $body$
     $f$;
@@ -125,24 +127,34 @@ begin
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Petrol'', 50000, ''travel_allowance'')', slip));
     if r ? 'refused' then fails := array_append(fails, format('a travel allowance was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a travel allowance RM500', pg_temp.wt_slip(slip),
-      'gross 650000 epf 66000 socso 2250 eis 900 net 580850');
+      'gross 650000 epf 66000 socso 2000 eis 800 net 581200');
 
     -- ---- a service charge is not EPF wages -------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Service charge'', 40000, ''service_charge'')', slip));
+    service := (r #>> '{line,id}')::uuid;
     if r ? 'refused' then fails := array_append(fails, format('a service charge was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a service charge RM400', pg_temp.wt_slip(slip),
-      'gross 690000 epf 66000 socso 2450 eis 980 net 620570');
+      'gross 690000 epf 66000 socso 2200 eis 880 net 620920');
 
     -- ---- a gratuity counts for none --------------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Gratuity'', 60000, ''gratuity'')', slip));
     if r ? 'refused' then fails := array_append(fails, format('a gratuity was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a gratuity RM600', pg_temp.wt_slip(slip),
-      'gross 750000 epf 66000 socso 2450 eis 980 net 680570');
+      'gross 750000 epf 66000 socso 2200 eis 880 net 680920');
 
     -- ---- changing what a line is moves every figure back down ------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, %L, ''earning'', ''Bonus'', 200000, ''travel_allowance'')', slip, bonus));
     if r ? 'refused' then fails := array_append(fails, format('the bonus could not be changed: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('the bonus becomes a travel allowance', pg_temp.wt_slip(slip),
+      'gross 750000 epf 44000 socso 2200 eis 880 net 702920');
+
+    -- ---- a change that names no type keeps the one the line has ----------
+    r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, %L, ''earning'', ''Service charge Oct'', 40000)', slip, service));
+    if r ? 'refused' then fails := array_append(fails, format('the service charge could not be renamed: %s', r ->> 'refused')); end if;
+    if r #>> '{line,earning_type}' is distinct from 'service_charge' then
+      fails := array_append(fails, format('a rename with no type changed the type to %s', coalesce(r #>> '{line,earning_type}', 'nothing')));
+    end if;
+    fails := fails || pg_temp.wt_expect('the service charge is renamed', pg_temp.wt_slip(slip),
       'gross 750000 epf 44000 socso 2200 eis 880 net 702920');
 
     -- ---- refusals --------------------------------------------------------
@@ -169,7 +181,7 @@ begin
 
     -- ---- the lines say what they are -------------------------------------
     select pg_temp.wt_types(slip) into want;
-    if want is distinct from 'Line A ordinary; Bonus travel_allowance; Allowance ordinary; Petrol travel_allowance; Service charge service_charge; Gratuity gratuity; Advance ordinary' then
+    if want is distinct from 'Advance ordinary; Allowance ordinary; Bonus travel_allowance; Gratuity gratuity; Petrol travel_allowance; Service charge Oct service_charge' then
       fails := array_append(fails, format('the lines read: %s', want));
     end if;
 

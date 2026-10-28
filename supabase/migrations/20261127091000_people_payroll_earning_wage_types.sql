@@ -37,7 +37,10 @@
 -- exemption at 57, which needs a contribution history this record does not keep.
 --
 -- The save function takes the type as a sixth argument with a default, so every
--- five-argument call keeps working and counts the line as ordinary pay.
+-- five-argument call keeps working. A type left out means ordinary pay on a new
+-- line and the type it already has on a line being changed, so an edit that does
+-- not mention the type (an older client, the chat tool) never turns a bonus back
+-- into ordinary pay.
 
 -- ---- what kind of earning a line is ----------------------------------------
 alter table public.hr_payslip_lines
@@ -108,19 +111,22 @@ end; $$;
 revoke all on function private.hr_payroll_refresh_payslip(uuid) from public, anon, authenticated;
 
 -- ---- a line, with what kind of earning it is -------------------------------
--- The sixth argument is new and defaulted: a five-argument call (the chat tools,
--- an older client) writes an ordinary line, which is what it wrote before.
+-- The sixth argument is new and defaulted to null: a new line without a type is
+-- ordinary pay, which is what a five-argument call wrote before; a changed line
+-- without a type keeps the one it has. The local is `line_type`, not
+-- `earning_type`: a variable named like the column makes the update's
+-- `earning_type = earning_type` ambiguous, and plpgsql refuses it.
 drop function if exists public.hr_save_payslip_line(uuid, uuid, text, text, bigint);
 create function public.hr_save_payslip_line(
   p_payslip uuid, p_line uuid, p_kind text, p_label text, p_amount_cents bigint,
-  p_earning_type text default 'ordinary')
+  p_earning_type text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   run public.hr_payroll_runs;
   slip public.hr_payslips;
   line public.hr_payslip_lines;
   title text := trim(p_label);
-  earning_type text := coalesce(p_earning_type, 'ordinary');
+  line_type text;
 begin
   run := private.hr_payroll_held_run(null, p_payslip, null);
   if run.status <> 'draft' then raise exception 'PAYROLL_NOT_DRAFT'; end if;
@@ -137,20 +143,22 @@ begin
      or p_amount_cents is null or p_amount_cents <= 0 or p_amount_cents > 100000000000 then
     raise exception 'PAYROLL_BAD_INPUT';
   end if;
-  -- A deduction is not an earning, so it carries no earning type.
+  -- A deduction is not an earning, so it carries no earning type. An earning
+  -- that names none keeps the type its line has, or is ordinary pay when new.
+  line_type := coalesce(p_earning_type, line.earning_type, 'ordinary');
   if p_kind = 'deduction' then
-    earning_type := 'ordinary';
-  elsif earning_type not in ('ordinary','bonus','gratuity','travel_allowance','service_charge') then
+    line_type := 'ordinary';
+  elsif line_type not in ('ordinary','bonus','gratuity','travel_allowance','service_charge') then
     raise exception 'PAYROLL_BAD_INPUT';
   end if;
 
   if p_line is null then
     insert into public.hr_payslip_lines (org_id, payslip_id, kind, source, earning_type, label, amount_cents)
-    values (slip.org_id, slip.id, p_kind, 'hr', earning_type, title, p_amount_cents)
+    values (slip.org_id, slip.id, p_kind, 'hr', line_type, title, p_amount_cents)
     returning * into line;
   else
     update public.hr_payslip_lines l
-    set kind = p_kind, earning_type = earning_type, label = title, amount_cents = p_amount_cents
+    set kind = p_kind, earning_type = line_type, label = title, amount_cents = p_amount_cents
     where l.id = line.id
     returning l.* into line;
   end if;
