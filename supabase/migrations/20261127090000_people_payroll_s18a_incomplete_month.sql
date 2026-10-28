@@ -15,9 +15,9 @@
 -- Before this, unpaid leave came off at basic / 26 per working day, which is the
 -- s.60I ordinary rate of pay for overtime, rest days and public holidays, not the
 -- s.18A denominator, and a joiner was pro-rated by the workspace's working days.
--- On a 31 day month with two unpaid working days that took off RM230.77 where the
--- Act gives RM193.55, and a joiner on 16 March was paid RM1,363.64 where the Act
--- gives RM1,451.61.
+-- On a 31 day month with two unpaid working days that took off RM230.76 where the
+-- Act gives RM193.55, and a joiner on 16 March on a RM3,000 basic was docked
+-- RM1,363.64 where the Act gives RM1,451.61.
 --
 -- The line now says which days it used: "Unpaid leave, 2 of 31 days" and
 -- "Joined 16 Mar 2026 (16 of 31 days)", so the figure can be checked against the
