@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type CapResult, WRITE_FAILED } from '@/lib/people/capabilities';
 import { centsToField, removePayslipSentence } from '@/lib/people/payroll';
-import { toLineInput } from '@/lib/people/payroll-forms';
+import { EARNING_TYPE_OPTIONS, earningTypeNote, toLineInput } from '@/lib/people/payroll-forms';
+import type { PayslipEarningType } from '@/lib/people/types';
 import { RowPrompt, usePromptId } from './request-row';
 
 const SELECT_CLASS =
@@ -25,7 +26,13 @@ async function settle(call: () => Promise<CapResult<unknown>>): Promise<CapResul
   }
 }
 
-export type LineValue = { id: string; kind: 'earning' | 'deduction'; label: string; amount_cents: number };
+export type LineValue = {
+  id: string;
+  kind: 'earning' | 'deduction';
+  earning_type: PayslipEarningType;
+  label: string;
+  amount_cents: number;
+};
 
 /**
  * "Add line" (no `line`) or "Edit" (one of the owner's own lines) on a draft payslip. The form opens under the
@@ -36,6 +43,7 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<string>(line?.kind ?? 'earning');
+  const [earningType, setEarningType] = useState<PayslipEarningType>(line?.earning_type ?? 'ordinary');
   const [label, setLabel] = useState(line?.label ?? '');
   const [amount, setAmount] = useState(line ? centsToField(line.amount_cents) : '');
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +66,7 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
   function openForm() {
     // Open on what the line holds now (or empty, to add).
     setKind(line?.kind ?? 'earning');
+    setEarningType(line?.earning_type ?? 'ordinary');
     setLabel(line?.label ?? '');
     setAmount(line ? centsToField(line.amount_cents) : '');
     setError(null);
@@ -65,7 +74,7 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
   }
 
   function submit() {
-    const converted = toLineInput({ kind, label, amount });
+    const converted = toLineInput({ kind, earning_type: earningType, label, amount });
     if (!converted.ok) {
       setError(converted.error);
       return;
@@ -82,6 +91,7 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
           setLabel('');
           setAmount('');
           setKind('earning');
+          setEarningType('ordinary');
         }
       } else setError(result.error);
     });
@@ -127,6 +137,24 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
               <option value="earning">Earning (adds to gross)</option>
               <option value="deduction">Deduction (comes off net)</option>
             </select>
+            {kind === 'earning' ? (
+              <select
+                aria-label="What kind of earning"
+                className={SELECT_CLASS}
+                disabled={pending}
+                value={earningType}
+                onChange={(event) => {
+                  setEarningType(event.target.value as PayslipEarningType);
+                  changed();
+                }}
+              >
+                {EARNING_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <Input
               id={`${ids}-label`}
               aria-label="Line name"
@@ -164,6 +192,9 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
               Cancel
             </Button>
           </form>
+          {kind === 'earning' && earningTypeNote(earningType) ? (
+            <p className="text-xs text-muted-foreground">{earningTypeNote(earningType)}</p>
+          ) : null}
           {error ? (
             <p role="alert" className="text-xs text-destructive">
               {error}

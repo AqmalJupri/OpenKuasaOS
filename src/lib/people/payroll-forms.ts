@@ -6,7 +6,7 @@
  */
 import { monthYearLabel } from './dates';
 import { STATUTORY_FIELDS } from './statutory-fields';
-import type { PayrollRun, StatutoryField } from './types';
+import type { PayrollRun, PayslipEarningType, StatutoryField } from './types';
 
 type Converted<T> = { ok: true; input: T } | { ok: false; error: string };
 const bad = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -75,19 +75,46 @@ export function nextRunMonth(runs: Pick<PayrollRun, 'period_month'>[], today: st
 
 const LABEL_MAX = 80;
 
+/**
+ * The earning types an owner or admin can put on a line, in the order the form shows them, with what each one
+ * counts towards. `overtime` is not here: those lines are the system's own, made from approved overtime.
+ */
+export const EARNING_TYPE_OPTIONS = [
+  { value: 'ordinary', label: 'Ordinary pay', note: 'Counts towards EPF, SOCSO and EIS wages.' },
+  { value: 'bonus', label: 'Bonus', note: 'Counts towards EPF wages only, not SOCSO or EIS.' },
+  { value: 'travel_allowance', label: 'Travel allowance', note: 'Not EPF, SOCSO or EIS wages.' },
+  { value: 'service_charge', label: 'Service charge', note: 'Counts towards SOCSO and EIS wages only, not EPF.' },
+  { value: 'gratuity', label: 'Gratuity', note: 'Not EPF, SOCSO or EIS wages.' },
+] as const satisfies readonly { value: PayslipEarningType; label: string; note: string }[];
+
+/** What a line of that type counts towards, in one sentence, or null for ordinary pay, which needs no note. */
+export function earningTypeNote(type: PayslipEarningType): string | null {
+  if (type === 'ordinary') return null;
+  return EARNING_TYPE_OPTIONS.find((option) => option.value === type)?.note ?? null;
+}
+
 /** What the add-or-edit line form sends. The name is trimmed; the amount is in cents. */
 export function toLineInput(values: {
   kind: string;
+  earning_type?: string;
   label: string;
   amount: string;
-}): Converted<{ kind: 'earning' | 'deduction'; label: string; amount_cents: number }> {
+}): Converted<{ kind: 'earning' | 'deduction'; earning_type: PayslipEarningType; label: string; amount_cents: number }> {
   if (values.kind !== 'earning' && values.kind !== 'deduction') return bad('Choose whether it is an earning or a deduction.');
   const label = values.label.trim();
   if (label === '') return bad('Give the line a name.');
   if (label.length > LABEL_MAX) return bad(`Keep the name to ${LABEL_MAX} characters.`);
   const amount = ringgitToCents(values.amount);
   if (amount === null) return bad('Enter an amount above zero, like 1,200.50. It can be up to RM 9,999,999.99.');
-  return { ok: true, input: { kind: values.kind, label, amount_cents: amount } };
+  // A deduction is not an earning, so it carries no earning type. An earning that names none is ordinary pay, the
+  // figure it moved before the types existed.
+  let earning_type: PayslipEarningType = 'ordinary';
+  if (values.kind === 'earning' && values.earning_type !== undefined) {
+    if (!EARNING_TYPE_OPTIONS.some((option) => option.value === values.earning_type))
+      return bad('Choose what kind of earning it is: ordinary pay, a bonus, a travel allowance, a service charge or a gratuity.');
+    earning_type = values.earning_type as PayslipEarningType;
+  }
+  return { ok: true, input: { kind: values.kind, earning_type, label, amount_cents: amount } };
 }
 
 const FIELDS: readonly string[] = STATUTORY_FIELDS;

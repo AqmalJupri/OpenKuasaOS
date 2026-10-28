@@ -241,11 +241,19 @@ export type PayrollRun = {
 export type PayslipLineKind = 'earning' | 'unpaid' | 'deduction';
 /** `hr` lines are written by an owner or admin; the rest are worked out by the system. */
 export type PayslipLineSource = 'hr' | 'overtime' | 'unpaid_leave' | 'joiner';
+/**
+ * What kind of earning an HR line is, which decides whether the amount counts as EPF wages and as SOCSO and EIS
+ * wages. Overtime is not here: the system makes those lines, and their `source` says so.
+ */
+export const PAYSLIP_EARNING_TYPES = ['ordinary', 'bonus', 'gratuity', 'travel_allowance', 'service_charge'] as const;
+export type PayslipEarningType = (typeof PAYSLIP_EARNING_TYPES)[number];
 export type PayslipLine = {
   id: string;
   payslip_id: string;
   kind: PayslipLineKind;
   source: PayslipLineSource;
+  /** Ordinary pay unless the line says otherwise. Always `ordinary` on a line that is not an earning. */
+  earning_type: PayslipEarningType;
   label: string;
   amount_cents: number;
   /** An overtime line: the day the work was done. Null (or absent) for every other line. */

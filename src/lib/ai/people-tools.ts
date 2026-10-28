@@ -181,6 +181,7 @@ import {
   type Review,
   LETTER_TYPES,
   WEEKDAYS,
+  PAYSLIP_EARNING_TYPES,
 } from '@/lib/people/types';
 import { rm } from '@/lib/reach/format';
 import { managerLabel, reportsOf, teamIds } from '@/lib/people/reporting';
@@ -406,6 +407,14 @@ const savePayslipLineToolInput = z.object({
   payslip_id: z.guid().describe('The payslip, by its id from listPayslips.'),
   line_id: looseId('The line').describe('The line to change, by its id from listPayslips. Leave out (or empty) to add a new line.'),
   kind: z.enum(['earning', 'deduction']).describe('earning adds to the pay; deduction takes away from it.'),
+  earning_type: z
+    .enum(PAYSLIP_EARNING_TYPES)
+    .optional()
+    .describe(
+      'For an earning: what kind it is, which decides the EPF and the SOCSO and EIS wages it joins. ordinary pay ' +
+        '(the default) counts towards all three; bonus towards EPF only; service_charge towards SOCSO and EIS only; ' +
+        'travel_allowance and gratuity towards none. Leave out for ordinary pay.',
+    ),
   label: z
     .string()
     .trim()
@@ -2318,7 +2327,12 @@ export function createPeopleTools(
       inputSchema: savePayslipLineToolInput,
       execute: async (input) =>
         change('savePayslipLine', async () => {
-          const line = toLineInput({ kind: input.kind, label: input.label, amount: looseAmount(input.amount) });
+          const line = toLineInput({
+            kind: input.kind,
+            earning_type: input.earning_type,
+            label: input.label,
+            amount: looseAmount(input.amount),
+          });
           if (!line.ok) return { ok: false as const, error: line.error };
           const result = await capSavePayslipLine(ctx, { payslip_id: input.payslip_id, line_id: blank(input.line_id), ...line.input });
           if (!result.ok) return result;

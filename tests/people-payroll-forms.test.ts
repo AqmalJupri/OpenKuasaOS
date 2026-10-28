@@ -125,11 +125,11 @@ describe('toLineInput', () => {
   it('converts a filled-in form and trims the name', () => {
     expect(toLineInput({ kind: 'earning', label: '  Sales commission ', amount: 'RM 1,200.5' })).toEqual({
       ok: true,
-      input: { kind: 'earning', label: 'Sales commission', amount_cents: 120_050 },
+      input: { kind: 'earning', earning_type: 'ordinary', label: 'Sales commission', amount_cents: 120_050 },
     });
     expect(toLineInput({ kind: 'deduction', label: 'Uniform', amount: '60' })).toEqual({
       ok: true,
-      input: { kind: 'deduction', label: 'Uniform', amount_cents: 6000 },
+      input: { kind: 'deduction', earning_type: 'ordinary', label: 'Uniform', amount_cents: 6000 },
     });
   });
 

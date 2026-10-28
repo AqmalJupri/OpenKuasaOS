@@ -504,8 +504,14 @@ export function createSeedPeopleData(now: Date = new Date()): PeopleData {
         const basic = privates.find((p) => p.employee_id === employee.id)!.base_salary_cents!;
         const id = `seed-slip-${run.id}-${employee.id}`;
         const lines: PayslipLine[] = [];
-        const add = (kind: PayslipLine['kind'], source: PayslipLine['source'], label: string, amount: number) =>
-          lines.push({ id: `seed-line-${id}-${lines.length + 1}`, payslip_id: id, kind, source, label, amount_cents: amount });
+        const add = (
+          kind: PayslipLine['kind'],
+          source: PayslipLine['source'],
+          label: string,
+          amount: number,
+          earning_type: PayslipLine['earning_type'] = 'ordinary',
+        ) =>
+          lines.push({ id: `seed-line-${id}-${lines.length + 1}`, payslip_id: id, kind, source, earning_type, label, amount_cents: amount });
 
         if (employee.join_date! > run.period_month) {
           const last = lastDay(run.period_month);

@@ -65,7 +65,7 @@ const OVERTIME_COLUMNS =
   `payslip:hr_payslips!hr_overtime_records_payslip_id_fkey(period_month,status),${NAME}`;
 const PAYSLIP_COLUMNS =
   'id,employee_id,payroll_run_id,period_month,basic_cents,gross_cents,epf_cents,socso_cents,eis_cents,pcb_cents,' +
-  `other_deductions_cents,net_cents,set_by_hr,status,lines:hr_payslip_lines(id,payslip_id,kind,source,label,amount_cents,created_at,${LINE_WORK_DATE}),${PAYSLIP_NAME}`;
+  `other_deductions_cents,net_cents,set_by_hr,status,lines:hr_payslip_lines(id,payslip_id,kind,source,earning_type,label,amount_cents,created_at,${LINE_WORK_DATE}),${PAYSLIP_NAME}`;
 // A goal and a review reach their employee by a composite foreign key (employee_id, org_id), named by its columns.
 const GOAL_NAME = 'employee:hr_employees!hr_goals_employee_id_org_id_fkey(name)';
 const REVIEW_NAME = 'employee:hr_employees!hr_reviews_employee_id_org_id_fkey(name)';
@@ -134,6 +134,7 @@ function payslipOf({ lines, ...row }: PayslipRow): Payslip {
       payslip_id: line.payslip_id,
       kind: line.kind,
       source: line.source,
+      earning_type: line.earning_type,
       label: line.label,
       amount_cents: line.amount_cents,
       work_date: line.overtime?.work_date ?? null,

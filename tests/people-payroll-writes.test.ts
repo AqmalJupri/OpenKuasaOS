@@ -130,6 +130,7 @@ describe('the calls each function makes', () => {
       p_kind: 'earning',
       p_label: 'Bonus',
       p_amount_cents: 100_000,
+      p_earning_type: 'ordinary',
     });
   });
 
