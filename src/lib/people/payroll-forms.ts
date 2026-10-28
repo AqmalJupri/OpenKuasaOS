@@ -6,7 +6,7 @@
  */
 import { monthYearLabel } from './dates';
 import { STATUTORY_FIELDS } from './statutory-fields';
-import type { PayrollRun, PayslipEarningType, StatutoryField } from './types';
+import { PAYSLIP_EARNING_TYPES, type PayrollRun, type PayslipEarningType, type StatutoryField } from './types';
 
 type Converted<T> = { ok: true; input: T } | { ok: false; error: string };
 const bad = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -110,7 +110,7 @@ export function toLineInput(values: {
   // figure it moved before the types existed.
   let earning_type: PayslipEarningType = 'ordinary';
   if (values.kind === 'earning' && values.earning_type !== undefined) {
-    if (!EARNING_TYPE_OPTIONS.some((option) => option.value === values.earning_type))
+    if (!(PAYSLIP_EARNING_TYPES as readonly string[]).includes(values.earning_type))
       return bad('Choose what kind of earning it is: ordinary pay, a bonus, a travel allowance, a service charge or a gratuity.');
     earning_type = values.earning_type as PayslipEarningType;
   }

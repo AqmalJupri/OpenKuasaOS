@@ -47,6 +47,7 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
   const [label, setLabel] = useState(line?.label ?? '');
   const [amount, setAmount] = useState(line ? centsToField(line.amount_cents) : '');
   const [error, setError] = useState<string | null>(null);
+  const typeNote = earningTypeNote(earningType);
   const trigger = useRef<HTMLButtonElement>(null);
   const refocus = useRef(false);
   const ids = useId();
@@ -192,8 +193,8 @@ export function PayslipLineForm({ payslipId, line }: { payslipId: string; line?:
               Cancel
             </Button>
           </form>
-          {kind === 'earning' && earningTypeNote(earningType) ? (
-            <p className="text-xs text-muted-foreground">{earningTypeNote(earningType)}</p>
+          {kind === 'earning' && typeNote ? (
+            <p className="text-xs text-muted-foreground">{typeNote}</p>
           ) : null}
           {error ? (
             <p role="alert" className="text-xs text-destructive">
