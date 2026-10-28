@@ -248,6 +248,11 @@ function deductions(gross: number) {
     epf_cents: Math.round(gross * 0.11),
     socso_cents: Math.min(Math.round(gross * 0.005), 2975),
     eis_cents: Math.min(Math.round(gross * 0.002), 1190),
+    // The employer's share the payroll screen and the payslip add on top of gross, in the same illustrative spirit:
+    // 13% to RM 5,000 and 12% above it, and PERKESO's ceilings.
+    epf_employer_cents: Math.round(gross * (gross > 500000 ? 0.12 : 0.13)),
+    socso_employer_cents: Math.min(Math.round(gross * 0.0175), 10415),
+    eis_employer_cents: Math.min(Math.round(gross * 0.002), 1190),
     pcb_cents:
       gross > 500000 ? 8000 + Math.round((gross - 500000) * 0.08) : gross > 350000 ? Math.round((gross - 350000) * 0.03) : 0,
   };
@@ -557,6 +562,9 @@ export function createSeedPeopleData(now: Date = new Date()): PeopleData {
           epf_cents: cut.epf_cents,
           socso_cents: cut.socso_cents,
           eis_cents: cut.eis_cents,
+          epf_employer_cents: cut.epf_employer_cents,
+          socso_employer_cents: cut.socso_employer_cents,
+          eis_employer_cents: cut.eis_employer_cents,
           pcb_cents,
           other_deductions_cents: other,
           net_cents: gross - cut.epf_cents - cut.socso_cents - cut.eis_cents - pcb_cents - other,

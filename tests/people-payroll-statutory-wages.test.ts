@@ -126,14 +126,16 @@ describe('payroll statutory wages and age', () => {
     expect(tail).toContain("where r.status = 'draft'");
   });
 
-  test('the workspace check calls the proposal with the age, and no figure is left on the old signature', () => {
+  test('the workspace check calls the proposal with the age, and names the payer only when it is the employer', () => {
     const text = checks();
     const calls = callArguments(text, 'private.hr_payroll_proposal');
     expect(calls.length).toBeGreaterThan(0);
     for (const args of calls) {
-      // Four arguments since 20261126090100: the scheme, the wages, the age and the citizenship.
-      // A shorter call names a signature that no longer exists.
-      expect(args.length, args.join(' | ')).toBe(4);
+      // Four arguments read the employee's share: the scheme, the wages, the age and the
+      // citizenship. The fifth names the payer, defaulted to the employee, so a call that
+      // reads an employee figure never spells it out.
+      expect([4, 5], args.join(' | ')).toContain(args.length);
+      if (args.length === 5) expect(args[4].trim(), args.join(' | ')).toBe("'employer'");
     }
     // The demo's figures are compared with what the payslip function works out, not a copy of its rules.
     expect(text).toContain('from private.hr_payroll_refresh_payslip(p.id) f)');

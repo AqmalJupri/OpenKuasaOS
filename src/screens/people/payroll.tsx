@@ -271,11 +271,17 @@ export default async function PayrollScreen({
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center gap-2 border-t px-4 py-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t px-4 py-3 text-sm text-muted-foreground">
                 <Users className="size-4" />
                 <span>
                   {latest.slips.length} {latest.slips.length === 1 ? 'payslip' : 'payslips'} in this run
                 </span>
+                {latest.employer_cents > 0 ? (
+                  <span className="ml-auto">
+                    Employer contributions {centsToRinggit(latest.employer_cents)} · cost{' '}
+                    {centsToRinggit(latest.cost_cents)}
+                  </span>
+                ) : null}
               </div>
             </>
           )}

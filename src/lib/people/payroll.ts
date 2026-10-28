@@ -71,20 +71,42 @@ export type PayrollModel = {
     pcb_cents: number;
     /** The deduction lines, summed ("Other"). */
     other_cents: number;
+    /** The employer's EPF, SOCSO and EIS shares, summed. Paid on top of gross: not part of deductions or net. */
+    employer_cents: number;
+    /** Gross plus the employer's shares: what the run costs the employer. */
+    cost_cents: number;
     slips: PayslipRow[];
   } | null;
   /** Gross in ringgit per run, oldest first. */
   by_month: Bucket[];
   /** The chosen run's deductions in cents, as recorded on the payslips; "Other" last. Empty when there is none. */
   deductions: { key: string; label: string; value: number }[];
+  /** The chosen run's employer shares in cents, EPF, SOCSO and EIS. Empty when there is no run. */
+  employer: { key: string; label: string; value: number }[];
 };
 
 type DeductionField = 'epf_cents' | 'socso_cents' | 'eis_cents' | 'pcb_cents' | 'other_deductions_cents';
 
-const sum = (rows: Payslip[], field: DeductionField) => rows.reduce((total, row) => total + row[field], 0);
+type MoneyField = DeductionField | 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents';
+
+const sum = (rows: Payslip[], field: MoneyField) => rows.reduce((total, row) => total + row[field], 0);
 
 /** Everything between a payslip's gross and net, as the row records them. The one place it is derived. */
 export const deductionsOf = (p: Payslip): number => p.gross_cents - p.net_cents;
+
+/**
+ * The employer's three shares on one payslip. Paid on top of gross pay: it is not a deduction and never comes off
+ * net. Zero on a payslip from before these figures were worked out.
+ */
+export const employerOf = (p: Payslip): number =>
+  p.epf_employer_cents + p.socso_employer_cents + p.eis_employer_cents;
+
+/** The employer's three shares in the order the official submissions use them. */
+const EMPLOYER: { label: string; key: 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents' }[] = [
+  { label: 'EPF', key: 'epf_employer_cents' },
+  { label: 'SOCSO', key: 'socso_employer_cents' },
+  { label: 'EIS', key: 'eis_employer_cents' },
+];
 
 const rowOf = (p: Payslip): PayslipRow => ({ ...p, deductions_cents: deductionsOf(p) });
 
@@ -107,7 +129,7 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
   const asked = runId ? runs.find((r) => r.id === runId) : undefined;
   const newest = [...runs].sort((a, b) => b.period_month.localeCompare(a.period_month))[0];
   const chosen = asked ?? newest;
-  if (!chosen) return { runs: options, latest: null, by_month: [], deductions: [] };
+  if (!chosen) return { runs: options, latest: null, by_month: [], deductions: [], employer: [] };
 
   const slips = payslips
     .filter((p) => p.payroll_run_id === chosen.id)
@@ -120,6 +142,8 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
   const eis = sum(slips, 'eis_cents');
   const pcb = sum(slips, 'pcb_cents');
   const other = sum(slips, 'other_deductions_cents');
+  const employer = EMPLOYER.map((f) => ({ key: f.key.replace('_cents', ''), label: f.label, value: sum(slips, f.key) }));
+  const employerTotal = employer.reduce((total, f) => total + f.value, 0);
   return {
     runs: options,
     latest: {
@@ -139,6 +163,8 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
       eis_cents: eis,
       pcb_cents: pcb,
       other_cents: other,
+      employer_cents: employerTotal,
+      cost_cents: gross + employerTotal,
       slips,
     },
     by_month: totals
@@ -156,6 +182,7 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
       { key: 'eis', label: 'EIS', value: eis },
       { key: 'other', label: 'Other', value: other },
     ],
+    employer,
   };
 }
 
@@ -429,6 +456,16 @@ export type PayslipDetailModel = {
   pay_lines: DetailLine[];
   gross_cents: number;
   figures: { field: StatutoryField; label: string; amount_cents: number; set_by_hr: boolean }[];
+  /** The employer's EPF, SOCSO and EIS shares: paid on top of gross, never off net. */
+  employer: { label: string; amount_cents: number }[];
+  employer_cents: number;
+  /** Gross plus the employer's shares: what this payslip costs the employer. */
+  cost_cents: number;
+  /**
+   * Whether the payslip carries the employer's shares at all. A paid payslip recorded before they were worked out
+   * reads zero, which is "not recorded" rather than "nothing to pay".
+   */
+  employer_recorded: boolean;
   /** The deduction lines: they come off net, after the four figures. */
   deduction_lines: DetailLine[];
   /** The deduction lines, as the payslip records them. */
@@ -453,6 +490,8 @@ const detailLine = (l: PayslipLine): DetailLine => ({
 
 /** The rows the payslip detail shows. Every figure is the payslip's own; nothing is worked out here. */
 export function payslipDetailModel(p: Payslip): PayslipDetailModel {
+  const employer = EMPLOYER.map((f) => ({ label: f.label, amount_cents: p[f.key] }));
+  const employerCents = employer.reduce((total, f) => total + f.amount_cents, 0);
   return {
     basic_cents: p.basic_cents,
     pay_lines: p.lines.filter((l) => l.kind !== 'deduction').map(detailLine),
@@ -464,6 +503,11 @@ export function payslipDetailModel(p: Payslip): PayslipDetailModel {
       amount_cents: p[f.key],
       set_by_hr: p.set_by_hr.includes(f.field),
     })),
+    employer,
+    employer_cents: employerCents,
+    cost_cents: p.gross_cents + employerCents,
+    // A draft is always worked out; a paid payslip only carries them if it was paid after they were worked out.
+    employer_recorded: p.status !== 'paid' || employerCents > 0,
     other_cents: p.other_deductions_cents,
     deductions_cents: deductionsOf(p),
     net_cents: p.net_cents,

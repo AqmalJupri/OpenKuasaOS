@@ -273,6 +273,15 @@ export type Payslip = {
   epf_cents: number;
   socso_cents: number;
   eis_cents: number;
+  /**
+   * The employer's share of EPF, worked out on the same EPF wages. Paid on top of gross pay: never part of net, and
+   * not something HR types over. Zero on a payslip from before the figures were worked out.
+   */
+  epf_employer_cents: number;
+  /** The employer's share of SOCSO: the first category below 60, the employer-only second category from 60. */
+  socso_employer_cents: number;
+  /** The employer's share of EIS: citizens and permanent residents aged 18 to 60. */
+  eis_employer_cents: number;
   pcb_cents: number;
   /** The sum of the payslip's deduction lines. */
   other_deductions_cents: number;

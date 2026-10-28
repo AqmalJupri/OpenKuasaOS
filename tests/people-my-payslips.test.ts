@@ -5,7 +5,9 @@ import type { Payslip, PeopleViewer } from '@/lib/people/types';
 const ME = 'emp-me';
 const slip = (over: Partial<Payslip>): Payslip => ({
   id: 's', employee_id: ME, employee_name: 'Me', payroll_run_id: 'r', period_month: '2026-09-01',
-  basic_cents: 500000, gross_cents: 525000, epf_cents: 57750, socso_cents: 1000, eis_cents: 500, pcb_cents: 2000,
+  basic_cents: 500000, gross_cents: 525000, epf_cents: 57750, socso_cents: 1000, eis_cents: 500,
+  epf_employer_cents: 68250, socso_employer_cents: 9187, eis_employer_cents: 500,
+  pcb_cents: 2000,
   other_deductions_cents: 1500, net_cents: 462250, set_by_hr: [], lines: [], status: 'paid', ...over,
 });
 const viewer = (employeeId: string | null): PeopleViewer => ({ employeeId, isHr: false, isDemo: false });
