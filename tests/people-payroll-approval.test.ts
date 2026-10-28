@@ -136,7 +136,7 @@ const CASES: Case[] = [
   {
     tool: 'savePayslipLine', write: 'savePayslipLine',
     sent: { payslip_id: SLIP, line_id: '', kind: 'earning', label: ' Sales commission ', amount: 'RM 200', employee_id: OTHER, month: '2026-10', note: 'x' },
-    saved: { payslip_id: SLIP, line_id: null, kind: 'earning', label: 'Sales commission', amount_cents: 20000 },
+    saved: { payslip_id: SLIP, line_id: null, kind: 'earning', earning_type: 'ordinary', label: 'Sales commission', amount_cents: 20000 },
     card: 'Add the earning “Sales commission”, RM 200.00 to a payslip that was not in the list above?',
   },
   {
@@ -148,7 +148,7 @@ const CASES: Case[] = [
   {
     tool: 'savePayslipLine', write: 'savePayslipLine',
     sent: { payslip_id: SLIP, kind: 'earning', label: 'Bonus', amount: 1200.5 },
-    saved: { payslip_id: SLIP, line_id: null, kind: 'earning', label: 'Bonus', amount_cents: 120050 },
+    saved: { payslip_id: SLIP, line_id: null, kind: 'earning', earning_type: 'ordinary', label: 'Bonus', amount_cents: 120050 },
     card: 'Add the earning “Bonus”, RM 1,200.50 to a payslip that was not in the list above?',
   },
   {

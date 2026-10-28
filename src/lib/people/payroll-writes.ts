@@ -70,8 +70,9 @@ export const savePayslipLineInput = z.object({
   payslip_id: guid('The payslip, by its id.'),
   line_id: lineId,
   kind: z.enum(['earning', 'deduction']),
-  // What kind of earning the line is: it decides the wage base each scheme uses. Left out is ordinary pay, the
-  // figure every line moved before the types existed. Overtime is not a type HR can pick: the system makes those.
+  // What kind of earning the line is: it decides the wage base each scheme uses. Left out, a new line is ordinary
+  // pay (the figure every line moved before the types existed) and a changed line keeps the type it has. Overtime is
+  // not a type HR can pick: the system makes those.
   earning_type: z
     .enum(PAYSLIP_EARNING_TYPES, {
       message: 'Choose what kind of earning it is: ordinary pay, a bonus, a travel allowance, a service charge or a gratuity.',
@@ -277,7 +278,7 @@ export async function savePayslipLine(
       p_kind: v.kind,
       p_label: v.label,
       p_amount_cents: v.amount_cents,
-      p_earning_type: v.earning_type ?? 'ordinary',
+      p_earning_type: v.earning_type ?? null,
     },
     (row) => {
       const payslip = pickPayslip(row.payslip);

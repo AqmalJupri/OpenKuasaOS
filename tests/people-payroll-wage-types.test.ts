@@ -70,6 +70,15 @@ describe('the wage bases the migration builds', () => {
     }
   });
 
+  test('the save function keeps a changed line\'s type when none is sent, and its local is not named like the column', () => {
+    const save = sql().slice(sql().indexOf('create function public.hr_save_payslip_line'));
+    expect(save).toContain('p_earning_type text default null');
+    expect(save).toContain("line_type := coalesce(p_earning_type, line.earning_type, 'ordinary');");
+    // `earning_type = earning_type` with a variable of that name is ambiguous, and plpgsql refuses the update.
+    expect(save).not.toMatch(/^\s*earning_type\s+text/m);
+    expect(save).toContain('earning_type = line_type');
+  });
+
   test('a non-earning line carries no type of its own', () => {
     expect(sql()).toMatch(/kind = 'earning' or earning_type = 'ordinary'/);
   });
@@ -136,12 +145,12 @@ describe('the call that saves a typed line', () => {
     expect(saved.ok && saved.data.line.earning_type).toBe('bonus');
   });
 
-  test('a line that names no type is sent as ordinary pay, which is what it moved before', async () => {
+  test('a line that names no type sends none, so the database decides: ordinary when new, its own when changed', async () => {
     const { client, calls } = fakeSupabase({ 'rpc.hr_save_payslip_line': { data: reply('ordinary') } });
     await savePayslipLine({ client, orgId: 'o1' } as never, {
       payslip_id: SLIP, kind: 'earning', label: 'Commission', amount_cents: 1_000,
     });
-    expect(calls.find((c) => c.fn === 'hr_save_payslip_line')!.args!.p_earning_type).toBe('ordinary');
+    expect(calls.find((c) => c.fn === 'hr_save_payslip_line')!.args!.p_earning_type).toBeNull();
   });
 
   test('a type that is not on the list never reaches the database', async () => {

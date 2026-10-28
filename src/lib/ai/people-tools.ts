@@ -413,7 +413,8 @@ const savePayslipLineToolInput = z.object({
     .describe(
       'For an earning: what kind it is, which decides the EPF and the SOCSO and EIS wages it joins. ordinary pay ' +
         '(the default) counts towards all three; bonus towards EPF only; service_charge towards SOCSO and EIS only; ' +
-        'travel_allowance and gratuity towards none. Leave out for ordinary pay.',
+        'travel_allowance and gratuity towards none. Leave out for ordinary pay on a new line; leave out when changing ' +
+        'a line to keep the type it has (listPayslips shows it).',
     ),
   label: z
     .string()
@@ -1533,7 +1534,16 @@ export function createPeopleTools(
               status: p.status,
               lines: p.lines.map((l) =>
                 withIds
-                  ? { id: l.id, kind: l.kind, source: l.source, label: l.label, amount: rm(l.amount_cents) }
+                  ? {
+                      id: l.id,
+                      kind: l.kind,
+                      source: l.source,
+                      // Which wages an owner's earning counts towards, so a bonus is told from ordinary pay and an
+                      // edit can keep it.
+                      ...(l.kind === 'earning' && l.source === 'hr' ? { earning_type: l.earning_type } : {}),
+                      label: l.label,
+                      amount: rm(l.amount_cents),
+                    }
                   : { label: l.label, kind: l.kind, amount: rm(l.amount_cents) },
               ),
             })),
@@ -2334,7 +2344,12 @@ export function createPeopleTools(
             amount: looseAmount(input.amount),
           });
           if (!line.ok) return { ok: false as const, error: line.error };
-          const result = await capSavePayslipLine(ctx, { payslip_id: input.payslip_id, line_id: blank(input.line_id), ...line.input });
+          const lineId = blank(input.line_id);
+          // A change that names no type keeps the line's own: sending ordinary would quietly move a bonus into the
+          // SOCSO and EIS wages. The database keeps the type when none is sent.
+          const { earning_type, ...rest } = line.input;
+          const typed = lineId && input.earning_type === undefined ? rest : { ...rest, earning_type };
+          const result = await capSavePayslipLine(ctx, { payslip_id: input.payslip_id, line_id: lineId, ...typed });
           if (!result.ok) return result;
           const { line: saved, ...slip } = result.data;
           return {

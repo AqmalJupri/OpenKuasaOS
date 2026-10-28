@@ -192,7 +192,21 @@ describe('listPayslips', () => {
     for (const key of ['basic', 'gross', 'epf', 'socso', 'eis', 'pcb', 'other_deductions', 'net']) expect(slip[key], key).toMatch(/^RM [\d,]+\.\d{2}$/);
     expect(slip.status).toBe('pending');
     const line = slip.lines.find((l: Loose) => l.label === 'Sales commission');
-    expect(line).toEqual({ id: expect.any(String), kind: 'earning', source: 'hr', label: 'Sales commission', amount: expect.stringMatching(/^RM [\d,]+\.\d{2}$/) });
+    expect(line).toEqual({
+      id: expect.any(String),
+      kind: 'earning',
+      source: 'hr',
+      earning_type: 'ordinary',
+      label: 'Sales commission',
+      amount: expect.stringMatching(/^RM [\d,]+\.\d{2}$/),
+    });
+    // Only an owner's own earning says what kind it is; a system line or a deduction does not.
+    for (const row of result.payslips) {
+      for (const l of row.lines) {
+        if (l.kind === 'earning' && l.source === 'hr') expect(l, l.label).toHaveProperty('earning_type');
+        else expect(l, l.label).not.toHaveProperty('earning_type');
+      }
+    }
     // System lines carry their source so the model can see they are not its to change.
     expect(slip.lines.every((l: Loose) => typeof l.id === 'string' && typeof l.source === 'string')).toBe(true);
   });
@@ -340,7 +354,11 @@ describe('savePayslipLine', () => {
   ])('amount %j is saved as %i cents', async (amount, cents) => {
     const result = await run('savePayslipLine', { ...add, amount });
     expect(ctl.ran).toEqual([
-      { fn: 'savePayslipLine', orgId: 'org-1', input: { payslip_id: SLIP, line_id: null, kind: 'earning', label: 'Sales commission', amount_cents: cents } },
+      {
+        fn: 'savePayslipLine',
+        orgId: 'org-1',
+        input: { payslip_id: SLIP, line_id: null, kind: 'earning', earning_type: 'ordinary', label: 'Sales commission', amount_cents: cents },
+      },
     ]);
     expect(result.ok).toBe(true);
   });
@@ -360,6 +378,17 @@ describe('savePayslipLine', () => {
     ctl.ran = [];
     await run('savePayslipLine', { ...add, amount: '5', line_id: ` ${LINE} ` });
     expect(ctl.ran[0].input).toMatchObject({ line_id: LINE });
+  });
+
+  it('a change that names no type sends none, so the line keeps its own; a new line or a named type is sent', async () => {
+    await run('savePayslipLine', { ...add, amount: '5', line_id: LINE });
+    expect(ctl.ran[0].input).not.toHaveProperty('earning_type');
+    ctl.ran = [];
+    await run('savePayslipLine', { ...add, amount: '5', line_id: LINE, earning_type: 'travel_allowance' });
+    expect(ctl.ran[0].input).toMatchObject({ line_id: LINE, earning_type: 'travel_allowance' });
+    ctl.ran = [];
+    await run('savePayslipLine', { ...add, amount: '5' });
+    expect(ctl.ran[0].input).toMatchObject({ line_id: null, earning_type: 'ordinary' });
   });
 
   it('trims the name, and refuses an empty, blank, overlong or wrong-kind one before any call', async () => {
