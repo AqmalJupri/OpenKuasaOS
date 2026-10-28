@@ -130,6 +130,8 @@ describe('the calls each function makes', () => {
       p_kind: 'earning',
       p_label: 'Bonus',
       p_amount_cents: 100_000,
+      // No type named: the database makes a new line ordinary pay and keeps a changed line's own type.
+      p_earning_type: null,
     });
   });
 

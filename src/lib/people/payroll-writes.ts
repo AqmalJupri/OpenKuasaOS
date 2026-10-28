@@ -22,7 +22,7 @@ import {
 import { blank } from './loose-input';
 import { PAYROLL_REFUSALS } from './payroll-refusals';
 import { STATUTORY_FIELDS } from './statutory-fields';
-import type { StatutoryField } from './types';
+import { PAYSLIP_EARNING_TYPES, type PayslipEarningType, type StatutoryField } from './types';
 
 // ---- Sentences ---------------------------------------------------------------
 
@@ -70,6 +70,14 @@ export const savePayslipLineInput = z.object({
   payslip_id: guid('The payslip, by its id.'),
   line_id: lineId,
   kind: z.enum(['earning', 'deduction']),
+  // What kind of earning the line is: it decides the wage base each scheme uses. Left out, a new line is ordinary
+  // pay (the figure every line moved before the types existed) and a changed line keeps the type it has. Overtime is
+  // not a type HR can pick: the system makes those.
+  earning_type: z
+    .enum(PAYSLIP_EARNING_TYPES, {
+      message: 'Choose what kind of earning it is: ordinary pay, a bonus, a travel allowance, a service charge or a gratuity.',
+    })
+    .optional(),
   label: z.string().trim().min(1, 'Give the line a name.').max(80, 'Keep the name to 80 characters.'),
   amount_cents: z
     .number()
@@ -134,6 +142,7 @@ export type SavedLine = {
   id: string;
   kind: 'earning' | 'deduction';
   source: string;
+  earning_type: PayslipEarningType;
   label: string;
   amount_cents: number;
 };
@@ -144,6 +153,11 @@ const text = (value: unknown): string | null => (typeof value === 'string' && va
 const count = (value: unknown): number | null =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 const cents = (value: unknown): number | null => (typeof value === 'number' && Number.isSafeInteger(value) ? value : null);
+/** The type a saved line came back with, or null when the reply named one this app does not know. */
+const earningType = (value: unknown): PayslipEarningType | null =>
+  typeof value === 'string' && (PAYSLIP_EARNING_TYPES as readonly string[]).includes(value)
+    ? (value as PayslipEarningType)
+    : null;
 
 /** One database function. `pick` shapes its reply, or returns null for a reply that is not what was promised. */
 async function call<T>(
@@ -264,6 +278,7 @@ export async function savePayslipLine(
       p_kind: v.kind,
       p_label: v.label,
       p_amount_cents: v.amount_cents,
+      p_earning_type: v.earning_type ?? null,
     },
     (row) => {
       const payslip = pickPayslip(row.payslip);
@@ -273,8 +288,10 @@ export async function savePayslipLine(
       const label = text(line.label);
       const amount = cents(line.amount_cents);
       const kind = line.kind === 'earning' || line.kind === 'deduction' ? line.kind : null;
-      if (!id || !label || amount === null || !kind) return null;
-      return { ...payslip, line: { id, kind, source: text(line.source) ?? 'hr', label, amount_cents: amount } };
+      // A reply from before the column existed carries no type; the column's own default is ordinary pay.
+      const earning_type = earningType(line.earning_type ?? 'ordinary');
+      if (!id || !label || amount === null || !kind || !earning_type) return null;
+      return { ...payslip, line: { id, kind, source: text(line.source) ?? 'hr', earning_type, label, amount_cents: amount } };
     },
   );
 }

@@ -143,7 +143,7 @@ describe('getPeopleData', () => {
   it('reads each payslip with its lines, its marks and the new columns, system lines first', async () => {
     const slips = await (await getPeopleData(client)).listPayslips();
     const columns = calls.find((c) => c.table === 'hr_payslips')!.columns;
-    for (const column of ['basic_cents', 'other_deductions_cents', 'set_by_hr', 'hr_payslip_lines']) expect(columns).toContain(column);
+    for (const column of ['basic_cents', 'other_deductions_cents', 'set_by_hr', 'hr_payslip_lines', 'earning_type']) expect(columns).toContain(column);
     expect(slips[0].lines.map((l) => l.id)).toEqual(['l1', 'l2', 'l3', 'l4']);
     expect(slips[0].lines[0]).not.toHaveProperty('created_at');
     expect(slips[0].set_by_hr).toEqual(['epf', 'pcb']);

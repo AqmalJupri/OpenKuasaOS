@@ -36,6 +36,7 @@ const line = (over: Partial<PayslipLine>): PayslipLine => ({
   payslip_id: 'p1',
   kind: 'earning',
   source: 'hr',
+  earning_type: 'ordinary',
   label: 'Bonus',
   amount_cents: 50_000,
   ...over,
@@ -188,6 +189,24 @@ describe('payslipDetailModel', () => {
     const all = [...m.pay_lines, ...m.deduction_lines];
     expect(all.map((l) => l.editable)).toEqual([false, false, true]);
     expect(all.map((l) => l.system_note)).toEqual(['Worked out by the system', 'Worked out by the system', null]);
+  });
+  it('says what an HR earning line counts towards, and nothing extra for ordinary pay', () => {
+    const m = payslipDetailModel(
+      slip({
+        lines: [
+          line({ id: 'a', earning_type: 'bonus', label: 'Raya bonus' }),
+          line({ id: 'b', earning_type: 'ordinary', label: 'Commission' }),
+          line({ id: 'c', earning_type: 'service_charge', label: 'Service charge' }),
+          line({ id: 'd', source: 'overtime', label: 'Overtime', earning_type: 'ordinary' }),
+        ],
+      }),
+    );
+    expect(m.pay_lines.map((l) => [l.label, l.system_note])).toEqual([
+      ['Raya bonus', 'Counts towards EPF wages only, not SOCSO or EIS.'],
+      ['Commission', null],
+      ['Service charge', 'Counts towards SOCSO and EIS wages only, not EPF.'],
+      ['Overtime', 'Worked out by the system'],
+    ]);
   });
   it('lists EPF, SOCSO, EIS, PCB in order with the set-by-HR mark', () => {
     const m = payslipDetailModel(slip());

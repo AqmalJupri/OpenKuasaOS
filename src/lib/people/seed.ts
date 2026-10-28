@@ -504,8 +504,17 @@ export function createSeedPeopleData(now: Date = new Date()): PeopleData {
         const basic = privates.find((p) => p.employee_id === employee.id)!.base_salary_cents!;
         const id = `seed-slip-${run.id}-${employee.id}`;
         const lines: PayslipLine[] = [];
+        // Every seeded line is ordinary pay, as every line was before the earning types.
         const add = (kind: PayslipLine['kind'], source: PayslipLine['source'], label: string, amount: number) =>
-          lines.push({ id: `seed-line-${id}-${lines.length + 1}`, payslip_id: id, kind, source, label, amount_cents: amount });
+          lines.push({
+            id: `seed-line-${id}-${lines.length + 1}`,
+            payslip_id: id,
+            kind,
+            source,
+            earning_type: 'ordinary',
+            label,
+            amount_cents: amount,
+          });
 
         if (employee.join_date! > run.period_month) {
           const last = lastDay(run.period_month);

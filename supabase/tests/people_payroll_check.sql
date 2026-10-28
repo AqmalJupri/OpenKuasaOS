@@ -89,7 +89,7 @@ declare
   functions text[] := array[
     'public.hr_run_payroll(uuid,date)',
     'public.hr_recalculate_payroll(uuid)',
-    'public.hr_save_payslip_line(uuid,uuid,text,text,bigint)',
+    'public.hr_save_payslip_line(uuid,uuid,text,text,bigint,text)',
     'public.hr_delete_payslip_line(uuid)',
     'public.hr_set_statutory(uuid,text,bigint)',
     'public.hr_remove_payslip(uuid)',
@@ -350,7 +350,7 @@ begin
     r := pg_temp.pay_try(who, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Commission'', 50000)', pa));
     if r ? 'refused' then raise exception '% could not add a line: %', t, r->>'refused'; end if;
     line_id := (r #>> '{line,id}')::uuid;
-    if r -> 'line' is distinct from jsonb_build_object('id', line_id, 'kind', 'earning', 'source', 'hr', 'label', 'Commission', 'amount_cents', 50000)
+    if r -> 'line' is distinct from jsonb_build_object('id', line_id, 'kind', 'earning', 'source', 'hr', 'earning_type', 'ordinary', 'label', 'Commission', 'amount_cents', 50000)
        or (select array_agg(k order by k) from jsonb_object_keys(r -> 'payslip') k) <> slip_keys
        or r #> '{payslip,id}' is distinct from to_jsonb(pa) or r #> '{payslip,employee_id}' is distinct from to_jsonb(ea)
        or r #>> '{payslip,period_month}' <> '2025-01-01' or r #> '{payslip,gross_cents}' is distinct from '355000'::jsonb
@@ -427,7 +427,7 @@ begin
       fails := array_append(fails, format('%s recalculated and was handed back: %s', t, r));
     end if;
     r := pg_temp.pay_try(who, format('select public.hr_save_payslip_line(%L, %L, ''deduction'', ''Advance'', 20000)', pa, line_id));
-    if r -> 'line' is distinct from jsonb_build_object('id', line_id, 'kind', 'deduction', 'source', 'hr', 'label', 'Advance', 'amount_cents', 20000) then
+    if r -> 'line' is distinct from jsonb_build_object('id', line_id, 'kind', 'deduction', 'source', 'hr', 'earning_type', 'ordinary', 'label', 'Advance', 'amount_cents', 20000) then
       fails := array_append(fails, format('%s changed a line and was handed back: %s', t, r));
     end if;
     r := pg_temp.pay_try(who, format('select public.hr_set_statutory(%L, ''pcb'', 1500)', pa));

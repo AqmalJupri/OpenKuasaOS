@@ -10,7 +10,7 @@
 
 import { formatDate, malaysiaDate, monthLabel, monthYearLabel } from './dates';
 import { isTeamView } from './own';
-import { nextRunMonth } from './payroll-forms';
+import { earningTypeNote, nextRunMonth } from './payroll-forms';
 import { bucketByMonth, sumBy } from './series';
 import type { Bucket } from './series';
 import { payrollSummary } from './summaries';
@@ -413,6 +413,8 @@ export type DetailLine = {
   id: string;
   label: string;
   kind: PayslipLine['kind'];
+  /** What kind of earning an HR line is, so the edit form can offer it back. */
+  earning_type: PayslipLine['earning_type'];
   /** Earnings positive; unpaid and deduction lines negative, for display. */
   signed_cents: number;
   amount_cents: number;
@@ -440,10 +442,13 @@ const detailLine = (l: PayslipLine): DetailLine => ({
   id: l.id,
   label: l.label,
   kind: l.kind,
+  earning_type: l.earning_type,
   signed_cents: l.kind === 'earning' ? l.amount_cents : -l.amount_cents,
   amount_cents: l.amount_cents,
   editable: l.source === 'hr',
-  system_note: l.source === 'hr' ? null : 'Worked out by the system',
+  // A line an owner added says what its amount counts towards, so a bonus that moves EPF but not SOCSO reads that
+  // way on the payslip. Ordinary pay says nothing: it counts towards all three, which every line did before.
+  system_note: l.source === 'hr' ? earningTypeNote(l.earning_type) : 'Worked out by the system',
 });
 
 /** The rows the payslip detail shows. Every figure is the payslip's own; nothing is worked out here. */

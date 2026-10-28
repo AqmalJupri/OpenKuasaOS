@@ -20,6 +20,7 @@ export function PayslipEditor({ payslip }: { payslip: Payslip }) {
               line={{
                 id: line.id,
                 kind: line.kind === 'earning' ? 'earning' : 'deduction',
+                earning_type: line.earning_type,
                 label: line.label,
                 amount_cents: line.amount_cents,
               }}

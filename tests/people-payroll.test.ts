@@ -167,7 +167,9 @@ describe('payrollModel with a chosen run', () => {
       other_deductions_cents: 300,
       net_cents: 1500 - 110 - 5 - 2 - 300,
       set_by_hr: ['pcb'],
-      lines: [{ id: 'l1', payslip_id: '9', kind: 'deduction', source: 'hr', label: 'Advance', amount_cents: 300 }],
+      lines: [
+        { id: 'l1', payslip_id: '9', kind: 'deduction', source: 'hr', earning_type: 'ordinary', label: 'Advance', amount_cents: 300 },
+      ],
     };
     const model = payrollModel(runs, [slipFor('3', 'c', 'Cat'), withLines], 'c');
     const row = model.latest!.slips.find((s) => s.id === '9')!;
