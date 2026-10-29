@@ -306,11 +306,12 @@ export function earlierOvertimeCount(payslips: Payslip[], month: string): number
 }
 
 /**
- * Active employees with no payslip on this run, by name. Someone who joins after the month is not expected on it.
+ * Active employees with no payslip on this run, by name. Someone who joins after the month, or left before it, is
+ * not expected on it.
  * (Why they are missing, such as no base salary, is not known here: salaries are read one employee at a time.)
  */
 export function notOnRun(
-  employees: Pick<Employee, 'id' | 'name' | 'status' | 'join_date'>[],
+  employees: Pick<Employee, 'id' | 'name' | 'status' | 'join_date' | 'left_date'>[],
   payslips: Pick<Payslip, 'employee_id' | 'payroll_run_id'>[],
   runId: string,
   month: string,
@@ -318,7 +319,13 @@ export function notOnRun(
   const on = new Set(payslips.filter((p) => p.payroll_run_id === runId).map((p) => p.employee_id));
   const last = month.slice(0, 7);
   return employees
-    .filter((e) => e.status === 'active' && !on.has(e.id) && (e.join_date === null || e.join_date.slice(0, 7) <= last))
+    .filter(
+      (e) =>
+        e.status === 'active' &&
+        !on.has(e.id) &&
+        (e.join_date === null || e.join_date.slice(0, 7) <= last) &&
+        (e.left_date === null || e.left_date.slice(0, 7) >= last),
+    )
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
 }

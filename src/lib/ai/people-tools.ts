@@ -638,6 +638,7 @@ const directoryRow = (e: Employee, employees: Employee[], withManagerId: boolean
   reports_to: managerLabel(e, employees),
   ...(withManagerId ? { reports_to_id: e.reports_to } : {}),
   join_date: e.join_date,
+  left_date: e.left_date,
   status: e.status,
   work_email: e.work_email,
   account_linked: e.user_id !== null,

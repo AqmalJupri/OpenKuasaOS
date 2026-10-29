@@ -285,6 +285,7 @@ export function createSeedPeopleData(now: Date = new Date()): PeopleData {
       employment_type: type,
       reports_to: leadOf(n, dept),
       join_date: addDays(today, -tenure),
+      left_date: null,
       status: 'active',
       date_of_birth_day: Number(birthday.slice(8, 10)),
       date_of_birth_month: Number(birthday.slice(5, 7)),

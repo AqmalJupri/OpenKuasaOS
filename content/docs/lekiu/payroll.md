@@ -80,7 +80,7 @@ Lekiu's proposed figures are a starting point, not the official amounts. Where t
   - **Unpaid leave:** every calendar day of approved unpaid leave is unpaid, including a weekend that falls inside it. Leave from Friday to Monday is 4 days, and a whole month of unpaid leave pays nothing. A public holiday inside the leave stays paid. Leave dated before the join date isn't counted twice.
   - **Rounding:** the pay is worked out once and rounded once, and the payslip shows it as one or two lines: "Joined 16 Mar 2026 (16 of 31 days)" and "Unpaid leave, 2 of 31 days".
   - **Check the weekend rule:** the Act doesn't say how rest days inside unpaid leave are counted. The leave request itself counts only working days, so it can show 2 days where payroll counts 4. If your company counts only the working days, give the difference back with **Add line** as an earning.
-  - **Leavers:** an employee who leaves before the month ends is not handled yet, so work that one out and type it in.
+  - **Leaver:** enter the last day of employment on the employee's record. That month pays the days from the 1st (or the join date) to that day, and the payslip shows it as "Left 20 Mar 2026 (20 of 31 days)". Unpaid leave dated after the last day isn't counted, and overtime worked after it isn't paid. A month entirely after the last day gets no payslip. Setting the last day doesn't change the employee's status: set that to Inactive when the paperwork is done, after that month's run.
 
 ## Common problems
 

@@ -180,6 +180,7 @@ export function EmployeeForm({
           </Select>
         </Field>
         {text('join_date', 'Join date', { type: 'date' })}
+        {text('left_date', 'Last day', { type: 'date' })}
         {initial ? (
           <Field label="Status">
             <Select value={values.status} onValueChange={(value) => set('status', value as EmployeeStatus)}>

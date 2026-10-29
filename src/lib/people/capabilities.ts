@@ -221,6 +221,7 @@ const directoryFields = {
   designation: text(120).describe('Job title, such as Sales Executive.'),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'intern']).optional(),
   join_date: day('Join date'),
+  left_date: day('Last day of employment'),
   status: z.enum(['active', 'inactive']).optional(),
   private: privateFields.optional(),
 };
@@ -261,6 +262,16 @@ function directoryValues(input: DirectoryInput): CapResult<Record<string, unknow
       return refuse('Join date must be a real date, as YYYY-MM-DD.');
     }
     out.join_date = input.join_date;
+  }
+  if (input.left_date !== undefined) {
+    if (input.left_date !== null && !isRealDay(input.left_date)) {
+      return refuse('The last day of employment must be a real date, as YYYY-MM-DD.');
+    }
+    out.left_date = input.left_date;
+  }
+  // A last day before the first day would pay nothing for a month that was worked.
+  if (typeof out.join_date === 'string' && typeof out.left_date === 'string' && out.left_date < out.join_date) {
+    return refuse('The last day of employment cannot be before the join date.');
   }
   if (input.status !== undefined) out.status = input.status;
   // The birthday without its year sits on the directory row, where colleagues may see it.
