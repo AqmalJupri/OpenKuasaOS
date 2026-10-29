@@ -47,7 +47,10 @@ import {
   pgCode,
   writeFailed,
 } from './result';
+import { type SstTaxType, sstPeriodFor, sstPeriodLabel, taxTypeForRate } from './sst';
 import { RATE_REFERENCE_MAX, type RateProvider } from './sst-rate';
+import { listSstFiled } from './sst-return-data';
+import type { SstReturnType } from './sst-return';
 
 export const INVOICE_LINES_MAX = DOCUMENT_LINES_MAX;
 /** Invoices loaded for a screen, a page at a time. */
@@ -461,12 +464,80 @@ export async function postInvoice(
   return { ok: true, data: { id, invoice_no: data as string } };
 }
 
-/** Voids a posted invoice. Refused while it has payments. */
+/** The SST returns an invoice is on: only a tax it actually carries can be moved by voiding it. */
+function sstTypesOf(lines: Record<string, unknown>[]): SstReturnType[] {
+  const types = new Set<SstReturnType>();
+  for (const l of lines) {
+    if (Math.round(Number(l.sst_amount_myr ?? 0) * 100) === 0) continue;
+    const type = (l.tax_type as SstTaxType | null) ?? taxTypeForRate(Number(l.sst_rate ?? 0));
+    if (type === 'service' || type === 'sales') types.add(type);
+  }
+  return [...types].sort();
+}
+
+/** The sentence for a void held back because the invoice's own return is already marked filed (#222). */
+export function filedSstReturnVoidMessage(types: SstReturnType[], period: string): string {
+  const which = types.length > 1 ? 'SST' : types[0] === 'sales' ? 'sales tax' : 'service tax';
+  return (
+    `This invoice is on the ${period} ${which} return, which is marked filed. Issue a credit note instead.` +
+    ' If the invoice should never have been issued, take the filed mark off the return, void the invoice, and file an amended return (Pindaan).'
+  );
+}
+
+/**
+ * Refuses a void whose invoice sits on a filed return (#222). The tax the void would move belongs in a credit
+ * note, the document 13(a) is meant to point at, so a filed return is never rewritten by a void. Read before
+ * the write, and refused when the marks cannot be read: a return marked filed matters more than a void.
+ */
+async function filedReturnRefusal(ctx: FinanceWriteContext, id: string): Promise<{ ok: false; error: string } | null> {
+  const { data: invoice, error } = await ctx.client
+    .from('finance_invoices')
+    .select('id,invoice_date,status')
+    .eq('org_id', ctx.orgId)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return invoiceWriteFailed('voidInvoice', error);
+  if (!invoice) return { ok: false, error: M.gone };
+  // A draft or an already void invoice is the database's own refusal (FIN01), which has its own sentence.
+  if ((invoice as { status: string }).status !== 'posted') return null;
+
+  const { data: lines, error: linesError } = await ctx.client
+    .from('finance_invoice_lines')
+    .select('id,sst_rate,tax_type,sst_amount_myr')
+    .eq('org_id', ctx.orgId)
+    .eq('invoice_id', id);
+  if (linesError) return invoiceWriteFailed('voidInvoice', linesError);
+  const types = sstTypesOf((lines ?? []) as Record<string, unknown>[]);
+  if (types.length === 0) return null;
+
+  const { data: settings, error: settingsError } = await ctx.client
+    .from('finance_sst_settings')
+    .select('period_start_month')
+    .eq('org_id', ctx.orgId)
+    .maybeSingle();
+  if (settingsError) return invoiceWriteFailed('voidInvoice', settingsError);
+  // No settings saved means no taxable period has ever been shown, so none can carry a filed mark.
+  if (!settings) return null;
+
+  const period = sstPeriodFor((invoice as { invoice_date: string }).invoice_date, Number((settings as { period_start_month: number }).period_start_month));
+  let marks: Record<string, string>[];
+  try {
+    marks = await Promise.all(types.map((type) => listSstFiled(ctx, type)));
+  } catch (marksError) {
+    return invoiceWriteFailed('voidInvoice', marksError);
+  }
+  const onFiled = types.filter((_, i) => marks[i][period.start] !== undefined);
+  return onFiled.length === 0 ? null : { ok: false, error: filedSstReturnVoidMessage(onFiled, sstPeriodLabel(period)) };
+}
+
+/** Voids a posted invoice. Refused while it has payments, or once its own return is marked filed. */
 export async function voidInvoice(
   ctx: FinanceWriteContext,
   input: z.input<typeof invoiceIdInput>,
 ): Promise<FinResult<{ id: string }>> {
   const { id } = invoiceIdInput.parse(input);
+  const refusal = await filedReturnRefusal(ctx, id);
+  if (refusal) return refusal;
   const { data, error } = await ctx.client
     .from('finance_invoices')
     .update({ status: 'void', updated_at: new Date().toISOString() })
