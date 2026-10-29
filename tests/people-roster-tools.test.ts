@@ -62,7 +62,7 @@ const SWAP_OTHERS = '99999999-9999-4999-8999-999999999993';
 
 const person = (id: string, name: string, reports_to: string | null = null) => ({
   id, name, user_id: `u-${id}`, employee_no: name.slice(0, 3), work_email: null, department_id: null, department_name: null,
-  designation: null, employment_type: 'full_time' as const, reports_to, join_date: null, status: 'active' as const,
+  designation: null, employment_type: 'full_time' as const, reports_to, join_date: null, left_date: null, status: 'active' as const,
   date_of_birth_day: null, date_of_birth_month: null, created_at: '2026-01-01T00:00:00Z',
 });
 

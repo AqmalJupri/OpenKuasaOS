@@ -15,6 +15,7 @@ function emp(id: string, name: string, reports_to: string | null, status: Employ
     employment_type: 'full_time',
     reports_to,
     join_date: null,
+    left_date: null,
     status,
     date_of_birth_day: null,
     date_of_birth_month: null,

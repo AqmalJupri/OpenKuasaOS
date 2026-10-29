@@ -242,7 +242,8 @@ describe('the sample payslips', () => {
   });
 
   it('put the system lines before the owner own', async () => {
-    const order = { joiner: 0, unpaid_leave: 1, overtime: 2, hr: 3 };
+    // The boundary line a joiner or a leaver writes comes first, then unpaid leave, overtime, and HR's own lines.
+    const order = { joiner: 0, leaver: 0, unpaid_leave: 1, overtime: 2, hr: 3 };
     for (const p of await data.listPayslips()) {
       const ranks = p.lines.map((l) => order[l.source]);
       expect([...ranks].sort((a, b) => a - b), p.id).toEqual(ranks);

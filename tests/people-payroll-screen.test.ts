@@ -308,12 +308,25 @@ describe('earlierOvertimeCount', () => {
 });
 
 describe('notOnRun', () => {
-  const emp = (id: string, name: string, status: 'active' | 'inactive' = 'active', join_date: string | null = '2025-01-01') =>
-    ({ id, name, status, join_date }) as never;
+  const emp = (
+    id: string,
+    name: string,
+    status: 'active' | 'inactive' = 'active',
+    join_date: string | null = '2025-01-01',
+    left_date: string | null = null,
+  ) => ({ id, name, status, join_date, left_date }) as never;
   it('names active employees with no payslip on the run, by name', () => {
     const slips = [slip({ employee_id: 'e1', payroll_run_id: 'r1' })];
     const list = [emp('e1', 'Aisyah'), emp('e2', 'Zul'), emp('e3', 'Ben'), emp('e4', 'Gone', 'inactive')];
     expect(notOnRun(list, slips, 'r1', '2026-10-01')).toEqual(['Ben', 'Zul']);
+  });
+  it('does not expect someone whose last day fell before the month, and does expect one who left in it', () => {
+    const list = [
+      emp('e1', 'Aisyah'),
+      emp('e2', 'LeftBefore', 'active', '2025-01-01', '2026-09-20'),
+      emp('e3', 'LeftInMonth', 'active', '2025-01-01', '2026-10-20'),
+    ];
+    expect(notOnRun(list, [], 'r1', '2026-10-01')).toEqual(['Aisyah', 'LeftInMonth']);
   });
   it('does not count a payslip on another run, or someone who joins after the month', () => {
     const slips = [slip({ employee_id: 'e1', payroll_run_id: 'r0' })];

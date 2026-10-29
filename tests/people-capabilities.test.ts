@@ -236,6 +236,27 @@ describe('createEmployee', () => {
     });
   });
 
+  it('refuses a last day of employment that does not exist, and one before the join date', async () => {
+    const { client, calls } = fakeSupabase();
+    expect(await createEmployee(ctxOf(client), { name: 'Farah Idris', left_date: '2026-02-31' })).toEqual({
+      ok: false,
+      error: 'The last day of employment must be a real date, as YYYY-MM-DD.',
+    });
+    expect(
+      await createEmployee(ctxOf(client), { name: 'Farah Idris', join_date: '2026-03-01', left_date: '2026-02-20' }),
+    ).toEqual({ ok: false, error: 'The last day of employment cannot be before the join date.' });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('writes the last day of employment onto the employee record', async () => {
+    const { client, calls } = fakeSupabase({ 'hr_employees.select': { data: [] }, 'hr_employees.insert': { data: saved } });
+    await createEmployee(ctxOf(client), { name: 'Farah Idris', join_date: '2026-01-05', left_date: '2026-03-20' });
+    expect(calls.find((c) => c.op === 'insert')!.values).toMatchObject({
+      join_date: '2026-01-05',
+      left_date: '2026-03-20',
+    });
+  });
+
   it('saves pay and identity details in the private table, in cents, with the birthday on the directory row', async () => {
     const { client, calls } = fakeSupabase({
       'hr_employees.select': { data: [] },
