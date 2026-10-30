@@ -351,8 +351,8 @@ export function paidLine(run: { paid_at: string | null; paid_by_name: string | n
   return `Marked as paid on ${formatDate(day)}${run.paid_by_name ? ` by ${run.paid_by_name}` : ''}`;
 }
 
-/** Why a run left each person out, in the words the screen shows. */
-const SKIPPED_REASON_WORDS: Record<SkippedReason, string> = {
+/** Why a run left each person out, in the words the screen shows (the chat tools say the same, in lower case). */
+export const SKIPPED_REASON_WORDS: Record<SkippedReason, string> = {
   no_salary: 'No base salary recorded',
   left: 'Last day of employment has passed',
 };
