@@ -170,6 +170,9 @@ export const setEInvoiceInput = z
     path: ['einvoice_uuid'],
   });
 
+/** The invoice is on a return marked filed (private trigger finance_invoice_void_filed_guard, #222). */
+const FIN_VOID_ON_FILED = 'FIN71';
+
 const REFUSALS: Record<string, string> = {
   FIN01: M.locked,
   FIN02: M.hasPayments,
@@ -461,7 +464,7 @@ export async function postInvoice(
   return { ok: true, data: { id, invoice_no: data as string } };
 }
 
-/** Voids a posted invoice. Refused while it has payments. */
+/** Voids a posted invoice. Refused while it has payments, or once its own return is marked filed. */
 export async function voidInvoice(
   ctx: FinanceWriteContext,
   input: z.input<typeof invoiceIdInput>,
@@ -474,7 +477,12 @@ export async function voidInvoice(
     .eq('org_id', ctx.orgId)
     .select('id')
     .maybeSingle();
-  if (error) return invoiceWriteFailed('voidInvoice', error);
+  if (error) {
+    // The database words this refusal itself: it names the filed period and both ways out (#222).
+    const message = (error as { message?: unknown }).message;
+    if (pgCode(error) === FIN_VOID_ON_FILED && typeof message === 'string' && message) return { ok: false, error: message };
+    return invoiceWriteFailed('voidInvoice', error);
+  }
   if (!data) return { ok: false, error: M.gone };
   return { ok: true, data: { id: data.id } };
 }
