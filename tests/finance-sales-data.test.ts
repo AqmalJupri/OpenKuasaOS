@@ -146,89 +146,26 @@ describe('the same document twice on one payment', () => {
 });
 
 describe('voiding an invoice on a return already marked filed', () => {
-  const SEPT = '1 Sep – 31 Oct 2026';
-  const FILED = `This invoice is on the ${SEPT} service tax return, which is marked filed. Issue a credit note instead. If the invoice should never have been issued, take the filed mark off the return, void the invoice, and file an amended return (Pindaan).`;
-  const line = (tax_type: string | null, sst_rate: number, sst_amount_myr: number) => ({
-    id: 'l1',
-    invoice_id: ID,
-    sst_rate,
-    tax_type,
-    sst_amount_myr,
-  });
-  const filed = (tax_type: string, period_start = '2026-09-01') => ({ tax_type, period_start, filed_on: '2026-11-05' });
-  const books = (o: { lines?: ReturnType<typeof line>[]; marks?: Record<string, unknown>[]; start?: number; noSettings?: boolean; marksError?: unknown; status?: string } = {}) =>
-    fakeFinance((call) => {
-      if (call.name === 'finance_invoices' && call.op === 'select') {
-        return { data: { id: ID, invoice_date: '2026-09-10', status: o.status ?? 'posted' }, error: null };
-      }
-      if (call.name === 'finance_invoice_lines') return { data: o.lines ?? [], error: null };
-      if (call.name === 'finance_sst_settings') {
-        return { data: o.noSettings ? null : { period_start_month: o.start ?? 1 }, error: null };
-      }
-      if (call.name === 'finance_sst_returns') {
-        if (o.marksError) return { data: null, error: o.marksError };
-        return { data: (o.marks ?? []).filter((m) => m.tax_type === call.filters.tax_type), error: null };
-      }
-      return { data: { id: ID }, error: null };
-    });
+  // The database refuses it (finance_invoice_void_filed_guard, FIN71) and words the sentence itself.
+  const FILED =
+    'This invoice is on the 1 Sep – 31 Oct 2026 service tax return, which is marked filed. Issue a credit note instead. If the invoice should never have been issued, take the filed mark off the return, void the invoice, and file an amended return (Pindaan).';
 
-  it('refuses the void, names the period, and gives both ways out', async () => {
-    const { ctx, calls } = books({ lines: [line('service', 6, 300)], marks: [filed('service')] });
+  it('shows the database’s sentence, which names the period and both ways out', async () => {
+    const { ctx, calls } = fakeFinance({ data: null, error: { code: 'FIN71', message: FILED } });
     expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: FILED });
-    expect(calls.some((c) => c.op === 'update')).toBe(false);
+    // One write, no reads before it: the check lives in the database, so nothing can slip between them.
+    expect(calls.map((c) => c.op)).toEqual(['update']);
     expect(logged).not.toHaveBeenCalled();
   });
 
-  it('says SST when the invoice is on both filed returns', async () => {
-    const { ctx } = books({
-      lines: [line('service', 6, 300), line('sales', 10, 500)],
-      marks: [filed('service'), filed('sales')],
-    });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({
-      ok: false,
-      error: FILED.replace('service tax return', 'SST return'),
-    });
-  });
-
-  it('voids once the period is not the one marked filed', async () => {
-    const { ctx, calls } = books({ lines: [line('service', 6, 300)], marks: [filed('service', '2026-07-01')] });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-    const update = calls.find((c) => c.op === 'update');
-    expect(update?.values).toMatchObject({ status: 'void' });
-  });
-
-  it('holds the void only for the tax the invoice carries', async () => {
-    const { ctx } = books({ lines: [line('service', 6, 300)], marks: [filed('sales')] });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-  });
-
-  it('lets an invoice with no SST be voided', async () => {
-    const { ctx } = books({ lines: [line('none', 0, 0)], marks: [filed('service')] });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-  });
-
-  it('leaves a draft or an already void invoice to the database’s own refusal', async () => {
-    for (const status of ['draft', 'void']) {
-      const { ctx } = books({ lines: [line('service', 6, 300)], marks: [filed('service')], status });
-      expect(await voidInvoice(ctx, { id: ID }), status).toEqual({ ok: true, data: { id: ID } });
-    }
-  });
-
-  it('takes the period from the workspace’s own start month', async () => {
-    // Starting in February, 10 September falls in 1 Aug – 30 Sep 2026, so a September mark does not hold it.
-    const { ctx } = books({ lines: [line('service', 6, 300)], marks: [filed('service')], start: 2 });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-  });
-
-  it('voids freely when the workspace has never saved SST settings', async () => {
-    const { ctx } = books({ lines: [line('service', 6, 300)], marks: [filed('service')], noSettings: true });
-    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-  });
-
-  it('refuses rather than rewrite a filed return it could not read', async () => {
-    const { ctx, calls } = books({ lines: [line('service', 6, 300)], marksError: { code: 'XX000' } });
+  it('falls back to the plain failure when the refusal comes with no sentence', async () => {
+    const { ctx } = fakeFinance({ data: null, error: { code: 'FIN71', message: '' } });
     expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: 'That change could not be saved. Please try again.' });
-    expect(calls.some((c) => c.op === 'update')).toBe(false);
     expect(logged).toHaveBeenCalled();
+  });
+
+  it('never passes on the text of any other database error', async () => {
+    const { ctx } = fakeFinance({ data: null, error: { code: 'XX000', message: 'internal detail' } });
+    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: 'That change could not be saved. Please try again.' });
   });
 });
