@@ -67,11 +67,27 @@ describe('a leaver is paid the days worked', () => {
     expect(build).toContain("'Joined ' || to_char(joined, 'FMDD Mon YYYY') || ' (' || employed || ' of ' || days_in_month || ' days)'");
   });
 
-  test('a month entirely after the last day gets no payslip, and status is left alone', () => {
+  test('a month entirely after the last day gets no payslip unless late-approved overtime is owed, and status is left alone', () => {
     const fill = fn('private.hr_payroll_fill');
-    expect(fill).toContain('and (e.left_date is null or e.left_date >= p_run.period_month)');
+    expect(fill).toContain('and (e.left_date is null or e.left_date >= p_run.period_month or exists (');
+    // Only overtime worked on or before the last day, not yet on a payslip, earns such a month a payslip.
+    expect(fill).toContain('and r.amount_cents > 0 and r.work_date <= e.left_date))');
+    // That payslip pays no basic and has no boundary or unpaid-leave line.
+    const build = fn('private.hr_payroll_build_payslip');
+    expect(build).toContain('gone := left_on is not null and left_on < slip.period_month;');
+    expect(build).toContain('set basic_cents = case when gone then 0 else salary end');
     // Flipping the status would drop the final month from both the fill and the skipped list.
     expect(sql).not.toContain("set status = 'inactive'");
+  });
+
+  test('a draft payslip for a month after a last day set later is removed, unless HR wrote a line on it', () => {
+    const fill = fn('private.hr_payroll_fill');
+    expect(fill).toContain("select 1 from public.hr_payslip_lines l where l.payslip_id = p.id and l.source = 'hr')");
+    // Its overtime is let go before the payslip goes, as hr_remove_payslip does.
+    expect(fill.indexOf('set payslip_id = null where r.payslip_id = any(gone)')).toBeGreaterThan(-1);
+    expect(fill.indexOf('set payslip_id = null where r.payslip_id = any(gone)')).toBeLessThan(
+      fill.indexOf('delete from public.hr_payslips p where p.id = any(gone)'),
+    );
   });
 
   test('a leaver past their last day is listed with the reason, not dropped in silence', () => {

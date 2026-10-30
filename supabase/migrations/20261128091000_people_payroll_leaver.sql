@@ -36,9 +36,18 @@
 -- Overtime worked after the last day is no longer paid: the builder took every
 -- approved record on or before the month's last day, whatever the leaving date.
 --
--- A month entirely after the last day is skipped rather than paid as zero, and
--- the check file pins a mid-month leaver, a join and leave inside one month, a
--- leaver with unpaid leave, and a last day on the month's last day.
+-- A month entirely after the last day is skipped rather than paid as zero, with
+-- one exception: overtime worked on or before the last day but approved after
+-- that month's run, which no later payslip would ever take. Such a month gets a
+-- payslip of the overtime alone, basic 0, with no "Left" line and no unpaid
+-- leave. A draft payslip already in the run for someone whose last day is now
+-- before its month, with no such overtime, is removed when the run is filled
+-- again, unless HR wrote lines on it.
+--
+-- The check file pins a mid-month leaver, a join and leave inside one month, a
+-- leaver with unpaid leave, a last day on the month's last day, late-approved
+-- overtime after leaving, and a draft payslip removed or kept once the last day
+-- moves before its month.
 
 -- ---- the last day of employment ------------------------------------------------
 alter table public.hr_employees add column if not exists left_date date;
@@ -112,6 +121,7 @@ declare
   pay bigint;
   boundary bigint := 0;
   unpaid bigint;
+  gone boolean;
 begin
   select p.* into slip from public.hr_payslips p where p.id = p_payslip;
   month_end := (slip.period_month + interval '1 month')::date - 1;
@@ -131,7 +141,12 @@ begin
 
   update public.hr_overtime_records r set payslip_id = null where r.payslip_id = slip.id;
   delete from public.hr_payslip_lines l where l.payslip_id = slip.id and l.source <> 'hr';
-  update public.hr_payslips p set basic_cents = salary where p.id = slip.id;
+
+  -- A month that begins after the last day of employment pays no basic at all:
+  -- the payslip is there only for overtime worked before leaving (or for lines
+  -- HR wrote), so it has no "Left" line and no unpaid leave, just basic 0.
+  gone := left_on is not null and left_on < slip.period_month;
+  update public.hr_payslips p set basic_cents = case when gone then 0 else salary end where p.id = slip.id;
 
   -- The days this payslip pays for: from the 1st (or the join date) to the last
   -- day of employment, which is the month's last day unless the record says
@@ -139,35 +154,37 @@ begin
   first_day := case when joined > slip.period_month and joined <= month_end then joined else slip.period_month end;
   last_day := month_end;
   if left_on is not null and left_on < last_day then last_day := left_on; end if;
-  employed := greatest(last_day - first_day + 1, 0);
-  days := least(private.hr_payroll_unpaid_days(slip.org_id, slip.employee_id, slip.period_month), employed::numeric);
-  pay := round(salary::numeric * (employed - days) / days_in_month)::bigint;
+  if not gone then
+    employed := greatest(last_day - first_day + 1, 0);
+    days := least(private.hr_payroll_unpaid_days(slip.org_id, slip.employee_id, slip.period_month), employed::numeric);
+    pay := round(salary::numeric * (employed - days) / days_in_month)::bigint;
 
-  -- What the days outside the window leave unpaid, worked out once with the pay
-  -- above so the two lines and the pay add up to basic exactly.
-  boundary := salary - round(salary::numeric * employed / days_in_month)::bigint;
-  if boundary > 0 then
-    insert into public.hr_payslip_lines (org_id, payslip_id, kind, source, label, amount_cents, created_at)
-    values (slip.org_id, slip.id, 'unpaid',
-            case when left_on is not null and left_on < month_end then 'leaver' else 'joiner' end,
-            case
-              when joined > slip.period_month and left_on is not null and left_on < month_end then
-                'Joined ' || to_char(joined, 'FMDD Mon YYYY') || ', left ' || to_char(left_on, 'FMDD Mon YYYY') ||
-                ' (' || employed || ' of ' || days_in_month || ' days)'
-              when left_on is not null and left_on < month_end then
-                'Left ' || to_char(left_on, 'FMDD Mon YYYY') || ' (' || employed || ' of ' || days_in_month || ' days)'
-              else
-                'Joined ' || to_char(joined, 'FMDD Mon YYYY') || ' (' || employed || ' of ' || days_in_month || ' days)'
-            end,
-            boundary, now());
-  end if;
+    -- What the days outside the window leave unpaid, worked out once with the pay
+    -- above so the two lines and the pay add up to basic exactly.
+    boundary := salary - round(salary::numeric * employed / days_in_month)::bigint;
+    if boundary > 0 then
+      insert into public.hr_payslip_lines (org_id, payslip_id, kind, source, label, amount_cents, created_at)
+      values (slip.org_id, slip.id, 'unpaid',
+              case when left_on is not null and left_on < month_end then 'leaver' else 'joiner' end,
+              case
+                when joined > slip.period_month and left_on is not null and left_on < month_end then
+                  'Joined ' || to_char(joined, 'FMDD Mon YYYY') || ', left ' || to_char(left_on, 'FMDD Mon YYYY') ||
+                  ' (' || employed || ' of ' || days_in_month || ' days)'
+                when left_on is not null and left_on < month_end then
+                  'Left ' || to_char(left_on, 'FMDD Mon YYYY') || ' (' || employed || ' of ' || days_in_month || ' days)'
+                else
+                  'Joined ' || to_char(joined, 'FMDD Mon YYYY') || ' (' || employed || ' of ' || days_in_month || ' days)'
+              end,
+              boundary, now());
+    end if;
 
-  unpaid := salary - pay - boundary;
-  if unpaid > 0 then
-    insert into public.hr_payslip_lines (org_id, payslip_id, kind, source, label, amount_cents, created_at)
-    values (slip.org_id, slip.id, 'unpaid', 'unpaid_leave',
-            'Unpaid leave, ' || trim_scale(days) || ' of ' || days_in_month || ' days',
-            unpaid, now() + interval '1 microsecond');
+    unpaid := salary - pay - boundary;
+    if unpaid > 0 then
+      insert into public.hr_payslip_lines (org_id, payslip_id, kind, source, label, amount_cents, created_at)
+      values (slip.org_id, slip.id, 'unpaid', 'unpaid_leave',
+              'Unpaid leave, ' || trim_scale(days) || ' of ' || days_in_month || ' days',
+              unpaid, now() + interval '1 microsecond');
+    end if;
   end if;
 
   with taken as (
@@ -189,16 +206,49 @@ revoke all on function private.hr_payroll_build_payslip(uuid) from public, anon,
 -- ---- who a run fills --------------------------------------------------------------
 -- A payslip for every employee of the workspace who is active, has a salary
 -- above zero, joined on or before the last day of the month (or has no join
--- date) and had not left before the month began (or has no leaving date) and is
--- not in the run yet; then every payslip of the run, old and new, is built and
--- worked out again. It never removes a payslip. Returns how many it added.
+-- date) and is not in the run yet, and who either had not left before the month
+-- began (or has no leaving date) or has approved overtime not yet on a payslip
+-- that they worked on or before their last day. That overtime was approved too
+-- late for the run of the month they left, and no later payslip would take it,
+-- so it is paid on a payslip of its own with basic 0 (the builder sees to that).
+-- Then every payslip of the run, old and new, is built and worked out again.
+--
+-- First, though, a payslip of the run is removed when its employee's last day is
+-- now before the run's month and they have no such overtime: the last day was
+-- set or moved after the draft was made, and a payslip for a month they did not
+-- work would otherwise stay at gross 0. The run is a draft (only drafts are
+-- filled), its lines go with it and its overtime is let go first, as
+-- hr_remove_payslip does. A payslip carrying a line HR wrote is kept instead,
+-- with basic 0, so HR's work is never lost without a word; HR removes it by hand
+-- if it is not wanted. hr_payroll_skipped then lists the removed ones as 'left'.
+-- Returns how many it added.
 create or replace function private.hr_payroll_fill(p_run public.hr_payroll_runs)
 returns int language plpgsql set search_path = public as $$
 declare
   month_end date := (p_run.period_month + interval '1 month')::date - 1;
   added int;
   slip_id uuid;
+  gone uuid[];
 begin
+  select coalesce(array_agg(p.id order by p.id), '{}') into gone
+  from public.hr_payslips p
+  join public.hr_employees e on e.id = p.employee_id
+  where p.payroll_run_id = p_run.id
+    and e.left_date is not null and e.left_date < p_run.period_month
+    and not exists (
+      select 1 from public.hr_payslip_lines l where l.payslip_id = p.id and l.source = 'hr')
+    and not exists (
+      select 1 from public.hr_overtime_records r
+      where r.employee_id = p.employee_id and r.org_id = p_run.org_id
+        and r.status = 'approved' and (r.payslip_id is null or r.payslip_id = p.id)
+        and r.amount_cents > 0 and r.work_date <= e.left_date);
+  if cardinality(gone) > 0 then
+    -- Held in order of id, as the builder and hr_mark_payroll_paid hold them.
+    perform 1 from public.hr_overtime_records r where r.payslip_id = any(gone) order by r.id for update;
+    update public.hr_overtime_records r set payslip_id = null where r.payslip_id = any(gone);
+    delete from public.hr_payslips p where p.id = any(gone);
+  end if;
+
   with made as (
     insert into public.hr_payslips (org_id, employee_id, payroll_run_id, period_month, basic_cents, gross_cents)
     select p_run.org_id, e.id, p_run.id, p_run.period_month, x.base_salary_cents, x.base_salary_cents
@@ -206,7 +256,11 @@ begin
     join public.hr_employee_private x on x.employee_id = e.id
     where e.org_id = p_run.org_id and e.status = 'active' and x.base_salary_cents > 0
       and (e.join_date is null or e.join_date <= month_end)
-      and (e.left_date is null or e.left_date >= p_run.period_month)
+      and (e.left_date is null or e.left_date >= p_run.period_month or exists (
+        select 1 from public.hr_overtime_records r
+        where r.employee_id = e.id and r.org_id = p_run.org_id
+          and r.status = 'approved' and r.payslip_id is null
+          and r.amount_cents > 0 and r.work_date <= e.left_date))
       and not exists (
         select 1 from public.hr_payslips p
         where p.employee_id = e.id and p.period_month = p_run.period_month
@@ -231,7 +285,8 @@ revoke all on function private.hr_payroll_fill(public.hr_payroll_runs) from publ
 -- payslip in the run, and either has no salary on file (none, or zero) or had
 -- already left before the month began. The reason says which: 'left' when the
 -- last day came before the month, 'no_salary' otherwise. A leaver's final month
--- still has a payslip, so they are only listed from the month after it.
+-- still has a payslip, so they are only listed from the month after it, and not
+-- in a later month whose run gave them a payslip for late-approved overtime.
 -- Someone who joins after the month is not listed: they would not be paid for it
 -- with a salary either.
 create or replace function private.hr_payroll_skipped(p_run public.hr_payroll_runs)
