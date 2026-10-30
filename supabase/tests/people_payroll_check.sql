@@ -1333,8 +1333,9 @@ begin
         'epf 26000 socso 5000 eis 0'),
       ('seventeen', teen, 'epf 19500 socso 2625 eis 0'),
       -- Overtime is EPF wages for nobody, so the employer's EPF is 13% of 3,000.00 while
-      -- SOCSO and EIS take the gross on PERKESO's own five sen grid: 1.75% of 3,133.27 is
-      -- 54.83, and the table prints 54.85.
+      -- SOCSO and EIS take the gross, rounded to five sen: 1.75% of 3,133.27 is 54.83, so
+      -- 54.85. That is the rate's figure, not PERKESO's: its table charges a fixed RM55.15
+      -- for wages above RM3,100 and up to RM3,200. The banded figures are #423.
       ('overtime', ot, 'epf 39000 socso 5485 eis 625')
     ) as c(label, employee, want)
   loop
@@ -1372,8 +1373,8 @@ begin
      or private.hr_payroll_proposal('epf', 500000, 55, null) <> 55000 then
     fails := array_append(fails, 'the employer EPF share does not step down at RM 5,000, follow the category, or leave the employee share alone');
   end if;
-  -- PERKESO prints to five sen, so the employer's share is rounded onto that grid and then
-  -- held at the ceiling: 1.75% of 5,950.00 is 104.125, and the table says 104.15.
+  -- The employer's share is rounded to five sen and then held at the ceiling, which is
+  -- the table's top band: 1.75% of 5,950.00 is 104.125, and the top band is 104.15.
   if format('%s %s', private.hr_payroll_proposal('socso', 595000, 55, null, 'employer'),
             private.hr_payroll_proposal('eis', 595000, 55, null, 'employer')) <> '10415 1190'
      or format('%s %s', private.hr_payroll_proposal('socso', 595000, 61, null, 'employer'),

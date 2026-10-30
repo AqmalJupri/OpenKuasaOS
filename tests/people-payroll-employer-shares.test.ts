@@ -1,6 +1,7 @@
 // tests/people-payroll-employer-shares.test.ts
-// The employer's EPF, SOCSO and EIS shares are worked out from the same official
-// tables as the employee's, and never touch net pay (issue #403).
+// The employer's EPF, SOCSO and EIS shares are worked out from the same rules table
+// as the employee's, as a rate of wages, and never touch net pay (issue #403). They are
+// estimates: PERKESO charges a fixed amount per wage band, tracked in #423.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
@@ -119,7 +120,7 @@ describe('the proposal reads the payer and the wage band', () => {
     expect(proposal).toContain('order by s.wage_from_cents desc');
   });
 
-  test('PERKESO rounds to five sen before the ceiling, KWSP keeps the sen it always used', () => {
+  test('the employer SOCSO and EIS rows round to five sen before the ceiling, KWSP keeps the sen it always used', () => {
     const proposal = fn('private.hr_payroll_proposal');
     expect(proposal).toMatch(/round\(p_wage_cents \* s\.rate \/ s\.round_to_cents\) \* s\.round_to_cents/);
     expect(sql).toContain('add column round_to_cents smallint not null default 1');

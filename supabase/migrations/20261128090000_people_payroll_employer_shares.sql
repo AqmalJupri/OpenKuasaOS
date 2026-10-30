@@ -1,5 +1,5 @@
 -- Lekiu payroll: the employer's EPF, SOCSO and EIS shares are worked out from the
--- same official tables as the employee's (issue #403).
+-- same rules table as the employee's, as a rate of wages (issue #403).
 --
 -- Before this migration the rules table said only what the employee pays, so the
 -- employer's share existed nowhere: not on the payslip, not in a run total. The
@@ -26,13 +26,21 @@
 --          every category pays it.
 --   EIS    0.2%, citizens and permanent residents aged 18 to 60 only.
 --
+-- The employer's SOCSO and EIS figures are estimates, worked out as a rate of
+-- wages like the employee's. PERKESO does not charge a rate: its table charges a
+-- fixed amount for each wage band (more than RM3,100 and up to RM3,200 is RM55.15
+-- for the employer, first category), so below the ceiling a figure here can be a
+-- few sen off the table's. HR checks it against PERKESO's table; the banded
+-- figures, for both shares, are tracked in #423.
+--
 -- The ceilings are PERKESO's own top band figures rather than a derived rate:
 -- 1.75% of the RM5,950 band is 10413 cents, two sen under the table's 10415, and
--- 1.25% of it is 7437.5, under the table's 7440. PERKESO also prints its figures
--- to five sen, so the employer rows carry round_to_cents = 5: the rate is applied
--- to the wage, rounded to five sen, and then held at the ceiling. The employee
--- rows keep round_to_cents = 1, which is the rounding they had, so not one
--- employee figure moves.
+-- 1.25% of it is 7437.5, under the table's 7440. The employer rows carry
+-- round_to_cents = 5: the rate is applied to the wage, rounded to five sen, and
+-- then held at the ceiling. That is a rounding, not the table: the figure is sure
+-- to agree with PERKESO's only at the top band. The employee rows keep
+-- round_to_cents = 1, which is the rounding they had, so not one employee figure
+-- moves.
 --
 -- Where it lands: three columns of their own on hr_payslips, never inside the
 -- generated net_cents, because employer money in a deduction would cut what the
@@ -42,8 +50,8 @@
 -- A draft on record is worked out again so its payslips carry the figures; a
 -- paid payslip is a record of what was paid and does not move.
 --
--- Still open in #402: the banded EPF and PERKESO tables for the employee's own
--- share, which this migration's wage band column is ready for.
+-- Still open in #423: the banded EPF and PERKESO tables, for the employee's share
+-- and the employer's, which this migration's wage band column is ready for.
 
 -- ---- who pays, and which wage band a row covers -----------------------------
 -- employee_from_age and employee_until_age are the row's own age band whoever
@@ -107,8 +115,8 @@ insert into public.hr_statutory_rules
 -- The rate of the one rule for the scheme, who pays it, the category (empty is a
 -- citizen), the age and the wage: of the rows whose age band holds the age and
 -- whose wage band the wage reaches, the one that starts highest. Rounded to the
--- sen, or to the row's own five sen where PERKESO prints it that way, and held at
--- the row's maximum. Zero when no rule matches.
+-- sen, or to the row's own five sen, and held at the row's maximum. Zero when no
+-- rule matches.
 --
 -- The payer argument is last and defaults to the employee, so every four argument
 -- call written before this migration keeps working and reads the same row.
