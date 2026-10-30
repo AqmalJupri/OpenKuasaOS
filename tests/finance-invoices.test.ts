@@ -162,19 +162,11 @@ describe('invoice writes', () => {
     expect(calls[0].args).toEqual({ target_org: 'org-1', target_invoice: ID });
   });
   it('voids by setting the status and deletes a draft, both scoped to the workspace', async () => {
-    // The void reads the invoice and its lines first, to see whether its own return is marked filed (#222).
-    const voided = fakeFinance((call) =>
-      call.name === 'finance_invoices' && call.op === 'select'
-        ? { data: { id: ID, invoice_date: '2026-10-01', status: 'posted' }, error: null }
-        : call.name === 'finance_invoice_lines'
-          ? { data: [], error: null }
-          : { data: { id: ID }, error: null },
-    );
+    const voided = fakeFinance({ data: { id: ID }, error: null });
     expect(await voidInvoice(voided.ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
-    const update = voided.calls.find((c) => c.op === 'update');
-    expect(update).toMatchObject({ name: 'finance_invoices', filters: { id: ID, org_id: 'org-1' } });
-    expect(update?.values).toMatchObject({ status: 'void' });
-    expect(Object.keys(update?.values ?? {}).sort()).toEqual(['status', 'updated_at']);
+    expect(voided.calls[0]).toMatchObject({ name: 'finance_invoices', op: 'update', filters: { id: ID, org_id: 'org-1' } });
+    expect(voided.calls[0].values).toMatchObject({ status: 'void' });
+    expect(Object.keys(voided.calls[0].values!).sort()).toEqual(['status', 'updated_at']);
 
     const removed = fakeFinance({ data: { id: ID }, error: null });
     expect(await deleteInvoice(removed.ctx, { id: ID })).toEqual({ ok: true, data: { id: ID } });
