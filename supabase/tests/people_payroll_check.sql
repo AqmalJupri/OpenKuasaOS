@@ -47,7 +47,7 @@ declare
   da uuid := gen_random_uuid();           -- an admin planted in the demo
   -- org
   ea uuid; eb uuid; ev uuid; en uuid; ex uuid; cal uuid;
-  pa uuid; pb uuid; pv uuid; px uuid;
+  pa uuid; pb uuid; pc uuid; pv uuid; px uuid;
   run_id uuid; feb_run uuid;
   line_id uuid; line2 uuid; ot_line uuid; b_line uuid;
   o1 uuid; o2 uuid; o3 uuid; o4 uuid;
@@ -1514,12 +1514,17 @@ begin
   select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = u2;
   fails := fails || pg_temp.pay_expect(owner_id, 'a commission is added to April',
     format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Commission'', 50000)', pb), null);
-  update public.hr_employees set left_date = '2025-03-31' where id in (ej, u2);
+  -- Turned Sixty's has no line from HR, but an EPF figure HR typed: kept the same way.
+  select p.id into pc from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = turned60;
+  fails := fails || pg_temp.pay_expect(owner_id, 'an EPF figure is typed on April',
+    format('select public.hr_set_statutory(%L, ''epf'', 0)', pc), null);
+  update public.hr_employees set left_date = '2025-03-31' where id in (ej, u2, turned60);
   r := pg_temp.pay_try(owner_id, format('select public.hr_recalculate_payroll(%L)', apr_run));
   if r -> 'payslips' is distinct from '18'::jsonb or r -> 'added' is distinct from '0'::jsonb
      or not (r -> 'skipped') @> jsonb_build_array(
           jsonb_build_object('employee_id', ej, 'name', 'Joiner', 'reason', 'left'))
      or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', u2))
+     or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', turned60))
      or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', le)) then
     fails := array_append(fails, format('recalculating April after two last days moved before it: %s', r));
   end if;
@@ -1528,6 +1533,9 @@ begin
   if pg_temp.pay_slip(pb) is distinct from 'basic 0 gross 50000 epf 5500 socso 250 eis 100 pcb 0 other 0 net 44150 set [] pending'
      or pg_temp.pay_lines(pb) is distinct from 'hr earning "Commission" 50000' then
     fails := array_append(fails, format('a kept payslip after the last day, with HR''s line: %s / %s', coalesce(pg_temp.pay_slip(pb), 'no payslip'), pg_temp.pay_lines(pb)));
+  end if;
+  if pg_temp.pay_slip(pc) is distinct from 'basic 0 gross 0 epf 0 socso 0 eis 0 pcb 0 other 0 net 0 set [epf] pending' then
+    fails := array_append(fails, format('a kept payslip after the last day, with HR''s typed figure: %s', coalesce(pg_temp.pay_slip(pc), 'no payslip')));
   end if;
   -- A PCB typed in April and then reset goes back to the figure copied from March.
   select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = b1;

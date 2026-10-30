@@ -80,9 +80,11 @@ describe('a leaver is paid the days worked', () => {
     expect(sql).not.toContain("set status = 'inactive'");
   });
 
-  test('a draft payslip for a month after a last day set later is removed, unless HR wrote a line on it', () => {
+  test('a draft payslip for a month after a last day set later is removed, unless HR wrote a line or typed a figure on it', () => {
     const fill = fn('private.hr_payroll_fill');
     expect(fill).toContain("select 1 from public.hr_payslip_lines l where l.payslip_id = p.id and l.source = 'hr')");
+    // A statutory figure HR typed keeps it too.
+    expect(fill).toContain('and cardinality(p.set_by_hr) = 0');
     // Its overtime is let go before the payslip goes, as hr_remove_payslip does.
     expect(fill.indexOf('set payslip_id = null where r.payslip_id = any(gone)')).toBeGreaterThan(-1);
     expect(fill.indexOf('set payslip_id = null where r.payslip_id = any(gone)')).toBeLessThan(

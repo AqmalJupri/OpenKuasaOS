@@ -42,7 +42,7 @@
 -- payslip of the overtime alone, basic 0, with no "Left" line and no unpaid
 -- leave. A draft payslip already in the run for someone whose last day is now
 -- before its month, with no such overtime, is removed when the run is filled
--- again, unless HR wrote lines on it.
+-- again, unless HR wrote lines or typed figures on it.
 --
 -- The check file pins a mid-month leaver, a join and leave inside one month, a
 -- leaver with unpaid leave, a last day on the month's last day, late-approved
@@ -218,9 +218,9 @@ revoke all on function private.hr_payroll_build_payslip(uuid) from public, anon,
 -- set or moved after the draft was made, and a payslip for a month they did not
 -- work would otherwise stay at gross 0. The run is a draft (only drafts are
 -- filled), its lines go with it and its overtime is let go first, as
--- hr_remove_payslip does. A payslip carrying a line HR wrote is kept instead,
--- with basic 0, so HR's work is never lost without a word; HR removes it by hand
--- if it is not wanted. hr_payroll_skipped then lists the removed ones as 'left'.
+-- hr_remove_payslip does. A payslip carrying a line HR wrote, or a statutory
+-- figure HR typed (set_by_hr), is kept instead, with basic 0, so HR's work is
+-- never lost without a word; HR removes it by hand if it is not wanted. hr_payroll_skipped then lists the removed ones as 'left'.
 -- Returns how many it added.
 create or replace function private.hr_payroll_fill(p_run public.hr_payroll_runs)
 returns int language plpgsql set search_path = public as $$
@@ -235,6 +235,7 @@ begin
   join public.hr_employees e on e.id = p.employee_id
   where p.payroll_run_id = p_run.id
     and e.left_date is not null and e.left_date < p_run.period_month
+    and cardinality(p.set_by_hr) = 0
     and not exists (
       select 1 from public.hr_payslip_lines l where l.payslip_id = p.id and l.source = 'hr')
     and not exists (
