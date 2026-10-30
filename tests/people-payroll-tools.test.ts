@@ -7,6 +7,7 @@ const ctl = vi.hoisted(() => ({
   fail: null as string | null,
   earlier: 0,
   payslips: 19,
+  reason: 'no_salary' as 'no_salary' | 'left',
 }));
 
 const SLIP = '77777777-7777-4777-8777-777777777777';
@@ -47,7 +48,7 @@ vi.mock('@/lib/people/payroll-writes', async (orig) => {
       month: '2026-10',
       payslips: ctl.payslips,
       earlier_overtime: ctl.earlier,
-      skipped: [{ employee_id: 'e9', name: 'Siti Aminah', reason: 'no_salary' }],
+      skipped: [{ employee_id: 'e9', name: 'Siti Aminah', reason: ctl.reason }],
     })),
     recalculatePayroll: record('recalculatePayroll', (): RunResult => ({
       run_id: RUN,
@@ -105,6 +106,7 @@ beforeEach(() => {
   ctl.fail = null;
   ctl.earlier = 0;
   ctl.payslips = 19;
+  ctl.reason = 'no_salary';
 });
 
 describe('who holds the payroll tools', () => {
@@ -298,6 +300,13 @@ describe('runPayroll', () => {
     expect(result.data.message).toBe(
       "Payroll for October 2026 is a draft with 19 payslips. Nobody is paid and employees can't see it yet. Left out: Siti Aminah (no base salary recorded).",
     );
+  });
+
+  it('says a leaver is past their last day rather than missing a salary', async () => {
+    ctl.reason = 'left';
+    const result = await run('runPayroll', { month: '2026-10' });
+    expect(result.data.skipped).toEqual([{ employee: 'Siti Aminah', reason: 'last day of employment has passed' }]);
+    expect(result.data.message).toContain('Left out: Siti Aminah (last day of employment has passed).');
   });
 
   it.each(['2026-10', ' 2026-10 ', '2026-10-01'])('reads %j as October 2026', async (month) => {

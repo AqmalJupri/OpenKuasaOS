@@ -179,6 +179,7 @@ import {
   type PeopleData,
   type PeopleViewer,
   type Review,
+  type SkippedReason,
   LETTER_TYPES,
   WEEKDAYS,
   PAYSLIP_EARNING_TYPES,
@@ -558,7 +559,10 @@ const ackState = (requested: boolean, at: string | null): 'not_requested' | 'awa
   !requested ? 'not_requested' : at ? 'acknowledged' : 'awaiting';
 
 /** Why an employee was left out of a run, in words. */
-const SKIPPED_WORDS: Record<string, string> = { no_salary: 'no base salary recorded' };
+const SKIPPED_WORDS: Record<SkippedReason, string> = {
+  no_salary: 'no base salary recorded',
+  left: 'last day of employment has passed',
+};
 
 /** A run's outcome as the model says it: the month in words, the number of payslips and who was left out, and why. */
 function runWords(run: RunResult, recalculated: boolean) {

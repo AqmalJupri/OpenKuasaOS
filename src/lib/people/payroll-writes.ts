@@ -22,7 +22,7 @@ import {
 import { blank } from './loose-input';
 import { PAYROLL_REFUSALS } from './payroll-refusals';
 import { STATUTORY_FIELDS } from './statutory-fields';
-import { PAYSLIP_EARNING_TYPES, type PayslipEarningType, type StatutoryField } from './types';
+import { PAYSLIP_EARNING_TYPES, type PayslipEarningType, type SkippedReason, type StatutoryField } from './types';
 
 // ---- Sentences ---------------------------------------------------------------
 
@@ -117,7 +117,7 @@ export type RunResult = {
   earlier_overtime: number;
   /** Recalculating only: how many of them are new. */
   added?: number;
-  skipped: { employee_id: string; name: string; reason: 'no_salary' }[];
+  skipped: { employee_id: string; name: string; reason: SkippedReason }[];
 };
 
 /** A payslip as the functions hand it back. It carries no employee name, no run id and no lines. */
@@ -186,8 +186,10 @@ function pickRunResult(row: Row): RunResult | null {
     if (!isRow(entry)) return null;
     const employeeId = text(entry.employee_id);
     const name = text(entry.name);
-    if (!employeeId || !name || entry.reason !== 'no_salary') return null;
-    skipped.push({ employee_id: employeeId, name, reason: 'no_salary' });
+    if (!employeeId || !name) return null;
+    const reason = entry.reason === 'no_salary' || entry.reason === 'left' ? entry.reason : null;
+    if (reason === null) return null;
+    skipped.push({ employee_id: employeeId, name, reason });
   }
   const earlier = count(row.earlier_overtime);
   if (earlier === null) return null;

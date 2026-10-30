@@ -22,6 +22,7 @@ import type {
   PeopleViewer,
   Payslip,
   PayslipLine,
+  SkippedReason,
   StatutoryField,
 } from './types';
 
@@ -350,11 +351,17 @@ export function paidLine(run: { paid_at: string | null; paid_by_name: string | n
   return `Marked as paid on ${formatDate(day)}${run.paid_by_name ? ` by ${run.paid_by_name}` : ''}`;
 }
 
+/** Why a run left each person out, in the words the screen shows. */
+const SKIPPED_REASON_WORDS: Record<SkippedReason, string> = {
+  no_salary: 'No base salary recorded',
+  left: 'Last day of employment has passed',
+};
+
 /** The people a run left out, each with why. */
 export function skippedRows(
-  skipped: { employee_id: string; name: string; reason: 'no_salary' }[],
+  skipped: { employee_id: string; name: string; reason: SkippedReason }[],
 ): { id: string; name: string; reason: string }[] {
-  return skipped.map((s) => ({ id: s.employee_id, name: s.name, reason: 'No base salary recorded' }));
+  return skipped.map((s) => ({ id: s.employee_id, name: s.name, reason: SKIPPED_REASON_WORDS[s.reason] }));
 }
 
 /** `?run=` as a single trimmed id, or null. Whether it names a real run is `payrollModel`'s call. */

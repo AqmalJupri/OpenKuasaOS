@@ -146,6 +146,11 @@ describe('skippedRows', () => {
     ]);
     expect(skippedRows([])).toEqual([]);
   });
+  it('says a leaver is past their last day, not that they have no salary', () => {
+    expect(skippedRows([{ employee_id: 'e', name: 'Ali', reason: 'left' }])).toEqual([
+      { id: 'e', name: 'Ali', reason: 'Last day of employment has passed' },
+    ]);
+  });
 });
 
 describe('runIdFromParam', () => {

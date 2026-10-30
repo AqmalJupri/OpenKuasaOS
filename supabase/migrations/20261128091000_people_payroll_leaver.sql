@@ -220,22 +220,28 @@ begin
 end; $$;
 revoke all on function private.hr_payroll_fill(public.hr_payroll_runs) from public, anon, authenticated;
 
--- Who a run left out for want of a salary: every active employee of the
--- workspace who joined on or before the last day of the month (or has no join
--- date), had not left before the month began (or has no leaving date), has no
--- salary on file (none, or zero) and has no payslip in the run, by name.
--- Someone who joins after the month, or left before it, is not listed: they
--- would not be paid for it with a salary either.
+-- Who a run left out, and why: every active employee of the workspace who
+-- joined on or before the last day of the month (or has no join date), has no
+-- payslip in the run, and either has no salary on file (none, or zero) or had
+-- already left before the month began. The reason says which: 'left' when the
+-- last day came before the month, 'no_salary' otherwise. A leaver's final month
+-- still has a payslip, so they are only listed from the month after it.
+-- Someone who joins after the month is not listed: they would not be paid for it
+-- with a salary either.
 create or replace function private.hr_payroll_skipped(p_run public.hr_payroll_runs)
 returns jsonb language sql stable set search_path = public as $$
   select coalesce(jsonb_agg(
-    jsonb_build_object('employee_id', e.id, 'name', e.name, 'reason', 'no_salary') order by e.name, e.id
+    jsonb_build_object(
+      'employee_id', e.id,
+      'name', e.name,
+      'reason', case when e.left_date is not null and e.left_date < p_run.period_month then 'left' else 'no_salary' end
+    ) order by e.name, e.id
   ), '[]'::jsonb)
   from public.hr_employees e
   left join public.hr_employee_private x on x.employee_id = e.id
-  where e.org_id = p_run.org_id and e.status = 'active' and coalesce(x.base_salary_cents, 0) = 0
+  where e.org_id = p_run.org_id and e.status = 'active'
     and (e.join_date is null or e.join_date <= (p_run.period_month + interval '1 month')::date - 1)
-    and (e.left_date is null or e.left_date >= p_run.period_month)
+    and (coalesce(x.base_salary_cents, 0) = 0 or (e.left_date is not null and e.left_date < p_run.period_month))
     and not exists (
       select 1 from public.hr_payslips p
       where p.employee_id = e.id and p.payroll_run_id = p_run.id

@@ -1218,13 +1218,15 @@ begin
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, mar));
   mar_run := (r #>> '{run,id}')::uuid;
   -- Nineteen payslips: the fifteen of the calculation section, and four of the five
-  -- leavers, since the one who left in February has none. The inactive employee and
-  -- the one who joins in April have none; the three with no salary are listed, by name.
+  -- leavers, since the one who left in February has none and is listed instead. The inactive
+  -- employee and the one who joins in April have none; the three with no salary are listed,
+  -- by name, and so is the leaver whose last day fell before the month.
   -- One of its three overtime lines is for work done in February.
   if r -> 'payslips' is distinct from '19'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left'),
           jsonb_build_object('employee_id', ns1, 'name', 'Zed No Salary', 'reason', 'no_salary')) then
     fails := array_append(fails, format('running March 2025: %s', r));
   end if;
@@ -1388,7 +1390,8 @@ begin
   if r -> 'payslips' is distinct from '21'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
-          jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary')) then
+          jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left')) then
     fails := array_append(fails, format('recalculating March after changes: %s', r));
   end if;
   if pg_temp.pay_slip(pa) is distinct from 'basic 310000 gross 310000 epf 34100 socso 1550 eis 620 pcb 12345 other 5000 net 256385 set [pcb] pending'
@@ -1429,12 +1432,18 @@ begin
   fails := fails || pg_temp.pay_expect(owner_id, 'March is marked as paid', format('select public.hr_mark_payroll_paid(%L)', mar_run), null);
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, apr));
   apr_run := (r #>> '{run,id}')::uuid;
-  -- March is paid, so April can be made. Its one overtime line is April's own.
+  -- March is paid, so April can be made. Its one overtime line is April's own. The five
+  -- leavers are listed rather than paid, since none of their last days falls in April.
   if r -> 'payslips' is distinct from '18'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
-          jsonb_build_object('employee_id', cal, 'name', 'Cal Joins Later', 'reason', 'no_salary')) then
+          jsonb_build_object('employee_id', cal, 'name', 'Cal Joins Later', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', jl, 'name', 'Joined And Left', 'reason', 'left'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left'),
+          jsonb_build_object('employee_id', le, 'name', 'Left Mid Month', 'reason', 'left'),
+          jsonb_build_object('employee_id', ld, 'name', 'Left On The Last Day', 'reason', 'left'),
+          jsonb_build_object('employee_id', lu, 'name', 'Left With Leave', 'reason', 'left')) then
     fails := array_append(fails, format('running April 2025: %s', r));
   end if;
   for label, who, want, t in

@@ -69,11 +69,25 @@ describe('a leaver is paid the days worked', () => {
 
   test('a month entirely after the last day gets no payslip, and status is left alone', () => {
     const fill = fn('private.hr_payroll_fill');
-    const skipped = fn('private.hr_payroll_skipped');
     expect(fill).toContain('and (e.left_date is null or e.left_date >= p_run.period_month)');
-    expect(skipped).toContain('and (e.left_date is null or e.left_date >= p_run.period_month)');
     // Flipping the status would drop the final month from both the fill and the skipped list.
     expect(sql).not.toContain("set status = 'inactive'");
+  });
+
+  test('a leaver past their last day is listed with the reason, not dropped in silence', () => {
+    // The fill skips the month after the leaving date, so without this the employee
+    // would appear in neither the payslips nor the skipped list.
+    const skipped = fn('private.hr_payroll_skipped');
+    expect(skipped).toContain(
+      "(coalesce(x.base_salary_cents, 0) = 0 or (e.left_date is not null and e.left_date < p_run.period_month))"
+    );
+    expect(skipped).toContain(
+      "'reason', case when e.left_date is not null and e.left_date < p_run.period_month then 'left' else 'no_salary' end"
+    );
+    // Someone who joins after the month still has no place in it.
+    expect(skipped).toContain(
+      "and (e.join_date is null or e.join_date <= (p_run.period_month + interval '1 month')::date - 1)"
+    );
   });
 
   test('the workspace check pins a mid-month leaver, a join and leave in one month, unpaid leave and the last day', () => {
