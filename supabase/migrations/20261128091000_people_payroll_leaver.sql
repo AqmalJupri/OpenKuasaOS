@@ -220,7 +220,8 @@ revoke all on function private.hr_payroll_build_payslip(uuid) from public, anon,
 -- filled), its lines go with it and its overtime is let go first, as
 -- hr_remove_payslip does. A payslip carrying a line HR wrote, or a statutory
 -- figure HR typed (set_by_hr), is kept instead, with basic 0, so HR's work is
--- never lost without a word; HR removes it by hand if it is not wanted. hr_payroll_skipped then lists the removed ones as 'left'.
+-- never lost without a word; HR removes it by hand if it is not wanted.
+-- hr_payroll_skipped then lists the removed ones as 'left'.
 -- Returns how many it added.
 create or replace function private.hr_payroll_fill(p_run public.hr_payroll_runs)
 returns int language plpgsql set search_path = public as $$
