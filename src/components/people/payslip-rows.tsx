@@ -138,7 +138,7 @@ export function PayslipLayout({ payslip, slots = {} }: { payslip: Payslip; slots
             </p>
             <div className="space-y-1">
               {m.employer.map((f) => (
-                <Row key={f.label} label={`${f.label}`}>
+                <Row key={f.label} label={f.label}>
                   {centsToRinggit(f.amount_cents)}
                 </Row>
               ))}

@@ -86,15 +86,11 @@ export type PayrollModel = {
   by_month: Bucket[];
   /** The chosen run's deductions in cents, as recorded on the payslips; "Other" last. Empty when there is none. */
   deductions: { key: string; label: string; value: number }[];
-  /** The chosen run's employer shares in cents, EPF, SOCSO and EIS. Empty when there is no run. */
-  employer: { key: string; label: string; value: number }[];
 };
 
 type DeductionField = 'epf_cents' | 'socso_cents' | 'eis_cents' | 'pcb_cents' | 'other_deductions_cents';
 
-type MoneyField = DeductionField | 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents';
-
-const sum = (rows: Payslip[], field: MoneyField) => rows.reduce((total, row) => total + row[field], 0);
+const sum = (rows: Payslip[], field: DeductionField) => rows.reduce((total, row) => total + row[field], 0);
 
 /** Everything between a payslip's gross and net, as the row records them. The one place it is derived. */
 export const deductionsOf = (p: Payslip): number => p.gross_cents - p.net_cents;
@@ -106,7 +102,7 @@ export const deductionsOf = (p: Payslip): number => p.gross_cents - p.net_cents;
 export const employerOf = (p: Pick<Payslip, 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents'>): number =>
   p.epf_employer_cents + p.socso_employer_cents + p.eis_employer_cents;
 
-/** The employer's three shares in the order the official submissions use them. */
+/** The employer's three shares, as the payslip lists them. */
 const EMPLOYER: { label: string; key: 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents' }[] = [
   { label: 'EPF', key: 'epf_employer_cents' },
   { label: 'SOCSO', key: 'socso_employer_cents' },
@@ -134,7 +130,7 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
   const asked = runId ? runs.find((r) => r.id === runId) : undefined;
   const newest = [...runs].sort((a, b) => b.period_month.localeCompare(a.period_month))[0];
   const chosen = asked ?? newest;
-  if (!chosen) return { runs: options, latest: null, by_month: [], deductions: [], employer: [] };
+  if (!chosen) return { runs: options, latest: null, by_month: [], deductions: [] };
 
   const slips = payslips
     .filter((p) => p.payroll_run_id === chosen.id)
@@ -147,8 +143,7 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
   const eis = sum(slips, 'eis_cents');
   const pcb = sum(slips, 'pcb_cents');
   const other = sum(slips, 'other_deductions_cents');
-  const employer = EMPLOYER.map((f) => ({ key: f.key.replace('_cents', ''), label: f.label, value: sum(slips, f.key) }));
-  const employerTotal = employer.reduce((total, f) => total + f.value, 0);
+  const employerTotal = slips.reduce((total, row) => total + employerOf(row), 0);
   return {
     runs: options,
     latest: {
@@ -188,7 +183,6 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
       { key: 'eis', label: 'EIS', value: eis },
       { key: 'other', label: 'Other', value: other },
     ],
-    employer,
   };
 }
 
@@ -511,8 +505,7 @@ const detailLine = (l: PayslipLine): DetailLine => ({
 
 /** The rows the payslip detail shows. Every figure is the payslip's own; nothing is worked out here. */
 export function payslipDetailModel(p: Payslip): PayslipDetailModel {
-  const employer = EMPLOYER.map((f) => ({ label: f.label, amount_cents: p[f.key] }));
-  const employerCents = employer.reduce((total, f) => total + f.amount_cents, 0);
+  const employerCents = employerOf(p);
   return {
     basic_cents: p.basic_cents,
     pay_lines: p.lines.filter((l) => l.kind !== 'deduction').map(detailLine),
@@ -524,7 +517,7 @@ export function payslipDetailModel(p: Payslip): PayslipDetailModel {
       amount_cents: p[f.key],
       set_by_hr: p.set_by_hr.includes(f.field),
     })),
-    employer,
+    employer: EMPLOYER.map((f) => ({ label: f.label, amount_cents: p[f.key] })),
     employer_cents: employerCents,
     cost_cents: p.gross_cents + employerCents,
     employer_recorded: p.employer_recorded,

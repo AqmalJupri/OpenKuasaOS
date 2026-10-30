@@ -183,16 +183,11 @@ describe('the app adds the employer shares up', () => {
     expect(detail.cost_cents).toBe(574_750);
   });
 
-  test('per run: one total, its parts, and a cost the deductions never include', () => {
+  test('per run: one total and a cost the deductions never include', () => {
     const runs: PayrollRun[] = [{ id: 'r1', period_month: '2026-10-01', status: 'draft', paid_at: null, paid_by_name: null }];
     const model = payrollModel(runs, [slip(), slip({ id: 'p2', employee_id: 'e2' })]);
     const latest = model.latest!;
     expect(latest.employer_cents).toBe(149_500);
-    expect(model.employer.map((f) => [f.label, f.value])).toEqual([
-      ['EPF', 130_000],
-      ['SOCSO', 17_500],
-      ['EIS', 2_000],
-    ]);
     expect(latest.cost_cents).toBe(1_149_500);
     expect(latest.deductions_cents).toBe(117_000);
     expect(latest.net_cents).toBe(883_000);
