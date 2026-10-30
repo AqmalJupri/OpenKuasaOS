@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import SstReportScreen, { SstReturnBody } from '@/screens/finance/sst-report';
-import { type SstLineRow, buildSstReturn } from '@/lib/finance/sst-return';
+import { NO_TYPED_FIGURES, type SstLineRow, buildSstReturn } from '@/lib/finance/sst-return';
 import { sstPeriodFor } from '@/lib/finance/sst';
 
 // The server actions module pulls in the server graph; the screen only hands its actions on.
@@ -90,7 +90,7 @@ describe('the return body', () => {
     expect(body).not.toContain('Value of taxable goods');
   });
 
-  it('notes the tax of earlier invoices voided this period, and an item 14 below zero', () => {
+  it('leaves an invoice voided after its period out of every return, with no note', () => {
     const invoiceBasis = { ...settings, service_tax_basis: 'invoice' as const };
     const voided: SstLineRow = {
       id: 'l1',
@@ -107,19 +107,21 @@ describe('the return body', () => {
       voided_on: '2026-11-01',
     };
     const nov = sstPeriodFor('2026-11-10', 9);
-    const body = textOf(
-      renderToStaticMarkup(<SstReturnBody ret={buildSstReturn('service', nov, [voided], [])} settings={invoiceBasis} companyName="Rimba" />),
-    );
-    expect(body).toContain('Not on the form: 13(a) includes RM 300.00 of tax on invoices from earlier returns that were voided this period.');
+    for (const p of [period, nov]) {
+      const body = textOf(
+        renderToStaticMarkup(<SstReturnBody ret={buildSstReturn('service', p, [voided], [])} settings={invoiceBasis} companyName="Rimba" />),
+      );
+      expect(body).not.toContain('voided');
+      expect(body).not.toContain('item 14 is below zero');
+    }
+  });
+
+  it('notes an item 14 below zero', () => {
+    const invoiceBasis = { ...settings, service_tax_basis: 'invoice' as const };
+    const ret = buildSstReturn('service', period, [], [], { ...NO_TYPED_FIGURES, badDebt13d: 100 });
+    const body = textOf(renderToStaticMarkup(<SstReturnBody ret={ret} settings={invoiceBasis} companyName="Rimba" />));
     expect(body).toContain(
       "Not on the form: item 14 is below zero because this period's deductions are more than its tax. Check with Customs (JKDM) how to claim it before you file.",
     );
-
-    // In its own period the invoice counts as normal: neither note.
-    const own = textOf(
-      renderToStaticMarkup(<SstReturnBody ret={buildSstReturn('service', period, [voided], [])} settings={invoiceBasis} companyName="Rimba" />),
-    );
-    expect(own).not.toContain('voided this period');
-    expect(own).not.toContain('item 14 is below zero');
   });
 });

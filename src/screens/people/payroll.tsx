@@ -23,6 +23,7 @@ import {
   readPayroll,
   runControls,
   runIdFromParam,
+  runEmployerLine,
   runMonthChoice,
 } from '@/lib/people/payroll';
 import { centsToRinggit } from '@/lib/people/payroll-forms';
@@ -95,6 +96,7 @@ export default async function PayrollScreen({
         ].filter((note): note is string => note !== null)
       : [];
   const emptyNote = latest ? emptyRunNote(latest) : null;
+  const employerLine = latest ? runEmployerLine(latest) : null;
 
   return (
     <ScreenContainer>
@@ -271,11 +273,12 @@ export default async function PayrollScreen({
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center gap-2 border-t px-4 py-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t px-4 py-3 text-sm text-muted-foreground">
                 <Users className="size-4" />
                 <span>
                   {latest.slips.length} {latest.slips.length === 1 ? 'payslip' : 'payslips'} in this run
                 </span>
+                {employerLine ? <span className="ml-auto">{employerLine}</span> : null}
               </div>
             </>
           )}

@@ -337,8 +337,9 @@ begin
     fails := array_append(fails, 'a member wrote a read mark directly');
   exception when insufficient_privilege then null;
   end;
+  -- Every rule: the 12 the employee pays and the 22 the employer pays (20261128090000).
   select count(*) into n from public.hr_statutory_rules;
-  if n <> 12 then fails := array_append(fails, format('a member reads %s statutory rules, expected 12', n)); end if;
+  if n <> 34 then fails := array_append(fails, format('a member reads %s statutory rules, expected 34', n)); end if;
   foreach t in array hr_only loop
     execute format('select count(*) from public.%I where org_id = %L', t, org) into n;
     if n <> 0 then fails := array_append(fails, format('a member reads %s rows of HR-only %s', n, t)); end if;

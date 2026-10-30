@@ -1,5 +1,5 @@
 -- Lekiu payroll access check. Leaves nothing behind: the block always ends
--- with RAISE, so every row below is rolled back, and so are the four helper
+-- with RAISE, so every row below is rolled back, and so are the five helper
 -- functions it makes for itself in the session's temporary schema. Read the
 -- message:
 --   PEOPLE_PAYROLL_CHECK PASSED ...   or   PEOPLE_PAYROLL_CHECK FAILED (n): <what went wrong>
@@ -85,8 +85,9 @@ declare
   rec record;
   ctx text;
   fails text[] := '{}';
-  slip_keys text[] := array['basic_cents','eis_cents','employee_id','epf_cents','gross_cents','id','net_cents',
-    'other_deductions_cents','pcb_cents','period_month','set_by_hr','socso_cents','status'];
+  slip_keys text[] := array['basic_cents','eis_cents','eis_employer_cents','employee_id','employer_recorded','epf_cents',
+    'epf_employer_cents','gross_cents','id','net_cents','other_deductions_cents','pcb_cents','period_month',
+    'set_by_hr','socso_cents','socso_employer_cents','status'];
   functions text[] := array[
     'public.hr_run_payroll(uuid,date)',
     'public.hr_recalculate_payroll(uuid)',
@@ -174,21 +175,49 @@ begin
      or not has_table_privilege('authenticated', 'public.hr_statutory_rules', 'SELECT') then
     fails := array_append(fails, 'hr_statutory_rules is not read-only for signed-in users and closed to everyone else');
   end if;
+  -- The employee rows, exactly as they were: a payer and a wage band were added around
+  -- them, and not one of their rates, caps or age bands moved.
   select string_agg(format('%s %s %s-%s %s %s', s.scheme, s.citizenship, s.employee_from_age, coalesce(s.employee_until_age::text, ''),
            s.rate, coalesce(s.max_cents::text, 'none')), '; ' order by s.scheme, s.citizenship, s.employee_from_age) into t
-  from public.hr_statutory_rules s;
-  -- No two bands of one scheme and category overlap, so at most one rule ever matches.
+  from public.hr_statutory_rules s where s.payer = 'employee';
+  -- The employer rows: who pays, the age band, and the wage band from which the row applies.
+  select string_agg(format('%s %s %s %s-%s %s %s %s', s.scheme, s.payer, s.citizenship, s.employee_from_age,
+           coalesce(s.employee_until_age::text, ''), s.wage_from_cents, s.rate, coalesce(s.max_cents::text, 'none')), '; '
+           order by s.scheme, s.payer, s.citizenship, s.employee_from_age, s.wage_from_cents) into snap
+  from public.hr_statutory_rules s where s.payer = 'employer';
+  -- Two rows of one scheme, payer and category that start at the same wage never both hold
+  -- the same age, so the row a wage falls in is never a choice of two.
   select count(*) into n from public.hr_statutory_rules a join public.hr_statutory_rules b
-    on a.scheme = b.scheme and a.citizenship = b.citizenship and a.employee_from_age < b.employee_from_age
+    on a.ctid < b.ctid and a.scheme = b.scheme and a.payer = b.payer and a.citizenship = b.citizenship
+   and a.wage_from_cents = b.wage_from_cents
+   and a.employee_from_age < coalesce(b.employee_until_age, 1000)
    and b.employee_from_age < coalesce(a.employee_until_age, 1000);
-  if n <> 0 then fails := array_append(fails, format('%s pairs of statutory age bands overlap', n)); end if;
+  if n <> 0 then fails := array_append(fails, format('%s pairs of statutory bands overlap', n)); end if;
   if t is distinct from 'eis citizen 18-60 0.00200 1190; eis permanent_resident 18-60 0.00200 1190; '
        || 'epf citizen 0-60 0.11000 none; epf non_citizen 0-75 0.02000 none; '
        || 'epf non_citizen_before_1998 0-60 0.11000 none; epf non_citizen_before_1998 60-75 0.05500 none; '
        || 'epf permanent_resident 0-60 0.11000 none; epf permanent_resident 60-75 0.05500 none; '
        || 'socso citizen 0-60 0.00500 2975; socso non_citizen 0-60 0.00500 2975; '
        || 'socso non_citizen_before_1998 0-60 0.00500 2975; socso permanent_resident 0-60 0.00500 2975' then
-    fails := array_append(fails, format('the statutory rules are: %s', t));
+    fails := array_append(fails, format('the employee statutory rules are: %s', t));
+  end if;
+  if snap is distinct from 'eis employer citizen 18-60 0 0.00200 1190; eis employer permanent_resident 18-60 0 0.00200 1190; '
+       || 'epf employer citizen 0-60 0 0.13000 none; epf employer citizen 0-60 500001 0.12000 none; '
+       || 'epf employer citizen 60-75 0 0.04000 none; epf employer non_citizen 0-75 0 0.02000 none; '
+       || 'epf employer non_citizen_before_1998 0-60 0 0.13000 none; '
+       || 'epf employer non_citizen_before_1998 0-60 500001 0.12000 none; '
+       || 'epf employer non_citizen_before_1998 60-75 0 0.06500 none; '
+       || 'epf employer non_citizen_before_1998 60-75 500001 0.06000 none; '
+       || 'epf employer permanent_resident 0-60 0 0.13000 none; '
+       || 'epf employer permanent_resident 0-60 500001 0.12000 none; '
+       || 'epf employer permanent_resident 60-75 0 0.06500 none; '
+       || 'epf employer permanent_resident 60-75 500001 0.06000 none; '
+       || 'socso employer citizen 0-60 0 0.01750 10415; socso employer citizen 60- 0 0.01250 7440; '
+       || 'socso employer non_citizen 0-60 0 0.01750 10415; socso employer non_citizen 60- 0 0.01250 7440; '
+       || 'socso employer non_citizen_before_1998 0-60 0 0.01750 10415; '
+       || 'socso employer non_citizen_before_1998 60- 0 0.01250 7440; '
+       || 'socso employer permanent_resident 0-60 0 0.01750 10415; socso employer permanent_resident 60- 0 0.01250 7440' then
+    fails := array_append(fails, format('the employer statutory rules are: %s', snap));
   end if;
   -- The columns of the spec.
   select count(*) into n from information_schema.columns c
@@ -197,6 +226,12 @@ begin
     or (c.table_name = 'hr_payslips' and c.column_name = 'other_deductions_cents' and c.data_type = 'bigint' and c.column_default = '0')
     or (c.table_name = 'hr_payslips' and c.column_name = 'set_by_hr' and c.data_type = 'ARRAY' and c.column_default like '%{}%'));
   if n <> 3 then fails := array_append(fails, format('%s of the 3 new payslip columns exist, required, with their defaults', n)); end if;
+  -- Whether the employer shares were worked out: a fact on the row, false on any row
+  -- the payslip function never worked out (a payslip paid before 20261128090000).
+  select count(*) into n from information_schema.columns c
+  where c.table_schema = 'public' and c.table_name = 'hr_payslips' and c.column_name = 'employer_recorded'
+    and c.is_nullable = 'NO' and c.data_type = 'boolean' and c.column_default = 'false';
+  if n <> 1 then fails := array_append(fails, 'hr_payslips.employer_recorded is not a required boolean defaulting to false'); end if;
   select count(*) into n from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'hr_payslips' and c.column_name = 'net_cents' and c.is_generated = 'ALWAYS'
     and replace(replace(c.generation_expression, '(', ''), ')', '')
@@ -219,7 +254,7 @@ begin
   if n <> 1 then fails := array_append(fails, 'the trigger that guards deleting an employee is missing'); end if;
   if cardinality(fails) > 0 then raise exception 'the functions, grants and columns are not as expected, so nothing else was tried'; end if;
 
-  -- ---- the four helpers of this check (temporary; rolled back with the rest) --
+  -- ---- the five helpers of this check (temporary; rolled back with the rest) --
   execute $f$
     create function pg_temp.pay_try(who uuid, q text, aal text default 'aal1') returns jsonb language plpgsql as $body$
     declare r jsonb; msg text;
@@ -258,6 +293,12 @@ begin
       select format('basic %s gross %s epf %s socso %s eis %s pcb %s other %s net %s set [%s] %s',
         p.basic_cents, p.gross_cents, p.epf_cents, p.socso_cents, p.eis_cents, p.pcb_cents,
         p.other_deductions_cents, p.net_cents, array_to_string(p.set_by_hr, ','), p.status)
+      from public.hr_payslips p where p.id = p_slip
+    $body$
+  $f$;
+  execute $f$
+    create function pg_temp.pay_employer(p_slip uuid) returns text language sql as $body$
+      select format('epf %s socso %s eis %s', p.epf_employer_cents, p.socso_employer_cents, p.eis_employer_cents)
       from public.hr_payslips p where p.id = p_slip
     $body$
   $f$;
@@ -1316,6 +1357,33 @@ begin
   if n <> 8 then fails := array_append(fails, 'March did not take exactly the three overtime records it should, or paid work done after a last day'); end if;
   select count(*) into n from public.hr_overtime_records o where o.id = r8 and o.payslip_id is null;
   if n <> 1 then fails := array_append(fails, 'overtime worked after the last day of employment was paid'); end if;
+  -- The employer's share beside the employee's, on the same payslips and the same wage
+  -- bases. Nothing here is in net pay: every figure above is unchanged by it.
+  for label, who, want in
+    select * from (values
+      ('basic only', b1, 'epf 39000 socso 5250 eis 600'),
+      -- 13% to RM 5,000 and 12% above it, so 8,000.00 is 960.00, not 1,040.00.
+      ('gross above every maximum', hi, 'epf 96000 socso 10415 eis 1190'),
+      -- Turned 60 inside the month: March is still 13% and the first category.
+      ('turned sixty inside the month', turned60, 'epf 65000 socso 8750 eis 1000'),
+      -- A non-citizen employer pays 2%, and SOCSO as anyone; no EIS under any category.
+      ('fifty nine all month, non-citizen', turns60, 'epf 6000 socso 5250 eis 0'),
+      -- From 60, a permanent resident: 6.5%, the employer-only second category, no EIS.
+      ('sixty before the month began, by identity card, permanent resident', icsixty,
+        'epf 26000 socso 5000 eis 0'),
+      ('seventeen', teen, 'epf 19500 socso 2625 eis 0'),
+      -- Overtime is EPF wages for nobody, so the employer's EPF is 13% of 3,000.00 while
+      -- SOCSO and EIS take the gross, rounded to five sen: 1.75% of 3,133.27 is 54.83, so
+      -- 54.85. That is the rate's figure, not PERKESO's: its table charges a fixed RM55.15
+      -- for wages above RM3,100 and up to RM3,200. The banded figures are #423.
+      ('overtime', ot, 'epf 39000 socso 5485 eis 625')
+    ) as c(label, employee, want)
+  loop
+    select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = who;
+    if pg_temp.pay_employer(pa) is distinct from want then
+      fails := array_append(fails, format('March employer shares, %s: %s', label, coalesce(pg_temp.pay_employer(pa), 'no payslip')));
+    end if;
+  end loop;
   -- The maximum is reached exactly at 5950.00, and a sen above it changes nothing.
   for n, want in select * from (values (595000, '2975 1190'), (594999, '2975 1190'), (594800, '2974 1190'), (594700, '2974 1189'), (595001, '2975 1190'), (0, '0 0'), (1, '0 0')) as c(g, w) loop
     if format('%s %s', private.hr_payroll_proposal('socso', n, null, null), private.hr_payroll_proposal('eis', n, null, null)) <> want then
@@ -1333,6 +1401,28 @@ begin
      or private.hr_payroll_proposal('epf', 500000, 59, null) <> 55000 or private.hr_payroll_proposal('epf', 500000, null, null) <> 55000
      or private.hr_payroll_proposal('socso', 500000, 60, null) <> 0 or private.hr_payroll_proposal('eis', 500000, 60, null) <> 0 then
     fails := array_append(fails, 'the employee share from the age of 60 is not zero, or a missing date of birth is not under 60');
+  end if;
+  -- The employer's share comes from the same rows, through the payer argument: at
+  -- RM 5,000.00 it is 13% and at a sen more it is 12%, which no rate and maximum can say.
+  if private.hr_payroll_proposal('epf', 500000, 55, null, 'employer') <> 65000
+     or private.hr_payroll_proposal('epf', 500001, 55, null, 'employer') <> 60000
+     or private.hr_payroll_proposal('epf', 500000, 61, null, 'employer') <> 20000
+     or private.hr_payroll_proposal('epf', 500000, 61, 'permanent_resident', 'employer') <> 32500
+     or private.hr_payroll_proposal('epf', 600000, 61, 'permanent_resident', 'employer') <> 36000
+     or private.hr_payroll_proposal('epf', 400000, 40, 'non_citizen', 'employer') <> 8000
+     or private.hr_payroll_proposal('epf', 500000, 55, null) <> 55000 then
+    fails := array_append(fails, 'the employer EPF share does not step down at RM 5,000, follow the category, or leave the employee share alone');
+  end if;
+  -- The employer's share is rounded to five sen and then held at the ceiling, which is
+  -- the table's top band: 1.75% of 5,950.00 is 104.125, and the top band is 104.15.
+  if format('%s %s', private.hr_payroll_proposal('socso', 595000, 55, null, 'employer'),
+            private.hr_payroll_proposal('eis', 595000, 55, null, 'employer')) <> '10415 1190'
+     or format('%s %s', private.hr_payroll_proposal('socso', 595000, 61, null, 'employer'),
+               private.hr_payroll_proposal('eis', 595000, 61, null, 'employer')) <> '7440 0'
+     or private.hr_payroll_proposal('eis', 500000, 17, null, 'employer') <> 0
+     or private.hr_payroll_proposal('eis', 500000, 30, 'non_citizen', 'employer') <> 0
+     or private.hr_payroll_proposal('pcb', 500000, 30, null, 'employer') <> 0 then
+    fails := array_append(fails, 'the employer SOCSO or EIS share is not at the table''s ceiling, or EIS is not only for citizens and permanent residents of 18 to 60');
   end if;
   if private.hr_payroll_proposal('eis', 500000, 17, null) <> 0 or private.hr_payroll_proposal('eis', 500000, 18, null) <> 1000
      or private.hr_payroll_proposal('eis', 500000, null, null) <> 1000 or private.hr_payroll_proposal('epf', 500000, 17, null) <> 55000
@@ -1430,6 +1520,29 @@ begin
   update public.hr_employee_private set base_salary_cents = 594000 where employee_id = lo;
   update public.hr_employees set status = 'active' where id = hi;
   fails := fails || pg_temp.pay_expect(owner_id, 'March is marked as paid', format('select public.hr_mark_payroll_paid(%L)', mar_run), null);
+  -- Every March payslip was worked out, so each is recorded, paid now; the one on unpaid
+  -- leave for every day it was employed has gross 0 and shares of 0, and is recorded too:
+  -- a zero there is a figure, not a gap.
+  select count(*) filter (where not p.employer_recorded), count(*) into n, n2
+  from public.hr_payslips p where p.payroll_run_id = mar_run and p.status = 'paid';
+  if n <> 0 or n2 = 0 then
+    fails := array_append(fails, format('%s of March''s %s paid payslips are not marked as recording the employer shares', n, n2));
+  end if;
+  select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = jc;
+  select private.hr_payslip_json(p) into r from public.hr_payslips p where p.id = pa;
+  if r ->> 'status' is distinct from 'paid' or r ->> 'gross_cents' is distinct from '0'
+     or r ->> 'employer_recorded' is distinct from 'true' or pg_temp.pay_employer(pa) is distinct from 'epf 0 socso 0 eis 0' then
+    fails := array_append(fails, format('a paid payslip of gross 0 does not read as recorded with no share: %s', r));
+  end if;
+  -- A payslip paid before the employer shares were worked out: the row as it stood then,
+  -- with the column's default. It reads as not recorded, not as nothing owed. Put back
+  -- after, so nothing below sees it.
+  update public.hr_payslips p set employer_recorded = default where p.id = pa;
+  select private.hr_payslip_json(p) into r from public.hr_payslips p where p.id = pa;
+  if r ->> 'employer_recorded' is distinct from 'false' then
+    fails := array_append(fails, format('a paid payslip from before the employer shares does not read as not recorded: %s', r));
+  end if;
+  update public.hr_payslips p set employer_recorded = true where p.id = pa;
   -- Overtime Left Mid Month worked on 15 March, before their last day, approved only
   -- now that March is paid: no later payslip would ever take it, so April pays it.
   insert into public.hr_overtime_records (org_id, employee_id, work_date, hours, amount_cents, status)
@@ -1592,6 +1705,9 @@ begin
     or p.net_cents < 0 or p.set_by_hr <> '{}');
   select count(*) into n2 from public.hr_payslips p where p.org_id = demo;
   if n <> 0 or n2 < 150 then fails := array_append(fails, format('%s of the demo''s %s payslips do not add up', n, n2)); end if;
+  -- The re-seed works out every demo payslip, paid months included, so none says "not recorded".
+  select count(*) into n from public.hr_payslips p where p.org_id = demo and not p.employer_recorded;
+  if n <> 0 then fails := array_append(fails, format('%s demo payslips do not record the employer shares', n)); end if;
   -- Lines of every source the demo can have, and every approved record held by one payslip.
   select count(*) filter (where l.source = 'hr'), count(*) filter (where l.source = 'overtime') into n, n2
   from public.hr_payslip_lines l where l.org_id = demo;

@@ -104,8 +104,8 @@ const shown = (l: SstFormLine) => ({
 const lines = (n: number) => (n === 1 ? '1 line' : `${n} lines`);
 
 /**
- * The "Not on the form" notes of a return: lines with no form item, a 13(a) below zero, tax given back in 13(a)
- * for invoices voided this period, and an item 14 below zero.
+ * The "Not on the form" notes of a return: lines with no form item, a 13(a) below zero, and an item 14 below
+ * zero.
  */
 function notesOf(ret: SstReturn): string[] {
   const notes: string[] = [];
@@ -122,9 +122,6 @@ function notesOf(ret: SstReturn): string[] {
   }
   if (ret.deductions.some((d) => d.item === '13(a)' && d.tax < 0)) {
     notes.push('Not on the form: 13(a) is below zero because a credit note counted in an earlier return was voided this period.');
-  }
-  if (ret.voidedTax > 0) {
-    notes.push(`Not on the form: 13(a) includes ${rm(ret.voidedTax)} of tax on invoices from earlier returns that were voided this period.`);
   }
   if (ret.item14 < 0) {
     notes.push(

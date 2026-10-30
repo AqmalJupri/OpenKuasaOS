@@ -32,6 +32,10 @@ const slipJson = (over: Record<string, unknown> = {}) => ({
   epf_cents: 33_000,
   socso_cents: 1_500,
   eis_cents: 600,
+  epf_employer_cents: 39_000,
+  socso_employer_cents: 5_250,
+  eis_employer_cents: 600,
+  employer_recorded: true,
   pcb_cents: 0,
   other_deductions_cents: 0,
   net_cents: 264_900,
@@ -439,6 +443,26 @@ describe('what comes back', () => {
     expect(text).not.toContain('123456789');
     expect(text).not.toContain('987654321');
     expect(logged).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands back the employer shares and whether they were recorded, and refuses a payslip without them', async () => {
+    const { client } = fakeSupabase({ 'rpc.hr_delete_payslip_line': { data: { payslip: slipJson() } } });
+    expect(await deletePayslipLine(ctxOf(client), { line_id: LINE })).toMatchObject({
+      ok: true,
+      data: { epf_employer_cents: 39_000, socso_employer_cents: 5_250, eis_employer_cents: 600, employer_recorded: true },
+    });
+    const old = fakeSupabase({
+      'rpc.hr_delete_payslip_line': {
+        data: { payslip: slipJson({ epf_employer_cents: 0, socso_employer_cents: 0, eis_employer_cents: 0, employer_recorded: false }) },
+      },
+    });
+    expect(await deletePayslipLine(ctxOf(old.client), { line_id: LINE })).toMatchObject({ ok: true, data: { employer_recorded: false } });
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    for (const over of [{ employer_recorded: undefined }, { employer_recorded: 'true' }, { epf_employer_cents: undefined }, { eis_employer_cents: 1.5 }]) {
+      const { client: bad } = fakeSupabase({ 'rpc.hr_delete_payslip_line': { data: { payslip: slipJson(over) } } });
+      expect(await deletePayslipLine(ctxOf(bad), { line_id: LINE }), JSON.stringify(over)).toEqual({ ok: false, error: GENERIC });
+    }
+    expect(logged).toHaveBeenCalled();
   });
 
   it('treats a reply that is not what was promised as a failed write', async () => {

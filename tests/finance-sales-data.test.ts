@@ -144,3 +144,28 @@ describe('the same document twice on one payment', () => {
     expect(logged).toHaveBeenCalled();
   });
 });
+
+describe('voiding an invoice on a return already marked filed', () => {
+  // The database refuses it (finance_invoice_void_filed_guard, FIN71) and words the sentence itself.
+  const FILED =
+    'This invoice is on the 1 Sep – 31 Oct 2026 service tax return, which is marked filed. Issue a credit note instead. If the invoice should never have been issued, take the filed mark off the return, void the invoice, and file an amended return (Pindaan).';
+
+  it('shows the database’s sentence, which names the period and both ways out', async () => {
+    const { ctx, calls } = fakeFinance({ data: null, error: { code: 'FIN71', message: FILED } });
+    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: FILED });
+    // One write, no reads before it: the check lives in the database, so nothing can slip between them.
+    expect(calls.map((c) => c.op)).toEqual(['update']);
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the plain failure when the refusal comes with no sentence', async () => {
+    const { ctx } = fakeFinance({ data: null, error: { code: 'FIN71', message: '' } });
+    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: 'That change could not be saved. Please try again.' });
+    expect(logged).toHaveBeenCalled();
+  });
+
+  it('never passes on the text of any other database error', async () => {
+    const { ctx } = fakeFinance({ data: null, error: { code: 'XX000', message: 'internal detail' } });
+    expect(await voidInvoice(ctx, { id: ID })).toEqual({ ok: false, error: 'That change could not be saved. Please try again.' });
+  });
+});

@@ -188,31 +188,26 @@ describe('buildSstReturn: voids', () => {
     expect(item(r.deductions, '13(a)')?.tax).toBe(0);
   });
 
-  it('counts an invoice voided later in its own period and its tax in 13(a) of the void period', () => {
+  it('leaves an invoice voided after its period out of its own return and every later one (an amendment, #222)', () => {
     const l = line({ ...base, voided_on: '2026-11-01' });
     const sep = buildSstReturn('service', SEP_OCT, [l], []);
-    expect(sep.item12).toBe(300);
-    expect(sep.b1Total).toBe(5000);
+    expect(sep.item12).toBe(0);
+    expect(sep.b1).toEqual([]);
+    expect(sep.b1Total).toBe(0);
     expect(item(sep.deductions, '13(a)')?.tax).toBe(0);
-    expect(sep.voidedTax).toBe(0);
     const nov = buildSstReturn('service', NOV_DEC, [l], []);
-    expect(item(nov.deductions, '13(a)')?.tax).toBe(300);
-    expect(nov.voidedTax).toBe(300);
-    expect(nov.b1).toEqual([]);
-    expect(nov.b1Total).toBe(0);
+    expect(item(nov.deductions, '13(a)')?.tax).toBe(0);
     expect(nov.item12).toBe(0);
-    expect(nov.item14).toBe(-300);
-    // A void of a service line does not touch the sales return.
+    expect(nov.item14).toBe(0);
     expect(item(buildSstReturn('sales', NOV_DEC, [l], []).deductions, '13(a)')?.tax).toBe(0);
   });
 
-  it('does not bring an off-form line voided later back through 13(a)', () => {
+  it('leaves an off-form line voided later out of the off-form note too', () => {
     const l = line({ ...base, sst_rate: 7, amount_myr: 1000, sst_amount_myr: 70, voided_on: '2026-11-01' });
-    expect(buildSstReturn('service', SEP_OCT, [l], []).offForm).toEqual({ count: 1, value: 1000, tax: 70 });
+    expect(buildSstReturn('service', SEP_OCT, [l], []).offForm).toEqual({ count: 0, value: 0, tax: 0 });
     const nov = buildSstReturn('service', NOV_DEC, [l], []);
     expect(item(nov.deductions, '13(a)')?.tax).toBe(0);
     expect(nov.offForm).toEqual({ count: 0, value: 0, tax: 0 });
-    expect(nov.voidedTax).toBe(0);
   });
 
   it('counts a credit note voided later in its own period and lowers 13(a) of the void period', () => {
@@ -228,8 +223,6 @@ describe('buildSstReturn: voids', () => {
     const nov = buildSstReturn('service', NOV_DEC, [], [c]);
     expect(item(nov.deductions, '13(a)')?.tax).toBe(-80);
     expect(nov.item14).toBe(80);
-    // A credit note's void is not an invoice's: voidedTax stays 0.
-    expect(nov.voidedTax).toBe(0);
   });
 
   it('leaves out a credit note voided in the period it was issued in', () => {
