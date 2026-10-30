@@ -131,6 +131,12 @@ export type SavedPayslip = {
   epf_cents: number;
   socso_cents: number;
   eis_cents: number;
+  /** The employer's three shares: paid on top of gross pay, never deducted, never typed over. */
+  epf_employer_cents: number;
+  socso_employer_cents: number;
+  eis_employer_cents: number;
+  /** Whether the three were worked out for this payslip; false on one paid before they were. */
+  employer_recorded: boolean;
   pcb_cents: number;
   other_deductions_cents: number;
   net_cents: number;
@@ -212,18 +218,31 @@ function pickPayslip(value: unknown): SavedPayslip | null {
     epf_cents: cents(value.epf_cents),
     socso_cents: cents(value.socso_cents),
     eis_cents: cents(value.eis_cents),
+    epf_employer_cents: cents(value.epf_employer_cents),
+    socso_employer_cents: cents(value.socso_employer_cents),
+    eis_employer_cents: cents(value.eis_employer_cents),
     pcb_cents: cents(value.pcb_cents),
     other_deductions_cents: cents(value.other_deductions_cents),
     net_cents: cents(value.net_cents),
   };
   if (!id || !employeeId || !periodMonth || !status) return null;
+  if (typeof value.employer_recorded !== 'boolean') return null;
+  const employer_recorded = value.employer_recorded;
   if (!Array.isArray(value.set_by_hr)) return null;
   const marked = value.set_by_hr;
   if (marked.some((field) => !STATUTORY.includes(field as StatutoryField))) return null;
   // The database keeps the four in a fixed order; this keeps that order whatever it sent.
   const set_by_hr = STATUTORY.filter((field) => marked.includes(field));
   if (Object.values(figures).some((figure) => figure === null)) return null;
-  return { id, employee_id: employeeId, period_month: periodMonth, ...(figures as Record<keyof typeof figures, number>), set_by_hr, status };
+  return {
+    id,
+    employee_id: employeeId,
+    period_month: periodMonth,
+    ...(figures as Record<keyof typeof figures, number>),
+    employer_recorded,
+    set_by_hr,
+    status,
+  };
 }
 
 const pickPayslipReply = (row: Row): SavedPayslip | null => pickPayslip(row.payslip);

@@ -48,7 +48,9 @@ describe('payrollModel on the sample data', () => {
 
 const slipFor = (id: string, run: string, name: string): Payslip => ({
   id, employee_id: id, employee_name: name, payroll_run_id: run, period_month: '2026-10-01',
-  basic_cents: 1000, gross_cents: 1000, epf_cents: 110, socso_cents: 5, eis_cents: 2, pcb_cents: 0,
+  basic_cents: 1000, gross_cents: 1000, epf_cents: 110, socso_cents: 5, eis_cents: 2,
+  epf_employer_cents: 130, socso_employer_cents: 18, eis_employer_cents: 2, employer_recorded: true,
+  pcb_cents: 0,
   other_deductions_cents: 0, net_cents: 883, set_by_hr: [], lines: [], status: 'pending',
 });
 
@@ -114,7 +116,9 @@ describe('payrollModel edge cases', () => {
     ];
     const slip = (id: string, run: string, name: string): Payslip => ({
       id, employee_id: id, employee_name: name, payroll_run_id: run, period_month: '2026-10-01',
-      basic_cents: 1000, gross_cents: 1000, epf_cents: 110, socso_cents: 5, eis_cents: 2, pcb_cents: 0,
+      basic_cents: 1000, gross_cents: 1000, epf_cents: 110, socso_cents: 5, eis_cents: 2,
+      epf_employer_cents: 130, socso_employer_cents: 18, eis_employer_cents: 2, employer_recorded: true,
+      pcb_cents: 0,
       other_deductions_cents: 0, net_cents: 883, set_by_hr: [], lines: [], status: 'pending',
     });
     const model = payrollModel(runs, [slip('1', 'a', 'Old'), slip('2', 'b', 'Zed'), slip('3', 'b', 'Amy')]);
