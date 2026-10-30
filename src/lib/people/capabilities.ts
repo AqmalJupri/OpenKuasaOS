@@ -60,6 +60,7 @@ function parseInput<S extends z.ZodType>(schema: S, input: unknown): CapResult<z
 
 const UNIQUE = '23505';
 const FOREIGN_KEY = '23503';
+const CHECK = '23514';
 
 // Any Postgres uuid: `.uuid()` would refuse ids that are valid but not RFC-versioned (such as the demo's md5-made ones).
 const id = z.guid();
@@ -307,6 +308,10 @@ function employeeFailed(fn: string, error: DbError): Refusal {
   if (violates(error, UNIQUE, 'hr_employees_org_email_idx')) return refuse('Another employee already has that work email.');
   if (violates(error, UNIQUE, 'hr_employees_org_user_idx')) return refuse('That member is already linked to another employee.');
   if (violates(error, FOREIGN_KEY)) return refuse('That department was not found.');
+  // An edit that sends only one of the two dates is checked against the other by the record itself.
+  if (violates(error, CHECK, 'hr_employees_left_after_join')) {
+    return refuse('The last day of employment cannot be before the join date.');
+  }
   return writeFailed(fn, error);
 }
 

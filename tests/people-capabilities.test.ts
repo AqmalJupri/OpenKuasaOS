@@ -423,6 +423,22 @@ describe('updateEmployee', () => {
       error: 'That department was not found.',
     });
   });
+
+  it('says when a last day sent alone falls before the join date already on the record', async () => {
+    const { client } = fakeSupabase({
+      ...current,
+      'hr_employees.update': {
+        error: {
+          code: '23514',
+          message: 'new row for relation "hr_employees" violates check constraint "hr_employees_left_after_join"',
+        },
+      },
+    });
+    expect(await updateEmployee(ctxOf(client), { id: EMP, left_date: '2020-01-31' })).toEqual({
+      ok: false,
+      error: 'The last day of employment cannot be before the join date.',
+    });
+  });
 });
 
 describe('setEmployeeStatus, deleteEmployee', () => {
