@@ -22,6 +22,7 @@ import type {
   PeopleViewer,
   Payslip,
   PayslipLine,
+  SkippedReason,
   StatutoryField,
 } from './types';
 
@@ -347,11 +348,12 @@ export function earlierOvertimeCount(payslips: Payslip[], month: string): number
 }
 
 /**
- * Active employees with no payslip on this run, by name. Someone who joins after the month is not expected on it.
+ * Active employees with no payslip on this run, by name. Someone who joins after the month, or left before it, is
+ * not expected on it.
  * (Why they are missing, such as no base salary, is not known here: salaries are read one employee at a time.)
  */
 export function notOnRun(
-  employees: Pick<Employee, 'id' | 'name' | 'status' | 'join_date'>[],
+  employees: Pick<Employee, 'id' | 'name' | 'status' | 'join_date' | 'left_date'>[],
   payslips: Pick<Payslip, 'employee_id' | 'payroll_run_id'>[],
   runId: string,
   month: string,
@@ -359,7 +361,13 @@ export function notOnRun(
   const on = new Set(payslips.filter((p) => p.payroll_run_id === runId).map((p) => p.employee_id));
   const last = month.slice(0, 7);
   return employees
-    .filter((e) => e.status === 'active' && !on.has(e.id) && (e.join_date === null || e.join_date.slice(0, 7) <= last))
+    .filter(
+      (e) =>
+        e.status === 'active' &&
+        !on.has(e.id) &&
+        (e.join_date === null || e.join_date.slice(0, 7) <= last) &&
+        (e.left_date === null || e.left_date.slice(0, 7) >= last),
+    )
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
 }
@@ -384,11 +392,17 @@ export function paidLine(run: { paid_at: string | null; paid_by_name: string | n
   return `Marked as paid on ${formatDate(day)}${run.paid_by_name ? ` by ${run.paid_by_name}` : ''}`;
 }
 
+/** Why a run left each person out, in the words the screen shows (the chat tools say the same, in lower case). */
+export const SKIPPED_REASON_WORDS: Record<SkippedReason, string> = {
+  no_salary: 'No base salary recorded',
+  left: 'Last day of employment has passed',
+};
+
 /** The people a run left out, each with why. */
 export function skippedRows(
-  skipped: { employee_id: string; name: string; reason: 'no_salary' }[],
+  skipped: { employee_id: string; name: string; reason: SkippedReason }[],
 ): { id: string; name: string; reason: string }[] {
-  return skipped.map((s) => ({ id: s.employee_id, name: s.name, reason: 'No base salary recorded' }));
+  return skipped.map((s) => ({ id: s.employee_id, name: s.name, reason: SKIPPED_REASON_WORDS[s.reason] }));
 }
 
 /** `?run=` as a single trimmed id, or null. Whether it names a real run is `payrollModel`'s call. */

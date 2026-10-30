@@ -94,6 +94,38 @@ describe('the calls each function makes', () => {
     expect(calls[0].args).toEqual({ p_org: ORG, p_month: '2026-10-01' });
   });
 
+  it('keeps the reason a run left someone out, and still refuses one it does not know', async () => {
+    const data = (reason: string) => ({
+      'rpc.hr_run_payroll': {
+        data: {
+          run: { id: RUN, period_month: '2026-10-01', status: 'draft' },
+          payslips: 2,
+          earlier_overtime: 0,
+          skipped: [
+            { employee_id: EMP, name: 'Aisyah', reason: 'no_salary' },
+            { employee_id: 'e2', name: 'Ali', reason },
+          ],
+        },
+      },
+    });
+    const kept = await runPayroll(ctxOf(fakeSupabase(data('left')).client as never), { month: '2026-10' } as never);
+    expect(kept).toEqual({
+      ok: true,
+      data: {
+        run_id: RUN,
+        month: '2026-10',
+        payslips: 2,
+        earlier_overtime: 0,
+        skipped: [
+          { employee_id: EMP, name: 'Aisyah', reason: 'no_salary' },
+          { employee_id: 'e2', name: 'Ali', reason: 'left' },
+        ],
+      },
+    });
+    const unknown = await runPayroll(ctxOf(fakeSupabase(data('retired')).client as never), { month: '2026-10' } as never);
+    expect(unknown).toEqual({ ok: false, error: GENERIC });
+  });
+
   it('recalculates a run by its id and reports how many payslips were added', async () => {
     const { client, calls } = fakeSupabase({
       'rpc.hr_recalculate_payroll': {

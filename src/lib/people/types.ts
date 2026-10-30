@@ -51,6 +51,8 @@ export type Employee = {
   /** The employee this one reports to, if any. Visible to every member. */
   reports_to: string | null;
   join_date: string | null;
+  /** The last day of employment. Null means still employed. A month entirely after it pays nothing. */
+  left_date: string | null;
   status: EmployeeStatus;
   date_of_birth_day: number | null;
   date_of_birth_month: number | null;
@@ -240,7 +242,12 @@ export type PayrollRun = {
 /** `unpaid` lines subtract from gross, `earning` lines add to it, `deduction` lines come off net. */
 export type PayslipLineKind = 'earning' | 'unpaid' | 'deduction';
 /** `hr` lines are written by an owner or admin; the rest are worked out by the system. */
-export type PayslipLineSource = 'hr' | 'overtime' | 'unpaid_leave' | 'joiner';
+export type PayslipLineSource = 'hr' | 'overtime' | 'unpaid_leave' | 'joiner' | 'leaver';
+/**
+ * Why a run left an employee out: `no_salary` when there is no base salary on file, `left` when the last day of
+ * employment came before the run's month, so the month is not theirs to be paid for.
+ */
+export type SkippedReason = 'no_salary' | 'left';
 /**
  * What kind of earning an HR line is, which decides whether the amount counts as EPF wages and as SOCSO and EIS
  * wages. Overtime is not here: the system makes those lines, and their `source` says so.

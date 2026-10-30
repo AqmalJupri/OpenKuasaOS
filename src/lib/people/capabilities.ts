@@ -60,6 +60,7 @@ function parseInput<S extends z.ZodType>(schema: S, input: unknown): CapResult<z
 
 const UNIQUE = '23505';
 const FOREIGN_KEY = '23503';
+const CHECK = '23514';
 
 // Any Postgres uuid: `.uuid()` would refuse ids that are valid but not RFC-versioned (such as the demo's md5-made ones).
 const id = z.guid();
@@ -221,6 +222,7 @@ const directoryFields = {
   designation: text(120).describe('Job title, such as Sales Executive.'),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'intern']).optional(),
   join_date: day('Join date'),
+  left_date: day('Last day of employment'),
   status: z.enum(['active', 'inactive']).optional(),
   private: privateFields.optional(),
 };
@@ -262,6 +264,16 @@ function directoryValues(input: DirectoryInput): CapResult<Record<string, unknow
     }
     out.join_date = input.join_date;
   }
+  if (input.left_date !== undefined) {
+    if (input.left_date !== null && !isRealDay(input.left_date)) {
+      return refuse('The last day of employment must be a real date, as YYYY-MM-DD.');
+    }
+    out.left_date = input.left_date;
+  }
+  // A last day before the first day would pay nothing for a month that was worked.
+  if (typeof out.join_date === 'string' && typeof out.left_date === 'string' && out.left_date < out.join_date) {
+    return refuse('The last day of employment cannot be before the join date.');
+  }
   if (input.status !== undefined) out.status = input.status;
   // The birthday without its year sits on the directory row, where colleagues may see it.
   const born = input.private?.date_of_birth;
@@ -296,6 +308,10 @@ function employeeFailed(fn: string, error: DbError): Refusal {
   if (violates(error, UNIQUE, 'hr_employees_org_email_idx')) return refuse('Another employee already has that work email.');
   if (violates(error, UNIQUE, 'hr_employees_org_user_idx')) return refuse('That member is already linked to another employee.');
   if (violates(error, FOREIGN_KEY)) return refuse('That department was not found.');
+  // An edit that sends only one of the two dates is checked against the other by the record itself.
+  if (violates(error, CHECK, 'hr_employees_left_after_join')) {
+    return refuse('The last day of employment cannot be before the join date.');
+  }
   return writeFailed(fn, error);
 }
 

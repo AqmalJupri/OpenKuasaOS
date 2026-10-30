@@ -446,7 +446,7 @@ describe('My Attendance: the work week for a member', () => {
 describe('week screens: any week, and who sees which rows', () => {
   const emp = (id: string, over: Partial<Employee> = {}): Employee => ({
     id, user_id: null, employee_no: id, name: id.toUpperCase(), work_email: null, department_id: null, department_name: null,
-    designation: null, employment_type: 'full_time', reports_to: null, join_date: null, status: 'active',
+    designation: null, employment_type: 'full_time', reports_to: null, join_date: null, left_date: null, status: 'active',
     date_of_birth_day: null, date_of_birth_month: null, created_at: '2026-01-01T00:00:00Z', ...over,
   });
   // m manages r1 and r2 (r2 inactive); p is a peer; x left.

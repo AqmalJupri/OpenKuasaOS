@@ -30,6 +30,7 @@ const emp = (id: string, name: string, over: Partial<Employee> = {}): Employee =
   employment_type: 'full_time',
   reports_to: null,
   join_date: '2025-01-01',
+  left_date: null,
   status: 'active',
   date_of_birth_day: null,
   date_of_birth_month: null,

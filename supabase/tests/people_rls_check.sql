@@ -175,6 +175,14 @@ begin
      or has_function_privilege('anon', 'public.hr_delete_employee(uuid,uuid)', 'execute') then
     fails := array_append(fails, 'hr_delete_employee is not for signed-in users only');
   end if;
+  -- The UPDATE grant on hr_employees is a column list, so a column added later
+  -- is not editable until a migration names it. The last day of employment is
+  -- sent by every save from the employee form (#421): it must be readable and
+  -- writable by signed-in users, whichever role runs this check.
+  if not has_column_privilege('authenticated', 'public.hr_employees', 'left_date', 'select')
+     or not has_column_privilege('authenticated', 'public.hr_employees', 'left_date', 'update') then
+    fails := array_append(fails, 'signed-in users cannot read and edit hr_employees.left_date');
+  end if;
 
   -- ---- the statutory rules: the same for every workspace, read-only ------
   select count(*) into n from pg_policies p

@@ -87,7 +87,7 @@ import {
   setPayslipStatutory as capSetPayslipStatutory,
 } from '@/lib/people/payroll-writes';
 import { monthLabel as payrollMonthLabel, ringgitToCents, toLineInput, toStatutoryInput } from '@/lib/people/payroll-forms';
-import { earlierOvertimeLine, employerOf } from '@/lib/people/payroll';
+import { earlierOvertimeLine, employerOf, SKIPPED_REASON_WORDS } from '@/lib/people/payroll';
 import { STATUTORY_FIELDS } from '@/lib/people/statutory-fields';
 import { listWorkspaceMembers } from '@/lib/people/members';
 import { overtimeCalculated } from '@/lib/people/overtime';
@@ -557,14 +557,14 @@ const requestAcknowledgementToolInput = z
 const ackState = (requested: boolean, at: string | null): 'not_requested' | 'awaiting' | 'acknowledged' =>
   !requested ? 'not_requested' : at ? 'acknowledged' : 'awaiting';
 
-/** Why an employee was left out of a run, in words. */
-const SKIPPED_WORDS: Record<string, string> = { no_salary: 'no base salary recorded' };
-
 /** A run's outcome as the model says it: the month in words, the number of payslips and who was left out, and why. */
 function runWords(run: RunResult, recalculated: boolean) {
   const month = payrollMonthLabel(run.month);
   const count = `${run.payslips} ${run.payslips === 1 ? 'payslip' : 'payslips'}`;
-  const skipped = run.skipped.map((s) => ({ employee: s.name, reason: SKIPPED_WORDS[s.reason] ?? 'could not be included' }));
+  const skipped = run.skipped.map((s) => ({
+    employee: s.name,
+    reason: SKIPPED_REASON_WORDS[s.reason]?.toLowerCase() ?? 'could not be included',
+  }));
   const left = skipped.length > 0 ? ` Left out: ${skipped.map((s) => `${s.employee} (${s.reason})`).join(', ')}.` : '';
   const added = recalculated && typeof run.added === 'number' ? ` ${run.added} added.` : '';
   const earlierLine = earlierOvertimeLine(run.earlier_overtime);
@@ -664,6 +664,7 @@ const directoryRow = (e: Employee, employees: Employee[], withManagerId: boolean
   reports_to: managerLabel(e, employees),
   ...(withManagerId ? { reports_to_id: e.reports_to } : {}),
   join_date: e.join_date,
+  left_date: e.left_date,
   status: e.status,
   work_email: e.work_email,
   account_linked: e.user_id !== null,

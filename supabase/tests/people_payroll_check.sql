@@ -47,7 +47,7 @@ declare
   da uuid := gen_random_uuid();           -- an admin planted in the demo
   -- org
   ea uuid; eb uuid; ev uuid; en uuid; ex uuid; cal uuid;
-  pa uuid; pb uuid; pv uuid; px uuid;
+  pa uuid; pb uuid; pc uuid; pv uuid; px uuid;
   run_id uuid; feb_run uuid;
   line_id uuid; line2 uuid; ot_line uuid; b_line uuid;
   o1 uuid; o2 uuid; o3 uuid; o4 uuid;
@@ -56,7 +56,8 @@ declare
   -- corg
   b1 uuid; ej uuid; u2 uuid; uh uuid; us uuid; jc uuid; ot uuid; hi uuid; lo uuid;
   inact uuid; fj uuid; ns1 uuid; ns2 uuid; ns0 uuid; late uuid; turned60 uuid; turns60 uuid; icsixty uuid; teen uuid; fm uuid; jh uuid;
-  r1 uuid; r2 uuid; r3 uuid; r4 uuid; r5 uuid; r6 uuid; r7 uuid;
+  le uuid; jl uuid; lu uuid; ld uuid; gone uuid;
+  r1 uuid; r2 uuid; r3 uuid; r4 uuid; r5 uuid; r6 uuid; r7 uuid; r8 uuid; r9 uuid;
   mar date := date '2025-03-01';
   apr date := date '2025-04-01';
   mar_run uuid; apr_run uuid;
@@ -304,7 +305,7 @@ begin
   execute $f$
     create function pg_temp.pay_lines(p_slip uuid) returns text language sql as $body$
       select coalesce(string_agg(format('%s %s "%s" %s', l.source, l.kind, l.label, l.amount_cents), '; '
-        order by array_position(array['joiner','unpaid_leave','overtime','hr'], l.source), l.created_at, l.label), 'none')
+        order by array_position(array['joiner','leaver','unpaid_leave','overtime','hr'], l.source), l.created_at, l.label), 'none')
       from public.hr_payslip_lines l where l.payslip_id = p_slip
     $body$
   $f$;
@@ -1185,10 +1186,18 @@ begin
   insert into public.hr_employees (org_id, employee_no, name, join_date) values (corg, 'JH', 'Joins With Half Day', '2025-03-21') returning id into jh;
   -- No salary, and not there yet in March: left out of March altogether, listed in April.
   insert into public.hr_employees (org_id, employee_no, name, join_date) values (corg, 'NC', 'Cal Joins Later', '2025-04-20') returning id into cal;
+  -- Leavers (s.18A(b)). LD's last day is the month's last day: a full month, no line.
+  -- GONE left in February, so March and April have no payslip for them.
+  insert into public.hr_employees (org_id, employee_no, name, left_date) values (corg, 'LE', 'Left Mid Month', '2025-03-20') returning id into le;
+  insert into public.hr_employees (org_id, employee_no, name, join_date, left_date) values (corg, 'JL', 'Joined And Left', '2025-03-10', '2025-03-20') returning id into jl;
+  insert into public.hr_employees (org_id, employee_no, name, left_date) values (corg, 'LU', 'Left With Leave', '2025-03-20') returning id into lu;
+  insert into public.hr_employees (org_id, employee_no, name, left_date) values (corg, 'LD', 'Left On The Last Day', '2025-03-31') returning id into ld;
+  insert into public.hr_employees (org_id, employee_no, name, left_date) values (corg, 'GONE', 'Left In February', '2025-02-28') returning id into gone;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents)
   values (b1, corg, 300000), (ej, corg, 311111), (u2, corg, 400000), (uh, corg, 400000), (us, corg, 260000),
          (jc, corg, 311111), (ot, corg, 300000), (hi, corg, 800000), (lo, corg, 594000),
-         (inact, corg, 300000), (fj, corg, 300000), (ns1, corg, null), (ns0, corg, 0);
+         (inact, corg, 300000), (fj, corg, 300000), (ns1, corg, null), (ns0, corg, 0),
+         (le, corg, 310000), (jl, corg, 310000), (lu, corg, 400000), (ld, corg, 300000), (gone, corg, 300000);
   -- Age comes from the date of birth, or else from a Malaysian identity card
   -- number (YYMMDD first). Sixty By Identity Card has no date of birth and was
   -- born on 28 February 1965.
@@ -1224,7 +1233,10 @@ begin
          -- Half a day after joining on the 21st.
          (corg, jh, 'unpaid', '2025-03-25', '2025-03-25', 0.5, true, 'approved'),
          -- One day in April.
-         (corg, u2, 'unpaid', '2025-04-07', '2025-04-07', 1, false, 'approved');
+         (corg, u2, 'unpaid', '2025-04-07', '2025-04-07', 1, false, 'approved'),
+         -- 18 to 25 March for someone whose last day is the 20th: the 18th is the holiday, and
+         -- the 21st to the 25th is after the last day, so 2 days are unpaid and not 8.
+         (corg, lu, 'unpaid', '2025-03-18', '2025-03-25', 6, false, 'approved');
   -- Overtime for OT: two approved in March and one from February are paid in
   -- March; one worth nothing, one worked in April, one pending and one rejected are not.
   insert into public.hr_overtime_records (org_id, employee_id, work_date, hours, amount_cents, status)
@@ -1241,22 +1253,27 @@ begin
   values (corg, ot, '2025-03-12', 4.0, 5000, 'pending') returning id into r6;
   insert into public.hr_overtime_records (org_id, employee_id, work_date, hours, amount_cents, status)
   values (corg, ot, '2025-03-13', 4.0, 5000, 'rejected') returning id into r7;
+  insert into public.hr_overtime_records (org_id, employee_id, work_date, hours, amount_cents, status)
+  values (corg, le, '2025-03-25', 2.0, 5000, 'approved') returning id into r8;
 
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, mar));
   mar_run := (r #>> '{run,id}')::uuid;
-  -- Fifteen payslips. The inactive employee and the one who joins in April have
-  -- none; the three with no salary are listed, by name.
+  -- Nineteen payslips: the fifteen of the calculation section, and four of the five
+  -- leavers, since the one who left in February has none and is listed instead. The inactive
+  -- employee and the one who joins in April have none; the three with no salary are listed,
+  -- by name, and so is the leaver whose last day fell before the month.
   -- One of its three overtime lines is for work done in February.
-  if r -> 'payslips' is distinct from '15'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  if r -> 'payslips' is distinct from '19'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left'),
           jsonb_build_object('employee_id', ns1, 'name', 'Zed No Salary', 'reason', 'no_salary')) then
     fails := array_append(fails, format('running March 2025: %s', r));
   end if;
   select count(*) into n from public.hr_payslips p where p.payroll_run_id = mar_run;
-  select count(*) into n2 from public.hr_payslips p where p.employee_id in (inact, fj, ns1, ns2, ns0, cal);
-  if n <> 15 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
+  select count(*) into n2 from public.hr_payslips p where p.employee_id in (inact, fj, ns1, ns2, ns0, cal, gone);
+  if n <> 19 or n2 <> 0 then fails := array_append(fails, format('March has %s payslips, and %s for people who should have none', n, n2)); end if;
   for label, who, want, t in
     select * from (values
       ('basic only', b1,
@@ -1312,7 +1329,22 @@ begin
         'basic 400000 gross 400000 epf 22000 socso 0 eis 0 pcb 0 other 0 net 378000 set [] pending', 'none'),
       -- 17: EPF and SOCSO as usual, no EIS below 18.
       ('seventeen', teen,
-        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none')
+        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none'),
+      -- Left on 20 March, so 20 of 31 days: 3100.00 x 20 / 31 = 2000.00 exactly.
+      ('a leaver on 20 March', le,
+        'basic 310000 gross 200000 epf 22000 socso 1000 eis 400 pcb 0 other 0 net 176600 set [] pending',
+        'leaver unpaid "Left 20 Mar 2025 (20 of 31 days)" 110000'),
+      -- Joined on the 10th and left on the 20th: 11 of 31 days, one line naming both.
+      ('a joiner who leaves in the same month', jl,
+        'basic 310000 gross 110000 epf 12100 socso 550 eis 220 pcb 0 other 0 net 97130 set [] pending',
+        'leaver unpaid "Joined 10 Mar 2025, left 20 Mar 2025 (11 of 31 days)" 200000'),
+      -- 8 days of leave asked for, 2 of them inside the 20 days worked: 4000.00 x 18 / 31.
+      ('a leaver with unpaid leave, after the last day not counted', lu,
+        'basic 400000 gross 232258 epf 25548 socso 1161 eis 465 pcb 0 other 0 net 205084 set [] pending',
+        'leaver unpaid "Left 20 Mar 2025 (20 of 31 days)" 141935; unpaid_leave unpaid "Unpaid leave, 2 of 31 days" 25807'),
+      -- Left on the month's last day: a full month, and no line at all.
+      ('left on the last day of the month', ld,
+        'basic 300000 gross 300000 epf 33000 socso 1500 eis 600 pcb 0 other 0 net 264900 set [] pending', 'none')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = who;
@@ -1322,7 +1354,9 @@ begin
   end loop;
   select count(*) into n from public.hr_overtime_records o
   where o.org_id = corg and ((o.id in (r1, r2, r5)) = (o.payslip_id is not null));
-  if n <> 7 then fails := array_append(fails, 'March did not take exactly the three overtime records it should'); end if;
+  if n <> 8 then fails := array_append(fails, 'March did not take exactly the three overtime records it should, or paid work done after a last day'); end if;
+  select count(*) into n from public.hr_overtime_records o where o.id = r8 and o.payslip_id is null;
+  if n <> 1 then fails := array_append(fails, 'overtime worked after the last day of employment was paid'); end if;
   -- The employer's share beside the employee's, on the same payslips and the same wage
   -- bases. Nothing here is in net pay: every figure above is unchanged by it.
   for label, who, want in
@@ -1442,10 +1476,12 @@ begin
   insert into public.hr_employees (org_id, employee_no, name) values (corg, 'LT', 'Added Late') returning id into late;
   insert into public.hr_employee_private (employee_id, org_id, base_salary_cents) values (late, corg, 200000);
   r := pg_temp.pay_try(owner_id, format('select public.hr_recalculate_payroll(%L)', mar_run));
-  if r -> 'payslips' is distinct from '17'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
+  -- Twenty-one: the nineteen of the first run, including the four leavers, plus the two this recalc adds.
+  if r -> 'payslips' is distinct from '21'::jsonb or r -> 'added' is distinct from '2'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
-          jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary')) then
+          jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left')) then
     fails := array_append(fails, format('recalculating March after changes: %s', r));
   end if;
   if pg_temp.pay_slip(pa) is distinct from 'basic 310000 gross 310000 epf 34100 socso 1550 eis 620 pcb 12345 other 5000 net 256385 set [pcb] pending'
@@ -1507,14 +1543,25 @@ begin
     fails := array_append(fails, format('a paid payslip from before the employer shares does not read as not recorded: %s', r));
   end if;
   update public.hr_payslips p set employer_recorded = true where p.id = pa;
+  -- Overtime Left Mid Month worked on 15 March, before their last day, approved only
+  -- now that March is paid: no later payslip would ever take it, so April pays it.
+  insert into public.hr_overtime_records (org_id, employee_id, work_date, hours, amount_cents, status)
+  values (corg, le, '2025-03-15', 3.0, 6000, 'approved') returning id into r9;
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, apr));
   apr_run := (r #>> '{run,id}')::uuid;
-  -- March is paid, so April can be made. Its one overtime line is April's own.
-  if r -> 'payslips' is distinct from '18'::jsonb or r -> 'earlier_overtime' is distinct from '0'::jsonb
+  -- March is paid, so April can be made. One overtime line is April's own; the other is
+  -- Left Mid Month's late-approved March overtime, on a payslip of its own with basic 0.
+  -- The other four leavers are listed rather than paid, since none of their last days
+  -- falls in April; Left Mid Month has a payslip, so is not listed too.
+  if r -> 'payslips' is distinct from '19'::jsonb or r -> 'earlier_overtime' is distinct from '1'::jsonb
      or r -> 'skipped' is distinct from jsonb_build_array(
           jsonb_build_object('employee_id', ns2, 'name', 'Amy No Record', 'reason', 'no_salary'),
           jsonb_build_object('employee_id', ns0, 'name', 'Bob Zero Salary', 'reason', 'no_salary'),
-          jsonb_build_object('employee_id', cal, 'name', 'Cal Joins Later', 'reason', 'no_salary')) then
+          jsonb_build_object('employee_id', cal, 'name', 'Cal Joins Later', 'reason', 'no_salary'),
+          jsonb_build_object('employee_id', jl, 'name', 'Joined And Left', 'reason', 'left'),
+          jsonb_build_object('employee_id', gone, 'name', 'Left In February', 'reason', 'left'),
+          jsonb_build_object('employee_id', ld, 'name', 'Left On The Last Day', 'reason', 'left'),
+          jsonb_build_object('employee_id', lu, 'name', 'Left With Leave', 'reason', 'left')) then
     fails := array_append(fails, format('running April 2025: %s', r));
   end if;
   for label, who, want, t in
@@ -1550,7 +1597,11 @@ begin
       ('still sixty and over, by identity card, permanent resident', icsixty,
         'basic 400000 gross 400000 epf 22000 socso 0 eis 0 pcb 0 other 0 net 378000 set [] pending', 'none'),
       ('still seventeen', teen,
-        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none')
+        'basic 150000 gross 150000 epf 16500 socso 750 eis 0 pcb 0 other 0 net 132750 set [] pending', 'none'),
+      -- Left on 20 March: no basic, no "Left" line, just the overtime of 15 March. The
+      -- overtime of 25 March, after the last day, is still not theirs to be paid.
+      ('late-approved overtime after leaving', le,
+        'basic 0 gross 6000 epf 0 socso 30 eis 12 pcb 0 other 0 net 5958 set [] pending', 'overtime earning "Overtime, 15 Mar 2025, 3 h" 6000')
     ) as c(label, employee, slip, lines)
   loop
     select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = who;
@@ -1563,6 +1614,42 @@ begin
   where (o.id in (r1, r2, r5) and p.payroll_run_id = mar_run) or (o.id = r4 and p.payroll_run_id = apr_run);
   select count(*) into n2 from public.hr_overtime_records o where o.id in (r3, r6, r7) and o.payslip_id is null;
   if n <> 4 or n2 <> 3 then fails := array_append(fails, 'after April, the overtime records are not each held by the one run that pays them'); end if;
+  select count(*) into n from public.hr_overtime_records o
+  join public.hr_payslips p on p.id = o.payslip_id
+  where o.id = r9 and p.payroll_run_id = apr_run and p.employee_id = le;
+  select count(*) into n2 from public.hr_overtime_records o where o.id = r8 and o.payslip_id is null;
+  if n <> 1 or n2 <> 1 then fails := array_append(fails, 'after April, a leaver''s late-approved overtime is not on April''s payslip, or overtime after their last day is'); end if;
+
+  -- A last day set after the draft was made, before the draft's month. Joiner's
+  -- payslip has nothing HR wrote, so recalculating removes it and the run lists
+  -- them as left. Two Days Unpaid's has a commission HR added, so it is kept,
+  -- with basic 0 and no "Left" line: HR's line is never dropped without a word.
+  select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = u2;
+  fails := fails || pg_temp.pay_expect(owner_id, 'a commission is added to April',
+    format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Commission'', 50000)', pb), null);
+  -- Turned Sixty's has no line from HR, but an EPF figure HR typed: kept the same way.
+  select p.id into pc from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = turned60;
+  fails := fails || pg_temp.pay_expect(owner_id, 'an EPF figure is typed on April',
+    format('select public.hr_set_statutory(%L, ''epf'', 0)', pc), null);
+  update public.hr_employees set left_date = '2025-03-31' where id in (ej, u2, turned60);
+  r := pg_temp.pay_try(owner_id, format('select public.hr_recalculate_payroll(%L)', apr_run));
+  if r -> 'payslips' is distinct from '18'::jsonb or r -> 'added' is distinct from '0'::jsonb
+     or not (r -> 'skipped') @> jsonb_build_array(
+          jsonb_build_object('employee_id', ej, 'name', 'Joiner', 'reason', 'left'))
+     or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', u2))
+     or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', turned60))
+     or (r -> 'skipped') @> jsonb_build_array(jsonb_build_object('employee_id', le)) then
+    fails := array_append(fails, format('recalculating April after two last days moved before it: %s', r));
+  end if;
+  select count(*) into n from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = ej;
+  if n <> 0 then fails := array_append(fails, 'a draft payslip for a month after the last day, with nothing HR wrote, was kept'); end if;
+  if pg_temp.pay_slip(pb) is distinct from 'basic 0 gross 50000 epf 5500 socso 250 eis 100 pcb 0 other 0 net 44150 set [] pending'
+     or pg_temp.pay_lines(pb) is distinct from 'hr earning "Commission" 50000' then
+    fails := array_append(fails, format('a kept payslip after the last day, with HR''s line: %s / %s', coalesce(pg_temp.pay_slip(pb), 'no payslip'), pg_temp.pay_lines(pb)));
+  end if;
+  if pg_temp.pay_slip(pc) is distinct from 'basic 0 gross 0 epf 0 socso 0 eis 0 pcb 0 other 0 net 0 set [epf] pending' then
+    fails := array_append(fails, format('a kept payslip after the last day, with HR''s typed figure: %s', coalesce(pg_temp.pay_slip(pc), 'no payslip')));
+  end if;
   -- A PCB typed in April and then reset goes back to the figure copied from March.
   select p.id into pb from public.hr_payslips p where p.payroll_run_id = apr_run and p.employee_id = b1;
   fails := fails

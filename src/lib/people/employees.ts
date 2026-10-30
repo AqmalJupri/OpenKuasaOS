@@ -222,6 +222,8 @@ export type EmployeeFormValues = {
   designation: string;
   employment_type: EmploymentType;
   join_date: string;
+  /** `''` means still employed. */
+  left_date: string;
   status: EmployeeStatus;
   nric: string;
   date_of_birth: string;
@@ -262,6 +264,7 @@ export function employeeFormValues(employee: Employee | null, priv: EmployeePriv
     designation: employee?.designation ?? '',
     employment_type: employee?.employment_type ?? 'full_time',
     join_date: employee?.join_date ?? '',
+    left_date: employee?.left_date ?? '',
     status: employee?.status ?? 'active',
     nric: priv?.nric ?? '',
     date_of_birth: priv?.date_of_birth ?? '',
@@ -299,6 +302,7 @@ export function toEmployeeInput(
     designation: orNull(values.designation),
     employment_type: values.employment_type,
     join_date: orNull(values.join_date),
+    left_date: orNull(values.left_date),
     status: values.status,
   };
   // Left out when blank: a new employee is then given the next number, and an edit keeps the one it has.
