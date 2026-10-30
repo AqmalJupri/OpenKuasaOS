@@ -23,6 +23,10 @@ const saved = {
   epf_cents: 60500,
   socso_cents: 8000,
   eis_cents: 1100,
+  epf_employer_cents: 71500,
+  socso_employer_cents: 9625,
+  eis_employer_cents: 1100,
+  employer_recorded: true,
   pcb_cents: 12000,
   other_deductions_cents: 3000,
   net_cents: 465400,
@@ -209,6 +213,49 @@ describe('listPayslips', () => {
     }
     // System lines carry their source so the model can see they are not its to change.
     expect(slip.lines.every((l: Loose) => typeof l.id === 'string' && typeof l.source === 'string')).toBe(true);
+  });
+
+  it('each payslip carries the employer\'s proposed shares, labelled as paid on top of gross and never deducted', async () => {
+    const result = await run('listPayslips', { month: '2026-10', limit: 50 });
+    const rows = (await base.listPayslips()).filter((p) => p.period_month === '2026-10-01');
+    expect(result.payslips.length).toBeGreaterThan(0);
+    for (const slip of result.payslips) {
+      const share = slip.employer_share;
+      expect(share.recorded, slip.employee).toBe(true);
+      for (const key of ['epf', 'socso', 'eis', 'total']) expect(share[key], key).toMatch(/^RM [\d,]+\.\d{2}$/);
+      expect(share.note).toContain('Proposed');
+      expect(share.note).toContain('on top of gross pay');
+      expect(share.note).toContain('Not deducted');
+    }
+    const first = rows.find((p) => p.id === result.payslips[0].id)!;
+    expect(result.payslips[0].employer_share.total).toBe(
+      rm(first.epf_employer_cents + first.socso_employer_cents + first.eis_employer_cents),
+    );
+    // The employer's share is not one of the deductions: net is still gross less the employee's figures.
+    expect(result.payslips[0].net).toBe(rm(first.net_cents));
+  });
+
+  it('a payslip paid before the employer shares were worked out says not recorded, with no amounts', async () => {
+    const old: PeopleData = {
+      ...base,
+      listPayslips: async () =>
+        (await base.listPayslips()).map((p) =>
+          p.period_month === '2026-09-01'
+            ? { ...p, epf_employer_cents: 0, socso_employer_cents: 0, eis_employer_cents: 0, employer_recorded: false }
+            : p,
+        ),
+    };
+    const result = await run('listPayslips', { month: '2026-09', limit: 50 }, HR_VIEWER, hr(), old);
+    expect(result.payslips.length).toBeGreaterThan(0);
+    for (const slip of result.payslips) {
+      expect(slip.employer_share).toEqual({ recorded: false, note: expect.stringContaining('Not recorded') });
+    }
+    const summary = await run('getPayrollSummary', { months: 3 }, HR_VIEWER, hr(), old);
+    const september = summary.runs.find((r: Loose) => r.month === '2026-09');
+    expect(september.employer_share).toEqual({ recorded: false, note: expect.stringContaining('no total') });
+    const october = summary.runs.find((r: Loose) => r.month === '2026-10');
+    expect(october.employer_share).toMatchObject({ recorded: true, total: expect.stringMatching(/^RM [\d,]+\.\d{2}$/) });
+    expect(october.employer_share.note).toContain('Proposed');
   });
 
   it('a paid month reads paid, and every row has its lines array', async () => {
@@ -416,6 +463,14 @@ describe('savePayslipLine', () => {
       pcb: 'RM 120.00',
       other_deductions: 'RM 30.00',
       net: 'RM 4,654.00',
+      employer_share: {
+        recorded: true,
+        epf: 'RM 715.00',
+        socso: 'RM 96.25',
+        eis: 'RM 11.00',
+        total: 'RM 822.25',
+        note: expect.stringMatching(/^Proposed by the system, not official: .*on top of gross pay\. Not deducted/),
+      },
       set_by_hr: ['epf'],
       status: 'pending',
       line: { id: LINE, kind: 'earning', source: 'hr', label: 'Sales commission', amount: 'RM 1,200.50' },

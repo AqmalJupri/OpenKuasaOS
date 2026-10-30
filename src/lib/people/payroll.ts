@@ -103,7 +103,7 @@ export const deductionsOf = (p: Payslip): number => p.gross_cents - p.net_cents;
  * The employer's three shares on one payslip. Paid on top of gross pay: it is not a deduction and never comes off
  * net. Zero on a payslip from before these figures were worked out.
  */
-export const employerOf = (p: Payslip): number =>
+export const employerOf = (p: Pick<Payslip, 'epf_employer_cents' | 'socso_employer_cents' | 'eis_employer_cents'>): number =>
   p.epf_employer_cents + p.socso_employer_cents + p.eis_employer_cents;
 
 /** The employer's three shares in the order the official submissions use them. */

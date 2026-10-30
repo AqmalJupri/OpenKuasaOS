@@ -24,6 +24,10 @@ export type PayrollRunTotals = {
   gross_cents: number;
   deductions_cents: number;
   net_cents: number;
+  /** The employer's EPF, SOCSO and EIS shares, summed: paid on top of gross, not part of deductions or net. */
+  employer_cents: number;
+  /** Whether every payslip in the run carries its employer shares; when not, employer_cents is too low. */
+  employer_recorded: boolean;
 };
 
 /** Totals for each payroll run this caller can see, newest first. */
@@ -34,6 +38,10 @@ export function payrollSummary(runs: PayrollRun[], payslips: Payslip[]): Payroll
       const slips = payslips.filter((p) => p.payroll_run_id === run.id);
       const gross = slips.reduce((sum, p) => sum + p.gross_cents, 0);
       const net = slips.reduce((sum, p) => sum + p.net_cents, 0);
+      const employer = slips.reduce(
+        (sum, p) => sum + p.epf_employer_cents + p.socso_employer_cents + p.eis_employer_cents,
+        0,
+      );
       return {
         period_month: run.period_month,
         status: run.status,
@@ -41,6 +49,8 @@ export function payrollSummary(runs: PayrollRun[], payslips: Payslip[]): Payroll
         gross_cents: gross,
         deductions_cents: gross - net,
         net_cents: net,
+        employer_cents: employer,
+        employer_recorded: slips.every((p) => p.employer_recorded),
       };
     });
 }

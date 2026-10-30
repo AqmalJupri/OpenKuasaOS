@@ -130,6 +130,7 @@ describe('the call that saves a typed line', () => {
     payslip: {
       id: SLIP, employee_id: 'e1', period_month: '2026-10-01', basic_cents: 300_000, gross_cents: 500_000,
       epf_cents: 55_000, socso_cents: 1_500, eis_cents: 600, pcb_cents: 0, other_deductions_cents: 0,
+      epf_employer_cents: 65_000, socso_employer_cents: 8_750, eis_employer_cents: 1_000, employer_recorded: true,
       net_cents: 442_900, set_by_hr: [], status: 'pending',
     },
     line: { id: 'l1', kind: 'earning', source: 'hr', earning_type, label: 'Raya', amount_cents: 200_000 },
