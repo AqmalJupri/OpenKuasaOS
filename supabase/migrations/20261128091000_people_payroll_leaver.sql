@@ -47,6 +47,12 @@ alter table public.hr_employees add column if not exists left_date date;
 alter table public.hr_employees drop constraint if exists hr_employees_left_after_join;
 alter table public.hr_employees add constraint hr_employees_left_after_join
   check (left_date is null or join_date is null or left_date >= join_date);
+-- Signed-in owners and admins edit an employee directly, and the UPDATE grant on
+-- hr_employees is a column list (20261014090000_people_core.sql), so a new
+-- column is not writable until it is named: without this every save from the
+-- employee form, which always sends left_date, is refused. Reading needs nothing
+-- new: the SELECT grant covers the whole table.
+grant update (left_date) on public.hr_employees to authenticated;
 
 -- ---- the line a leaver writes ---------------------------------------------------
 -- An unpaid line, as the joiner line is, with a source that says which boundary
