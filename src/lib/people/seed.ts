@@ -565,6 +565,8 @@ export function createSeedPeopleData(now: Date = new Date()): PeopleData {
           epf_employer_cents: cut.epf_employer_cents,
           socso_employer_cents: cut.socso_employer_cents,
           eis_employer_cents: cut.eis_employer_cents,
+          // The database's re-seed works every demo payslip out, paid ones included, so each one is recorded.
+          employer_recorded: true,
           pcb_cents,
           other_deductions_cents: other,
           net_cents: gross - cut.epf_cents - cut.socso_cents - cut.eis_cents - pcb_cents - other,

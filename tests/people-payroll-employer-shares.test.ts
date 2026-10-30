@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { employerOf, payslipDetailModel, payrollModel } from '@/lib/people/payroll';
+import { RUN_EMPLOYER_NOT_RECORDED, employerOf, payslipDetailModel, payrollModel, runEmployerLine } from '@/lib/people/payroll';
 import type { PayrollRun, Payslip } from '@/lib/people/types';
 
 const FILE = '20261128090000_people_payroll_employer_shares.sql';
@@ -45,6 +45,7 @@ const slip = (over: Partial<Payslip> = {}): Payslip => ({
   epf_employer_cents: 65_000,
   socso_employer_cents: 8_750,
   eis_employer_cents: 1_000,
+  employer_recorded: true,
   pcb_cents: 0,
   other_deductions_cents: 0,
   net_cents: 441_500,
@@ -156,6 +157,14 @@ describe('a payslip records the employer shares, and net pay is not one of them'
   test('the drafts on record are worked out again, and a paid payslip is left alone', () => {
     expect(sql).toMatch(/where r\.status = 'draft'/);
   });
+
+  test('whether the shares were worked out is recorded on the row, false until the payslip function sets it', () => {
+    expect(sql).toContain('add column employer_recorded boolean not null default false');
+    expect(fn('private.hr_payroll_refresh_payslip')).toContain('employer_recorded = true');
+    expect(fn('private.hr_payslip_json')).toContain("'employer_recorded', p_slip.employer_recorded");
+    // Only that function sets it: no update marks rows already there, so a paid payslip from before stays not recorded.
+    expect(sql.split('employer_recorded = true')).toHaveLength(2);
+  });
 });
 
 describe('the app adds the employer shares up', () => {
@@ -189,10 +198,31 @@ describe('the app adds the employer shares up', () => {
     expect(latest.net_cents).toBe(883_000);
   });
 
-  test('a paid payslip from before these figures were worked out says so instead of reading zero', () => {
-    const old = slip({ status: 'paid', epf_employer_cents: 0, socso_employer_cents: 0, eis_employer_cents: 0 });
-    expect(payslipDetailModel(old).employer_recorded).toBe(false);
+  test('whether the shares were recorded is the payslip\'s own fact, never guessed from the amounts', () => {
+    const zero = { epf_employer_cents: 0, socso_employer_cents: 0, eis_employer_cents: 0 };
+    // Paid before the shares were worked out: not recorded.
+    expect(payslipDetailModel(slip({ status: 'paid', ...zero, employer_recorded: false })).employer_recorded).toBe(false);
+    // A whole month of unpaid leave, paid since: gross 0 and genuinely no share, but recorded.
+    const away = slip({ status: 'paid', ...zero, gross_cents: 0, net_cents: 0, epf_cents: 0, socso_cents: 0, eis_cents: 0 });
+    expect(payslipDetailModel(away).employer_recorded).toBe(true);
+    // The flag is read as it is, whatever the amounts and the status say.
+    expect(payslipDetailModel(slip({ employer_recorded: false })).employer_recorded).toBe(false);
     expect(payslipDetailModel(slip({ status: 'paid' })).employer_recorded).toBe(true);
-    expect(payslipDetailModel(slip()).employer_recorded).toBe(true);
+  });
+
+  test('a run gives an employer total only when every payslip carries its shares', () => {
+    const runs: PayrollRun[] = [{ id: 'r1', period_month: '2026-10-01', status: 'paid', paid_at: null, paid_by_name: null }];
+    const all = payrollModel(runs, [slip(), slip({ id: 'p2', employee_id: 'e2' })]).latest!;
+    expect(all.employer_recorded).toBe(true);
+    expect(runEmployerLine(all)).toBe('Employer contributions RM 1,495.00 · cost RM 11,495.00');
+    const mixed = payrollModel(runs, [slip(), slip({ id: 'p2', employee_id: 'e2', employer_recorded: false })]).latest!;
+    expect(mixed.employer_recorded).toBe(false);
+    expect(runEmployerLine(mixed)).toBe(RUN_EMPLOYER_NOT_RECORDED);
+    // Recorded and genuinely zero still says so, rather than saying nothing.
+    const zero = payrollModel(runs, [
+      slip({ epf_employer_cents: 0, socso_employer_cents: 0, eis_employer_cents: 0, gross_cents: 0 }),
+    ]).latest!;
+    expect(runEmployerLine(zero)).toBe('Employer contributions RM 0.00 · cost RM 0.00');
+    expect(runEmployerLine(payrollModel(runs, []).latest!)).toBeNull();
   });
 });

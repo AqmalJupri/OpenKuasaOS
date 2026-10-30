@@ -84,7 +84,7 @@ declare
   rec record;
   ctx text;
   fails text[] := '{}';
-  slip_keys text[] := array['basic_cents','eis_cents','eis_employer_cents','employee_id','epf_cents',
+  slip_keys text[] := array['basic_cents','eis_cents','eis_employer_cents','employee_id','employer_recorded','epf_cents',
     'epf_employer_cents','gross_cents','id','net_cents','other_deductions_cents','pcb_cents','period_month',
     'set_by_hr','socso_cents','socso_employer_cents','status'];
   functions text[] := array[
@@ -225,6 +225,12 @@ begin
     or (c.table_name = 'hr_payslips' and c.column_name = 'other_deductions_cents' and c.data_type = 'bigint' and c.column_default = '0')
     or (c.table_name = 'hr_payslips' and c.column_name = 'set_by_hr' and c.data_type = 'ARRAY' and c.column_default like '%{}%'));
   if n <> 3 then fails := array_append(fails, format('%s of the 3 new payslip columns exist, required, with their defaults', n)); end if;
+  -- Whether the employer shares were worked out: a fact on the row, false on any row
+  -- the payslip function never worked out (a payslip paid before 20261128090000).
+  select count(*) into n from information_schema.columns c
+  where c.table_schema = 'public' and c.table_name = 'hr_payslips' and c.column_name = 'employer_recorded'
+    and c.is_nullable = 'NO' and c.data_type = 'boolean' and c.column_default = 'false';
+  if n <> 1 then fails := array_append(fails, 'hr_payslips.employer_recorded is not a required boolean defaulting to false'); end if;
   select count(*) into n from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'hr_payslips' and c.column_name = 'net_cents' and c.is_generated = 'ALWAYS'
     and replace(replace(c.generation_expression, '(', ''), ')', '')
@@ -1478,6 +1484,29 @@ begin
   update public.hr_employee_private set base_salary_cents = 594000 where employee_id = lo;
   update public.hr_employees set status = 'active' where id = hi;
   fails := fails || pg_temp.pay_expect(owner_id, 'March is marked as paid', format('select public.hr_mark_payroll_paid(%L)', mar_run), null);
+  -- Every March payslip was worked out, so each is recorded, paid now; the one on unpaid
+  -- leave for every day it was employed has gross 0 and shares of 0, and is recorded too:
+  -- a zero there is a figure, not a gap.
+  select count(*) filter (where not p.employer_recorded), count(*) into n, n2
+  from public.hr_payslips p where p.payroll_run_id = mar_run and p.status = 'paid';
+  if n <> 0 or n2 = 0 then
+    fails := array_append(fails, format('%s of March''s %s paid payslips are not marked as recording the employer shares', n, n2));
+  end if;
+  select p.id into pa from public.hr_payslips p where p.payroll_run_id = mar_run and p.employee_id = jc;
+  select private.hr_payslip_json(p) into r from public.hr_payslips p where p.id = pa;
+  if r ->> 'status' is distinct from 'paid' or r ->> 'gross_cents' is distinct from '0'
+     or r ->> 'employer_recorded' is distinct from 'true' or pg_temp.pay_employer(pa) is distinct from 'epf 0 socso 0 eis 0' then
+    fails := array_append(fails, format('a paid payslip of gross 0 does not read as recorded with no share: %s', r));
+  end if;
+  -- A payslip paid before the employer shares were worked out: the row as it stood then,
+  -- with the column's default. It reads as not recorded, not as nothing owed. Put back
+  -- after, so nothing below sees it.
+  update public.hr_payslips p set employer_recorded = default where p.id = pa;
+  select private.hr_payslip_json(p) into r from public.hr_payslips p where p.id = pa;
+  if r ->> 'employer_recorded' is distinct from 'false' then
+    fails := array_append(fails, format('a paid payslip from before the employer shares does not read as not recorded: %s', r));
+  end if;
+  update public.hr_payslips p set employer_recorded = true where p.id = pa;
   r := pg_temp.pay_try(owner_id, format('select public.hr_run_payroll(%L, %L)', corg, apr));
   apr_run := (r #>> '{run,id}')::uuid;
   -- March is paid, so April can be made. Its one overtime line is April's own.
@@ -1589,6 +1618,9 @@ begin
     or p.net_cents < 0 or p.set_by_hr <> '{}');
   select count(*) into n2 from public.hr_payslips p where p.org_id = demo;
   if n <> 0 or n2 < 150 then fails := array_append(fails, format('%s of the demo''s %s payslips do not add up', n, n2)); end if;
+  -- The re-seed works out every demo payslip, paid months included, so none says "not recorded".
+  select count(*) into n from public.hr_payslips p where p.org_id = demo and not p.employer_recorded;
+  if n <> 0 then fails := array_append(fails, format('%s demo payslips do not record the employer shares', n)); end if;
   -- Lines of every source the demo can have, and every approved record held by one payslip.
   select count(*) filter (where l.source = 'hr'), count(*) filter (where l.source = 'overtime') into n, n2
   from public.hr_payslip_lines l where l.org_id = demo;

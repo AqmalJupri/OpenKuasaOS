@@ -56,6 +56,7 @@ const slip = (over: Partial<Payslip> = {}): Payslip => ({
   epf_employer_cents: 78_000,
   socso_employer_cents: 11_375,
   eis_employer_cents: 1_300,
+  employer_recorded: true,
   pcb_cents: 20_000,
   other_deductions_cents: 6_000,
   net_cents: 551_000,

@@ -10,7 +10,7 @@
 
 import { formatDate, malaysiaDate, monthLabel, monthYearLabel } from './dates';
 import { isTeamView } from './own';
-import { earningTypeNote, nextRunMonth } from './payroll-forms';
+import { centsToRinggit, earningTypeNote, nextRunMonth } from './payroll-forms';
 import { bucketByMonth, sumBy } from './series';
 import type { Bucket } from './series';
 import { payrollSummary } from './summaries';
@@ -75,6 +75,11 @@ export type PayrollModel = {
     employer_cents: number;
     /** Gross plus the employer's shares: what the run costs the employer. */
     cost_cents: number;
+    /**
+     * Whether every payslip in the run carries its employer shares. When one does not (paid before they were worked
+     * out), employer_cents and cost_cents understate the run, and the screen does not show them.
+     */
+    employer_recorded: boolean;
     slips: PayslipRow[];
   } | null;
   /** Gross in ringgit per run, oldest first. */
@@ -165,6 +170,7 @@ export function payrollModel(runs: PayrollRun[], payslips: Payslip[], runId?: st
       other_cents: other,
       employer_cents: employerTotal,
       cost_cents: gross + employerTotal,
+      employer_recorded: slips.every((s) => s.employer_recorded),
       slips,
     },
     by_month: totals
@@ -222,6 +228,20 @@ export const DRAFT_BANNER = "Draft: employees can't see this yet";
 export const NO_MONTH_TO_RUN = 'Every month up to now already has a payroll run.';
 /** Under "Proposed deductions" wherever the four figures are listed. */
 export const PROPOSED_NOTE = 'Proposed figures. Check them before marking the run as paid.';
+/** In place of the employer contributions on a payslip paid before Lekiu worked them out. */
+export const EMPLOYER_NOT_RECORDED = 'Not recorded: this payslip was paid before Lekiu worked out the employer shares.';
+/** In the run's footer when one of its payslips has no employer shares on record, so no total can be given. */
+export const RUN_EMPLOYER_NOT_RECORDED = 'Employer contributions not recorded for this run';
+
+/**
+ * The run footer's employer line. A total is given only when every payslip carries its shares: one paid before they
+ * were worked out would make the total, and the cost, too low. Nothing for a run with no payslips.
+ */
+export function runEmployerLine(latest: { headcount: number; employer_recorded: boolean; employer_cents: number; cost_cents: number }): string | null {
+  if (latest.headcount === 0) return null;
+  if (!latest.employer_recorded) return RUN_EMPLOYER_NOT_RECORDED;
+  return `Employer contributions ${centsToRinggit(latest.employer_cents)} · cost ${centsToRinggit(latest.cost_cents)}`;
+}
 
 export type RunControls = {
   runPayroll: boolean;
@@ -462,8 +482,9 @@ export type PayslipDetailModel = {
   /** Gross plus the employer's shares: what this payslip costs the employer. */
   cost_cents: number;
   /**
-   * Whether the payslip carries the employer's shares at all. A paid payslip recorded before they were worked out
-   * reads zero, which is "not recorded" rather than "nothing to pay".
+   * Whether the payslip carries the employer's shares at all, as the payslip records it. A paid payslip from before
+   * they were worked out reads zero, which is "not recorded" rather than "nothing to pay"; a payslip worked out since
+   * is recorded even when every share is genuinely zero (a month of unpaid leave).
    */
   employer_recorded: boolean;
   /** The deduction lines: they come off net, after the four figures. */
@@ -506,8 +527,7 @@ export function payslipDetailModel(p: Payslip): PayslipDetailModel {
     employer,
     employer_cents: employerCents,
     cost_cents: p.gross_cents + employerCents,
-    // A draft is always worked out; a paid payslip only carries them if it was paid after they were worked out.
-    employer_recorded: p.status !== 'paid' || employerCents > 0,
+    employer_recorded: p.employer_recorded,
     other_cents: p.other_deductions_cents,
     deductions_cents: deductionsOf(p),
     net_cents: p.net_cents,

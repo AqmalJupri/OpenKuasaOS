@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   type DetailLine,
+  EMPLOYER_NOT_RECORDED,
   PROPOSED_NOTE,
   type PayslipDetailModel,
   payslipDetailModel,
@@ -130,24 +131,29 @@ export function PayslipLayout({ payslip, slots = {} }: { payslip: Payslip; slots
 
       <section aria-label="Employer contributions" className="space-y-1 border-t pt-3">
         <h3 className="font-semibold">Employer contributions</h3>
-        <p className="text-xs text-muted-foreground">
-          {m.employer_recorded
-            ? 'Paid on top of gross pay. Nothing here comes off what the employee receives.'
-            : 'Not recorded: this payslip was paid before Lekiu worked out the employer shares.'}
-        </p>
-        <div className="space-y-1">
-          {m.employer.map((f) => (
-            <Row key={f.label} label={`${f.label}`}>
-              {centsToRinggit(f.amount_cents)}
-            </Row>
-          ))}
-        </div>
-        <div className="space-y-1 border-t pt-2">
-          <Row label="Total employer contributions">{centsToRinggit(m.employer_cents)}</Row>
-          <Row label="Cost to employer" strong>
-            {centsToRinggit(m.cost_cents)}
-          </Row>
-        </div>
+        {m.employer_recorded ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Paid on top of gross pay. Nothing here comes off what the employee receives.
+            </p>
+            <div className="space-y-1">
+              {m.employer.map((f) => (
+                <Row key={f.label} label={`${f.label}`}>
+                  {centsToRinggit(f.amount_cents)}
+                </Row>
+              ))}
+            </div>
+            <div className="space-y-1 border-t pt-2">
+              <Row label="Total employer contributions">{centsToRinggit(m.employer_cents)}</Row>
+              <Row label="Cost to employer" strong>
+                {centsToRinggit(m.cost_cents)}
+              </Row>
+            </div>
+          </>
+        ) : (
+          // Its zeros are not figures: showing them, or a cost equal to gross, would read as nothing owed.
+          <p className="text-xs text-muted-foreground">{EMPLOYER_NOT_RECORDED}</p>
+        )}
       </section>
 
       {slots.footer ?? null}

@@ -47,8 +47,14 @@
 -- employee takes home. They are always worked out, never typed over: set_by_hr
 -- stays the employee's four figures. Both are read through hr_payslip_json.
 --
+-- A fourth column, employer_recorded, says whether the three were worked out at
+-- all. Zero is a real answer (a month of unpaid leave pays no wages and owes no
+-- share), so a zero cannot also mean "from before this migration". The payslip
+-- function sets it whenever it works a payslip out.
+--
 -- A draft on record is worked out again so its payslips carry the figures; a
--- paid payslip is a record of what was paid and does not move.
+-- paid payslip is a record of what was paid and does not move, so it keeps
+-- employer_recorded false and the app says the shares were not recorded.
 --
 -- Still open in #423: the banded EPF and PERKESO tables, for the employee's share
 -- and the employer's, which this migration's wage band column is ready for.
@@ -152,7 +158,10 @@ drop function if exists private.hr_payroll_proposal(text, bigint, int, text);
 alter table public.hr_payslips
   add column epf_employer_cents bigint not null default 0 check (epf_employer_cents >= 0),
   add column socso_employer_cents bigint not null default 0 check (socso_employer_cents >= 0),
-  add column eis_employer_cents bigint not null default 0 check (eis_employer_cents >= 0);
+  add column eis_employer_cents bigint not null default 0 check (eis_employer_cents >= 0),
+  -- Whether the three above were worked out. False on every row already here; the
+  -- payslip function sets it, so a paid payslip from before this migration stays false.
+  add column employer_recorded boolean not null default false;
 
 -- ---- what follows from a payslip's basic pay and its lines ----------------
 -- As in 20261127091000, with the employer's three shares worked out beside the
@@ -205,6 +214,7 @@ begin
       epf_employer_cents = private.hr_payroll_proposal('epf', epf_wages, age_years, category, 'employer'),
       socso_employer_cents = private.hr_payroll_proposal('socso', socso_wages, age_years, category, 'employer'),
       eis_employer_cents = private.hr_payroll_proposal('eis', socso_wages, age_years, category, 'employer'),
+      employer_recorded = true,
       pcb_cents = case when 'pcb' = any(p.set_by_hr) then p.pcb_cents else coalesce(last_pcb, 0) end,
       other_deductions_cents = deductions
   where p.id = slip.id
@@ -214,8 +224,8 @@ end; $$;
 revoke all on function private.hr_payroll_refresh_payslip(uuid) from public, anon, authenticated;
 
 -- ---- a payslip, as the functions hand it back -----------------------------
--- The three employer figures join the JSON the app reads: the payslip dialog and
--- the run total take them from here.
+-- The three employer figures, and whether they were worked out, join the JSON the
+-- payroll functions hand back: the change tools read them from here.
 create or replace function private.hr_payslip_json(p_slip public.hr_payslips)
 returns jsonb language sql stable set search_path = public as $$
   select jsonb_build_object(
@@ -225,6 +235,7 @@ returns jsonb language sql stable set search_path = public as $$
     'epf_employer_cents', p_slip.epf_employer_cents,
     'socso_employer_cents', p_slip.socso_employer_cents,
     'eis_employer_cents', p_slip.eis_employer_cents,
+    'employer_recorded', p_slip.employer_recorded,
     'pcb_cents', p_slip.pcb_cents, 'other_deductions_cents', p_slip.other_deductions_cents,
     'net_cents', p_slip.net_cents, 'set_by_hr', to_jsonb(p_slip.set_by_hr), 'status', p_slip.status);
 $$;
@@ -232,8 +243,9 @@ revoke all on function private.hr_payslip_json(public.hr_payslips) from public, 
 
 -- ---- drafts already worked out ----------------------------------------------
 -- Nothing moves for the employee: their figures are the same rows they were. The
--- employer columns of a draft would otherwise read zero until something changed
--- the payslip. Paid payslips are a record of what was paid and are left alone.
+-- employer columns of a draft would otherwise read zero, and not recorded, until
+-- something changed the payslip; worked out here, each draft is marked recorded.
+-- Paid payslips are a record of what was paid and are left alone, still false.
 do $$
 begin
   perform private.hr_payroll_refresh_payslip(p.id)
