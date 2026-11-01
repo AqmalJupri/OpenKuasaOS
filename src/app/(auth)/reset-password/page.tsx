@@ -9,6 +9,7 @@ import {
   isRecoveryMarkerValid,
 } from '@/lib/auth/recovery-marker';
 import { createClient } from '@/lib/supabase/server';
+import { hasSupabaseEnv } from '@/lib/auth/preview-mode';
 
 export const metadata: Metadata = {
   title: 'Set a new password · OpenKuasa',
@@ -17,6 +18,34 @@ export const metadata: Metadata = {
 const linkClass = 'font-semibold text-primary hover:underline';
 
 export default async function ResetPasswordPage() {
+  // No project, no accounts reachable: say so here. Asking createClient() for
+  // a client throws, which answered this route 500 on every credential-less
+  // install. The copy claims only what the missing variables prove: this
+  // deployment is not connected, not that the project holds no accounts.
+  if (!hasSupabaseEnv()) {
+    return (
+      <AuthShell>
+        <div className="space-y-1.5 text-center">
+          <h1 className="text-3xl font-bold tracking-tight">
+            This install is not connected
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            OpenKuasa cannot access accounts until NEXT_PUBLIC_SUPABASE_URL and
+            NEXT_PUBLIC_SUPABASE_ANON_KEY are configured. With no database here
+            there is no sign-in and no password to set, so add both, then open
+            the reset link from your email again.
+          </p>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          <Link href="/login" className={linkClass}>
+            Back to sign in
+          </Link>
+        </p>
+      </AuthShell>
+    );
+  }
+
   // Reaching this page requires the recovery session set by /auth/confirm.
   // Without it the link was never followed or has expired.
   const supabase = await createClient();
