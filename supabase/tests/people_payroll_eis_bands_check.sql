@@ -68,7 +68,7 @@ begin
 
   -- ==== 3. the 65 printed figures, pinned =========================================
   -- The schedule takes the same amount from the employer and the employee, and a citizen
-  -- and a permanent resident are charged alike, so section 4 proves the other three sets
+  -- and a permanent resident are charged alike, so section 5 proves the other three sets
   -- carry these numbers and 65 figures pin all 260 rows.
   select string_agg(s.amount_cents::text, '; ' order by s.wage_from_cents) into t
   from public.hr_statutory_rules s
@@ -86,7 +86,41 @@ begin
         || '1130; 1150; 1170; 1190; 1190'
   then fails := array_append(fails, format('the EIS figures are %s', t)); end if;
 
-  -- ==== 4. both payers and both citizenships carry the same figures ================
+  -- ==== 4. the figures come out of the Act's own rule ==============================
+  -- The 65 figures above were read off a scan of the circular, so they are also proved
+  -- against the arithmetic the Schedule was built from: 0.2% of the band's midpoint,
+  -- rounded up to the next 5 sen. The midpoint is the middle of the band's own bounds, so
+  -- the band above RM200.00 and up to RM300.00 is RM250 and not RM250.005, which is what
+  -- reproduces the printed figure exactly. The row above RM6,000.00 is the exception the
+  -- schedule prints: it repeats the top band's figure instead of one derived from its own
+  -- open top.
+  select count(*) into n from (
+    select b.amount_cents as amount,
+           ceil(0.002 * (((b.wage_from_cents - 1) + b.band_top)::numeric / 2) / 5) * 5 as derived
+    from (
+      select s.wage_from_cents, s.amount_cents,
+             coalesce(lead(s.wage_from_cents) over (order by s.wage_from_cents) - 1,
+                      s.wage_from_cents) as band_top
+      from public.hr_statutory_rules s
+      where s.scheme = 'eis' and s.payer = 'employee' and s.citizenship = 'citizen'
+    ) b
+    where b.wage_from_cents < 600001
+  ) g where g.amount <> g.derived;
+  if n <> 0 then
+    fails := array_append(fails, format('%s of the 64 bands are not 0.2%% of their midpoint rounded up to 5 sen', n));
+  end if;
+  select count(*) into n from public.hr_statutory_rules s
+  where s.scheme = 'eis' and s.payer = 'employee' and s.citizenship = 'citizen'
+    and s.wage_from_cents = 600001
+    and s.amount_cents <> (
+      select max(t2.amount_cents) from public.hr_statutory_rules t2
+      where t2.scheme = 'eis' and t2.payer = 'employee' and t2.citizenship = 'citizen'
+        and t2.wage_from_cents < 600001);
+  if n <> 0 then
+    fails := array_append(fails, 'the row above RM6,000.00 does not repeat the top band figure');
+  end if;
+
+  -- ==== 5. both payers and both citizenships carry the same figures ================
   select count(*) into n from (
     select s.wage_from_cents,
            count(distinct s.amount_cents) as distinct_amounts, count(*) as rows_here
@@ -96,7 +130,7 @@ begin
   ) g where g.distinct_amounts <> 1 or g.rows_here <> 4;
   if n <> 0 then fails := array_append(fails, format('%s EIS bands differ between payers or citizenships', n)); end if;
 
-  -- ==== 5. the figures only go up as the wage goes up ==============================
+  -- ==== 6. the figures only go up as the wage goes up ==============================
   select count(*) into n from (
     select s.amount_cents,
            lag(s.amount_cents) over (partition by s.payer, s.citizenship order by s.wage_from_cents) as previous
@@ -104,7 +138,7 @@ begin
   ) g where g.previous is not null and g.amount_cents < g.previous;
   if n <> 0 then fails := array_append(fails, format('%s EIS bands fall as the wage rises', n)); end if;
 
-  -- ==== 6. the function returns the band, at its edges and inside it ===============
+  -- ==== 7. the function returns the band, at its edges and inside it ===============
   -- Each pair is a wage in cents and the figure the schedule prints for the band it falls
   -- in: the first sen of a band, its top, one sen after it, a wage inside a band, and the
   -- ceiling with the row above it.
@@ -131,7 +165,7 @@ begin
     fails := array_append(fails, 'the employer EIS figure is not the employee figure');
   end if;
 
-  -- ==== 7. who EIS covers has not moved ============================================
+  -- ==== 8. who EIS covers has not moved ============================================
   -- A wage of zero matches no band, an employee under 18 or from 60 pays nothing, and EIS
   -- does not reach a non-citizen. The exemption at 57 is a contribution history and stays
   -- open in #423, so nothing here asserts anything about it.
