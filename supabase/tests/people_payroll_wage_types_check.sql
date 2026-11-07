@@ -108,45 +108,45 @@ begin
       raise exception 'no payslip was made, so nothing else was tried';
     end if;
     fails := fails || pg_temp.wt_expect('basic RM3,000', pg_temp.wt_slip(slip),
-      'gross 300000 epf 33000 socso 1500 eis 600 net 264900');
+      'gross 300000 epf 33000 socso 1500 eis 590 net 264910');
 
     -- ---- a bonus counts for EPF only -------------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Bonus'', 200000, ''bonus'')', slip));
     bonus := (r #>> '{line,id}')::uuid;
     if r ? 'refused' then fails := array_append(fails, format('a bonus was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a bonus RM2,000', pg_temp.wt_slip(slip),
-      'gross 500000 epf 55000 socso 1500 eis 600 net 442900');
+      'gross 500000 epf 55000 socso 1500 eis 590 net 442910');
 
     -- ---- ordinary pay counts for all three -------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Allowance'', 100000)', slip));
     if r ? 'refused' then fails := array_append(fails, format('an ordinary line was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ ordinary pay RM1,000', pg_temp.wt_slip(slip),
-      'gross 600000 epf 66000 socso 2000 eis 800 net 531200');
+      'gross 600000 epf 66000 socso 2000 eis 790 net 531210');
 
     -- ---- a travel allowance counts for none ------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Petrol'', 50000, ''travel_allowance'')', slip));
     if r ? 'refused' then fails := array_append(fails, format('a travel allowance was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a travel allowance RM500', pg_temp.wt_slip(slip),
-      'gross 650000 epf 66000 socso 2000 eis 800 net 581200');
+      'gross 650000 epf 66000 socso 2000 eis 790 net 581210');
 
     -- ---- a service charge is not EPF wages -------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Service charge'', 40000, ''service_charge'')', slip));
     service := (r #>> '{line,id}')::uuid;
     if r ? 'refused' then fails := array_append(fails, format('a service charge was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a service charge RM400', pg_temp.wt_slip(slip),
-      'gross 690000 epf 66000 socso 2200 eis 880 net 620920');
+      'gross 690000 epf 66000 socso 2200 eis 870 net 620930');
 
     -- ---- a gratuity counts for none --------------------------------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Gratuity'', 60000, ''gratuity'')', slip));
     if r ? 'refused' then fails := array_append(fails, format('a gratuity was refused: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('+ a gratuity RM600', pg_temp.wt_slip(slip),
-      'gross 750000 epf 66000 socso 2200 eis 880 net 680920');
+      'gross 750000 epf 66000 socso 2200 eis 870 net 680930');
 
     -- ---- changing what a line is moves every figure back down ------------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, %L, ''earning'', ''Bonus'', 200000, ''travel_allowance'')', slip, bonus));
     if r ? 'refused' then fails := array_append(fails, format('the bonus could not be changed: %s', r ->> 'refused')); end if;
     fails := fails || pg_temp.wt_expect('the bonus becomes a travel allowance', pg_temp.wt_slip(slip),
-      'gross 750000 epf 44000 socso 2200 eis 880 net 702920');
+      'gross 750000 epf 44000 socso 2200 eis 870 net 702930');
 
     -- ---- a change that names no type keeps the one the line has ----------
     r := pg_temp.wt_try(owner_id, format('select public.hr_save_payslip_line(%L, %L, ''earning'', ''Service charge Oct'', 40000)', slip, service));
@@ -155,7 +155,7 @@ begin
       fails := array_append(fails, format('a rename with no type changed the type to %s', coalesce(r #>> '{line,earning_type}', 'nothing')));
     end if;
     fails := fails || pg_temp.wt_expect('the service charge is renamed', pg_temp.wt_slip(slip),
-      'gross 750000 epf 44000 socso 2200 eis 880 net 702920');
+      'gross 750000 epf 44000 socso 2200 eis 870 net 702930');
 
     -- ---- refusals --------------------------------------------------------
     want := 'PAYROLL_BAD_INPUT';
