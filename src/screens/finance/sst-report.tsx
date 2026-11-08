@@ -111,8 +111,19 @@ const lines = (n: number) => (n === 1 ? '1 line' : `${n} lines`);
 /**
  * The "Not on the form" notes of a return: lines with no form item, lines with no tax type, an item 14 below
  * zero, and on a service return the money received with no invoice behind it.
+ *
+ * On a period already marked filed the no-invoice note says so, because the step it asks for is refused there:
+ * a receipt dated inside a filed period stops on FIN77 (`20261202100000_bendahara_payment_into_filed_period.sql`)
+ * and an invoice dated inside one stops on FIN72 (`20261129090000_bendahara_post_into_filed_period.sql`). Both
+ * refusals name the two routes the note then gives: date it in the current period, or take the mark off and file
+ * an amended return (Pindaan).
  */
-function notesOf(ret: SstReturn, settings: SstSettings, noInvoice?: SstNoInvoiceMoney): string[] {
+function notesOf(
+  ret: SstReturn,
+  settings: SstSettings,
+  noInvoice?: SstNoInvoiceMoney,
+  filedOn?: string | null,
+): string[] {
   const notes: string[] = [];
   const one = (n: number) => n === 1;
   if (ret.offForm.count > 0) {
@@ -137,15 +148,23 @@ function notesOf(ret: SstReturn, settings: SstSettings, noInvoice?: SstNoInvoice
   // guessed into a line: much of it may not be for a taxable service at all. The way to count it depends on the
   // basis: a payment-basis return counts receipts against invoices, and a posted receipt's split cannot be
   // changed (FIN09), so the receipt is voided and recorded again; an invoice-basis return counts the invoice.
+  // On a filed period neither of those is possible inside it, so the note gives the routes that are.
   if (ret.type === 'service' && noInvoice && noInvoice.count > 0) {
     const across = noInvoice.count > 1 ? `, across ${noInvoice.count} receipts` : '';
-    const fix =
-      settings.service_tax_basis === 'payment'
-        ? 'void the receipt and record it again against the invoice for that service (issue one first if there is none), so its tax is counted.'
-        : 'and the service has no invoice yet, issue one so its tax is counted.';
-    notes.push(
-      `Not counted: ${rm(noInvoice.amount_myr)} received with no invoice${across}. If any of it is payment for a taxable service, ${fix}`,
-    );
+    const head = `Not counted: ${rm(noInvoice.amount_myr)} received with no invoice${across}.`;
+    if (filedOn) {
+      const route =
+        settings.service_tax_basis === 'payment'
+          ? 'the receipt cannot be recorded again inside it (FIN77): issue the invoice and record the receipt in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).'
+          : 'an invoice dated inside it is refused (FIN72): issue it in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).';
+      notes.push(`${head} This period is filed, so ${route}`);
+    } else {
+      const fix =
+        settings.service_tax_basis === 'payment'
+          ? 'void the receipt and record it again against the invoice for that service (issue one first if there is none), so its tax is counted.'
+          : 'and the service has no invoice yet, issue one so its tax is counted.';
+      notes.push(`${head} If any of it is payment for a taxable service, ${fix}`);
+    }
   }
   return notes;
 }
@@ -167,17 +186,20 @@ export function SstReturnBody({
   settings,
   companyName,
   noInvoice,
+  filedOn,
 }: {
   ret: SstReturn;
   settings: SstSettings;
   companyName: string;
   /** Money received in this period with no invoice behind it (service returns only). */
   noInvoice?: SstNoInvoiceMoney;
+  /** The date the shown period was marked filed, if it was: a receipt or invoice dated inside it is refused. */
+  filedOn?: string | null;
 }) {
   const service = ret.type === 'service';
   const registration = (service ? settings.service_tax_no : settings.sales_tax_no) || 'Not registered: add the number in SST settings above';
   const deductionsTotal = ret.deductions.reduce((s, d) => s + Math.round(d.tax * 100), 0) / 100;
-  const notes = notesOf(ret, settings, noInvoice);
+  const notes = notesOf(ret, settings, noInvoice, filedOn);
   // The items the tile sums.
   const deductionsHint = service ? '13(a), 13(c) and 13(d)' : '13(a), 13(b), 13A and 13(d)';
   const partA = [
@@ -451,7 +473,13 @@ export default async function SstReportScreen({
       />
       <BentoGrid>
         {card}
-        <SstReturnBody ret={ret} settings={settings} companyName={data.companyName} noInvoice={noInvoice} />
+        <SstReturnBody
+          ret={ret}
+          settings={settings}
+          companyName={data.companyName}
+          noInvoice={noInvoice}
+          filedOn={filed[view.period.start] ?? null}
+        />
         <SstFiguresCard
           key={`${view.type}-${view.period.start}`}
           type={view.type}

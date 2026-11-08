@@ -427,6 +427,30 @@ describe('money received with no invoice on the SST Report (#222)', () => {
     expect(text).not.toContain('put it against an invoice');
   });
 
+  it('on a filed period names the refusal, because a receipt cannot be recorded again inside it', async () => {
+    // FIN77 refuses a receipt dated inside a filed period, so the unfiled wording asks for a step that is refused.
+    state.settings = async () => ({ ...SAVED, service_tax_basis: 'payment' });
+    state.noInvoice = async () => ({ count: 1, amount_myr: 1500 });
+    state.filed = async () => ({ '2026-09-01': '2026-11-02' });
+    const text = textOf(await html());
+    expect(text).toContain(
+      'RM 1,500.00 received with no invoice. This period is filed, so the receipt cannot be recorded again inside it (FIN77): issue the invoice and record the receipt in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).',
+    );
+    expect(text).not.toContain('void the receipt and record it again');
+  });
+
+  it('on a filed period, invoice basis, says the invoice cannot be dated inside it', async () => {
+    // FIN72 refuses an invoice dated inside a filed period.
+    state.settings = async () => SAVED;
+    state.noInvoice = async () => ({ count: 2, amount_myr: 2800 });
+    state.filed = async () => ({ '2026-09-01': '2026-11-02' });
+    const text = textOf(await html());
+    expect(text).toContain(
+      'RM 2,800.00 received with no invoice, across 2 receipts. This period is filed, so an invoice dated inside it is refused (FIN72): issue it in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).',
+    );
+    expect(text).not.toContain('issue one so its tax is counted');
+  });
+
   it('says nothing when every receipt in the period settles an invoice', async () => {
     state.settings = async () => SAVED;
     const text = textOf(await html());
