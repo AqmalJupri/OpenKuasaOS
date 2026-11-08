@@ -18,11 +18,18 @@
 -- The three worked examples KWSP publishes on its mandatory contribution page are
 -- checked against the proposal function's own answer, not against the rows:
 -- RM 3,250.00 is Part A 359.00 / 424.00, Part C 180.00 / 212.00, Part E 0.00 / 131.00.
+--
+-- Above RM 20,000.00 the Schedule prints no bands, and its note 2 says the shares
+-- may then be an exact percentage while "the total contribution which includes
+-- cents shall be rounded to the next ringgit". So the employee's deduction is the
+-- part's own rate on the wage to the sen, the employer's share takes the odd sen,
+-- and the two of them always add up to a whole ringgit.
 do $$
 declare
   fails text[] := '{}';
   n bigint; n2 bigint; n3 bigint;
   t text;
+  r record;
 begin
   -- ==== 1. the load ================================================================
   -- 4,411 band amounts in 11 sets, 11 rows above RM 20,000.00 (one per set) and
@@ -50,6 +57,22 @@ begin
   where table_schema = 'public' and table_name = 'hr_statutory_rules' and column_name = 'rate';
   if t is distinct from 'YES' then
     fails := array_append(fails, format('rate is still %s: a band row would have to invent one', coalesce(t, 'missing')));
+  end if;
+
+  -- The combined rate lives on the eleven rows above RM 20,000.00 and nowhere else:
+  -- a band row is one payer's figure and has no total to round.
+  select count(*) into n from information_schema.columns
+  where table_schema = 'public' and table_name = 'hr_statutory_rules' and column_name = 'total_rate';
+  if n <> 1 then
+    fails := array_append(fails, 'hr_statutory_rules has no total_rate, so the total above RM 20,000.00 is not rounded to the ringgit');
+  else
+    select count(*) into n from public.hr_statutory_rules
+    where scheme = 'epf' and total_rate is not null;
+    select count(*) into n2 from public.hr_statutory_rules
+    where scheme = 'epf' and total_rate is not null and wage_from_cents <> 2000001;
+    if n <> 11 or n2 <> 0 then
+      fails := array_append(fails, format('%s EPF rows carry a combined rate and %s of them are below RM 20,000.01, expected 11 and 0', n, n2));
+    end if;
   end if;
 
   -- ==== 2. the shape of a set ======================================================
@@ -157,12 +180,49 @@ begin
     end if;
   end loop;
 
-  -- ==== 6. above RM 20,000.00 the Schedule charges the rate on the wage =============
-  if private.hr_payroll_proposal('epf', 2000001, 30, 'citizen') <> 220000
-     or private.hr_payroll_proposal('epf', 2000001, 30, 'citizen', 'employer') <> 240000
-     or private.hr_payroll_proposal('epf', 100000000, 30, 'citizen') <> 11000000
-     or private.hr_payroll_proposal('epf', 100000000, 30, 'citizen', 'employer') <> 12000000 then
-    fails := array_append(fails, 'above RM 20,000.00 EPF is not the rate on the wage');
+  -- ==== 6. above RM 20,000.00 the shares are percentages and the total rounds up ====
+  -- The employee's deduction is exactly the part's own rate to the sen, the employer's
+  -- share takes the odd sen, and the two add up to ceil(combined rate x the wage) to
+  -- the next ringgit. The old answer rounded each share to the sen and left the total
+  -- below the Schedule's: RM 20,000.01 read 4,600.00 against 4,601.00, and further up
+  -- it was 77 to 88 sen short.
+  for r in
+    select * from (values
+      (2000001::bigint,   30, 'citizen'::text,            220000::bigint,   240100::bigint,   0.23::numeric),  -- RM 20,000.01 -> 4,601.00
+      (2000030::bigint,   30, 'citizen'::text,            220003::bigint,   240097::bigint,   0.23::numeric),  -- RM 20,000.30
+      (2000050::bigint,   30, 'citizen'::text,            220006::bigint,   240094::bigint,   0.23::numeric),  -- RM 20,000.50
+      (2500055::bigint,   30, 'citizen'::text,            275006::bigint,   300094::bigint,   0.23::numeric),  -- RM 25,000.55 -> 5,751.00
+      (100000000::bigint, 30, 'citizen'::text,            11000000::bigint, 12000000::bigint, 0.23::numeric),  -- RM 1,000,000.00, already a ringgit
+      (3000000::bigint,   65, 'permanent_resident'::text, 165000::bigint,   180000::bigint,   0.115::numeric), -- Part C, RM 30,000.00
+      (3000055::bigint,   65, 'permanent_resident'::text, 165003::bigint,   180097::bigint,   0.115::numeric), -- Part C, RM 30,000.55
+      (2200000::bigint,   65, 'citizen'::text,            0::bigint,        88000::bigint,    0.04::numeric),   -- Part E, RM 22,000.00
+      (2200030::bigint,   65, 'citizen'::text,            0::bigint,        88100::bigint,    0.04::numeric)    -- Part E, RM 22,000.30
+    ) as c(wage, age, who, employee, employer, combined)
+  loop
+    if private.hr_payroll_proposal('epf', r.wage, r.age, r.who) <> r.employee
+       or private.hr_payroll_proposal('epf', r.wage, r.age, r.who, 'employer') <> r.employer
+       or r.employee + r.employer <> ceil(r.wage * r.combined / 100) * 100 then
+      fails := array_append(fails, format('EPF above RM 20,000.00 on %s cents at age %s is %s / %s rather than %s / %s, and the total should be %s',
+        r.wage, r.age, private.hr_payroll_proposal('epf', r.wage, r.age, r.who),
+        private.hr_payroll_proposal('epf', r.wage, r.age, r.who, 'employer'), r.employee, r.employer,
+        ceil(r.wage * r.combined / 100) * 100));
+    end if;
+  end loop;
+
+  -- A sweep of every sen from RM 20,000.01 to RM 20,010.01 in all three parts: the
+  -- total is always a whole ringgit, the employee's share is the rate itself, and
+  -- nothing is left over.
+  select count(*) into n from generate_series(2000001::bigint, 2001001, 1) w
+  where (private.hr_payroll_proposal('epf', w, 30, 'citizen')
+       + private.hr_payroll_proposal('epf', w, 30, 'citizen', 'employer')) <> ceil(w * 0.23 / 100) * 100
+     or private.hr_payroll_proposal('epf', w, 30, 'citizen') <> round(w * 0.11)
+     or private.hr_payroll_proposal('epf', w, 65, 'permanent_resident')
+       + private.hr_payroll_proposal('epf', w, 65, 'permanent_resident', 'employer') <> ceil(w * 0.115 / 100) * 100
+     or private.hr_payroll_proposal('epf', w, 65, 'permanent_resident') <> round(w * 0.055)
+     or private.hr_payroll_proposal('epf', w, 65, 'citizen', 'employer') <> ceil(w * 0.04 / 100) * 100
+     or private.hr_payroll_proposal('epf', w, 65, 'citizen') <> 0;
+  if n <> 0 then
+    fails := array_append(fails, format('%s of 1,001 wages above RM 20,000.00 do not add up to a whole ringgit', n));
   end if;
 
   -- ==== 7. the categories this migration keeps =====================================
