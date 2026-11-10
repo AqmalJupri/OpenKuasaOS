@@ -113,10 +113,12 @@ const lines = (n: number) => (n === 1 ? '1 line' : `${n} lines`);
  * zero, and on a service return the money received with no invoice behind it.
  *
  * On a period already marked filed the no-invoice note says so, because the step it asks for is refused there:
- * a receipt dated inside a filed period stops on FIN77 (`20261202100000_bendahara_payment_into_filed_period.sql`)
- * and an invoice dated inside one stops on FIN72 (`20261129090000_bendahara_post_into_filed_period.sql`). Both
- * refusals name the two routes the note then gives: date it in the current period, or take the mark off and file
- * an amended return (Pindaan).
+ * an invoice dated inside a filed period stops on FIN72 (`20261129090000_bendahara_post_into_filed_period.sql`)
+ * and a receipt that pays one stops on FIN77 (`20261202100000_bendahara_payment_into_filed_period.sql`). A
+ * receipt with no invoice behind it trips neither, because it pays nothing and moves no figure, so the note
+ * names the two refusals that do apply and voids that receipt before asking for the invoice. Both refusals
+ * name the routes the note then gives: date it in the current period, or take the mark off and file an amended
+ * return (Pindaan).
  */
 function notesOf(
   ret: SstReturn,
@@ -153,9 +155,12 @@ function notesOf(
     const across = noInvoice.count > 1 ? `, across ${noInvoice.count} receipts` : '';
     const head = `Not counted: ${rm(noInvoice.amount_myr)} received with no invoice${across}.`;
     if (filedOn) {
+      // A receipt with no invoice is neither an invoice nor a receipt that pays one, so neither FIN72 nor FIN77
+      // refuses it: the two refusals below are what the step inside the filed period meets, and both clear in
+      // the current period.
       const route =
         settings.service_tax_basis === 'payment'
-          ? 'the receipt cannot be recorded again inside it (FIN77): issue the invoice and record the receipt in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).'
+          ? 'an invoice dated inside it is refused (FIN72), and a receipt that pays one cannot be posted inside it (FIN77): void the receipt, issue the invoice in the current period and record the receipt against it there, so its tax is counted in the current return, or take the filed mark off the return and file an amended return (Pindaan).'
           : 'an invoice dated inside it is refused (FIN72): issue it in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).';
       notes.push(`${head} This period is filed, so ${route}`);
     } else {
