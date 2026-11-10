@@ -189,6 +189,12 @@ const privateFields = z
       .describe(
         'Citizenship for EPF and EIS: citizen, permanent_resident, non_citizen_before_1998 (a non-citizen who joined EPF before 1 August 1998) or non_citizen. Null clears it, which pays as a citizen.',
       ),
+    eis_exempt: z
+      .boolean()
+      .optional()
+      .describe(
+        'No EIS contribution. Set it for an employee who reaches 57 without ever having paid EIS; it is only read from 57, so a tick on a younger employee changes nothing.',
+      ),
     phone: text(30),
     address: text(300),
     base_salary: z
@@ -298,6 +304,7 @@ function privateValues(input: EmployeePrivateInput | undefined): Record<string, 
   }
   if (input.date_of_birth !== undefined) out.date_of_birth = input.date_of_birth;
   if (input.citizenship !== undefined) out.citizenship = input.citizenship;
+  if (input.eis_exempt !== undefined) out.eis_exempt = input.eis_exempt;
   return out;
 }
 

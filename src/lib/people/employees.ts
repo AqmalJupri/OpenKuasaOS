@@ -229,6 +229,8 @@ export type EmployeeFormValues = {
   date_of_birth: string;
   /** `''` is not recorded. */
   citizenship: Citizenship | '';
+  /** No EIS: an employee who reached 57 without having been insured before. */
+  eis_exempt: boolean;
   phone: string;
   address: string;
   /** In ringgit, as typed. */
@@ -269,6 +271,7 @@ export function employeeFormValues(employee: Employee | null, priv: EmployeePriv
     nric: priv?.nric ?? '',
     date_of_birth: priv?.date_of_birth ?? '',
     citizenship: priv?.citizenship ?? '',
+    eis_exempt: priv?.eis_exempt ?? false,
     phone: priv?.phone ?? '',
     address: priv?.address ?? '',
     base_salary: priv?.base_salary_cents == null ? '' : String(priv.base_salary_cents / 100),
@@ -318,6 +321,7 @@ export function toEmployeeInput(
       base_salary: salary,
       date_of_birth: orNull(values.date_of_birth),
       citizenship: values.citizenship || null,
+      eis_exempt: values.eis_exempt,
     };
     for (const key of PRIVATE_TEXT_FIELDS) priv[key] = orNull(values[key]);
     input.private = priv;

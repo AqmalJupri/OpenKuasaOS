@@ -339,12 +339,13 @@ describe('the employee form', () => {
   it('starts from the saved record, with the salary back in ringgit', () => {
     const values = employeeFormValues(employees[0], {
       employee_id: employees[0].id, nric: '900101-14-5678', date_of_birth: '1990-01-09', citizenship: 'permanent_resident',
-      phone: null, address: null,
+      eis_exempt: true, phone: null, address: null,
       base_salary_cents: 350050, bank_name: null, bank_account: null, epf_no: null, socso_no: null, tax_no: null,
       emergency_contact_name: null, emergency_contact_phone: null,
     });
     expect(values).toMatchObject({
       name: 'Aisyah Rahim', nric: '900101-14-5678', citizenship: 'permanent_resident', base_salary: '3500.5', phone: '',
+      eis_exempt: true,
     });
   });
 
@@ -368,6 +369,16 @@ describe('the employee form', () => {
     expect(chosen.ok && chosen.input.private).toMatchObject({ citizenship: 'non_citizen_before_1998' });
     const unset = toEmployeeInput({ ...employeeFormValues(null, null), name: 'A' }, { includePrivate: true });
     expect(unset.ok && unset.input.private).toMatchObject({ citizenship: null });
+  });
+
+  it('sends the EIS exemption as a tick, and false for an employee who never had one', () => {
+    const ticked = toEmployeeInput(
+      { ...employeeFormValues(null, null), name: 'A', eis_exempt: true },
+      { includePrivate: true },
+    );
+    expect(ticked.ok && ticked.input.private).toMatchObject({ eis_exempt: true });
+    const fresh = toEmployeeInput({ ...employeeFormValues(null, null), name: 'A' }, { includePrivate: true });
+    expect(fresh.ok && fresh.input.private).toMatchObject({ eis_exempt: false });
   });
 
   it('leaves the private details out entirely when they could not be loaded, so a save cannot blank them', () => {

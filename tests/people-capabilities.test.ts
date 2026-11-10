@@ -265,7 +265,8 @@ describe('createEmployee', () => {
     await createEmployee(ctxOf(client), {
       name: 'Farah Idris',
       private: {
-        base_salary: 3500.5, nric: ' 900101-14-5678 ', date_of_birth: '1990-01-09', citizenship: 'permanent_resident', phone: '',
+        base_salary: 3500.5, nric: ' 900101-14-5678 ', date_of_birth: '1990-01-09', citizenship: 'permanent_resident',
+        eis_exempt: true, phone: '',
       },
     });
     expect(calls.find((c) => c.table === 'hr_employees' && c.op === 'insert')!.values).toMatchObject({
@@ -281,8 +282,15 @@ describe('createEmployee', () => {
       nric: '900101-14-5678',
       date_of_birth: '1990-01-09',
       citizenship: 'permanent_resident',
+      eis_exempt: true,
       phone: null,
     });
+  });
+
+  it('takes the EIS exemption as a tick, and leaves it out when it is not sent', () => {
+    expect(createEmployeeInput.safeParse({ name: 'A', private: { eis_exempt: true } }).success).toBe(true);
+    expect(createEmployeeInput.safeParse({ name: 'A', private: { eis_exempt: false } }).success).toBe(true);
+    expect(createEmployeeInput.safeParse({ name: 'A', private: { eis_exempt: 'yes' } }).success).toBe(false);
   });
 
   it('takes only KWSP\'s four citizenship categories, or null to clear', () => {
