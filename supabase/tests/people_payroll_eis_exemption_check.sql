@@ -5,9 +5,13 @@
 --
 -- Five employees on the same basic RM3,000 in a fixed month of 2025, differing
 -- only in the birthday that decides the age, so no figure depends on today:
---   aged 57, 58 and 59   EIS 600 on both sides, the 0.2% the rule table holds
---   aged 45              the same 600, well inside the bands
---   aged 60              EIS 0, the band's own ceiling
+--   aged 57, 58 and 59   EIS on both sides, the rule table's own figure for the wage
+--   aged 45              the same figure, well inside the bands
+--   aged 60              EIS 0, the schedule's own ceiling
+-- The figure is read from the rule row instead of being written here, because the
+-- band load in issue #423 moves it: 0.2% of RM3,000 is 600, and the schedule's
+-- band for RM2,900.01 to RM3,000.00 prints 590. Both are correct answers to
+-- different rules, so a literal would tie this check to whichever landed first.
 -- then the exemption ticked on all five: 57, 58 and 59 pay no EIS, the 45 year
 -- old pays as before because the flag is only read from 57, and the 60 year old
 -- does not move. Every employee's EPF and SOCSO figures are compared with the
@@ -32,6 +36,8 @@ declare
   fails text[] := '{}';
   got text;
   want text;
+  eis_share bigint;
+  want_eis text;
   mar date := date '2025-03-01';
 begin
   begin
@@ -99,9 +105,30 @@ begin
            (emp60, org, 300000, date '1964-06-15');
 
     -- ---- the rule table still charges 57, so the exemption is the column --
-    if private.hr_payroll_proposal('eis', 300000, 57, 'citizen') <> 600 then
-      fails := array_append(fails, 'the EIS rule table no longer proposes 600 at 57, so this check proves nothing');
+    -- The rule's own figure for these wages: the schedule's amount when the row
+    -- carries one, the rate rounded when it does not. The amount is read through
+    -- to_jsonb so this file runs both before and after the band column exists
+    -- (issue #423 loads it after this branch).
+    select least(coalesce((to_jsonb(s) ->> 'amount_cents')::bigint,
+                          round(300000 * s.rate / s.round_to_cents) * s.round_to_cents),
+                 s.max_cents)
+    into eis_share
+    from public.hr_statutory_rules s
+    where s.scheme = 'eis' and s.payer = 'employee' and s.citizenship = 'citizen'
+      and s.wage_from_cents <= 300000
+      and 57 >= s.employee_from_age and 57 < coalesce(s.employee_until_age, 1000)
+    order by s.wage_from_cents desc
+    limit 1;
+    if coalesce(eis_share, 0) <= 0 then
+      fails := array_append(fails,
+        'the EIS rule table proposes nothing at 57, so this check proves nothing');
     end if;
+    if private.hr_payroll_proposal('eis', 300000, 57, 'citizen') is distinct from eis_share then
+      fails := array_append(fails, format(
+        'the proposal reads %s where the rule row says %s, so the exemption is not the only thing that moved',
+        private.hr_payroll_proposal('eis', 300000, 57, 'citizen'), coalesce(eis_share::text, 'nothing')));
+    end if;
+    want_eis := format('eis %s %s epf 33000 socso 1500', eis_share, eis_share);
 
     -- ---- the run ---------------------------------------------------------
     perform set_config('request.jwt.claims',
@@ -128,8 +155,7 @@ begin
     -- ---- unticked: the age bands decide, and 57, 58, 59 and 45 are inside -
     for who in select b.no from x_before b where b.no <> '60' order by b.no loop
       select b.got into got from x_before b where b.no = who;
-      fails := fails || pg_temp.x_expect(format('aged %s, unticked', who), got,
-        'eis 600 600 epf 33000 socso 1500');
+      fails := fails || pg_temp.x_expect(format('aged %s, unticked', who), got, want_eis);
     end loop;
     select b.got into got from x_before b where b.no = '60';
     if got not like 'eis 0 0 %' then
@@ -158,8 +184,7 @@ begin
     update public.hr_employee_private set eis_exempt = false where employee_id = emp57;
     select b.slip into slip from x_before b where b.no = '57';
     perform private.hr_payroll_refresh_payslip(slip);
-    fails := fails || pg_temp.x_expect('aged 57, unticked again', pg_temp.x_eis(slip),
-      'eis 600 600 epf 33000 socso 1500');
+    fails := fails || pg_temp.x_expect('aged 57, unticked again', pg_temp.x_eis(slip), want_eis);
 
     -- ---- what it all says ------------------------------------------------
     if cardinality(fails) = 0 then
