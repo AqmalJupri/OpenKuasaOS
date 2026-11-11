@@ -158,11 +158,15 @@ begin
   end loop;
 
   -- ==== 6. above RM 20,000.00 the Schedule charges the rate on the wage =============
+  -- Each share is the exact percentage; the total is then rounded up to the next
+  -- ringgit and the employer's figure carries it (#423 decision 3, pinned by
+  -- people_payroll_epf_total_rounding_check). At RM 20,000.01 that is 2,200.00 +
+  -- 2,401.00 = 4,601.00, where the two rates alone come to 4,600.00.
   if private.hr_payroll_proposal('epf', 2000001, 30, 'citizen') <> 220000
-     or private.hr_payroll_proposal('epf', 2000001, 30, 'citizen', 'employer') <> 240000
+     or private.hr_payroll_proposal('epf', 2000001, 30, 'citizen', 'employer') <> 240100
      or private.hr_payroll_proposal('epf', 100000000, 30, 'citizen') <> 11000000
      or private.hr_payroll_proposal('epf', 100000000, 30, 'citizen', 'employer') <> 12000000 then
-    fails := array_append(fails, 'above RM 20,000.00 EPF is not the rate on the wage');
+    fails := array_append(fails, 'above RM 20,000.00 EPF is not the rate on the wage, with the total rounded up');
   end if;
 
   -- ==== 7. the categories this migration keeps =====================================
