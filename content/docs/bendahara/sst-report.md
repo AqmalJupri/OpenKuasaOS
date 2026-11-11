@@ -19,7 +19,7 @@ The SST Report is a summary of your SST-02 return, to copy into MySST. Nothing i
 
 1. Open **SST Report** under **Compliance** in the Bendahara menu.
 2. In **SST settings**, choose the pair of months under **Periods follow**: the two months of each taxable period, from your Customs (JKDM) registration.
-3. Under **Service tax counted on**, choose **Payment received** or **Invoice issued (approved by Customs)**. **Payment received** is the default, so a workspace that never changes it gets **Not ready yet** for service tax (see below).
+3. Under **Service tax counted on**, choose **Payment received** or **Invoice issued (approved by Customs)**. **Payment received** is the default, and it is the basis the law asks for.
 4. Type your **Service tax no.** and **Sales tax no.** If your company details have an SST number and both numbers here are still empty, you can click **Use for service tax** or **Use for sales tax**.
 5. Click **Save**.
 
@@ -31,7 +31,7 @@ Until the taxable period is set, the screen asks you to set it to see your retur
 2. The return shows **Part A** (the business and the period), **Part B1** (Sales / Service Details: taxable services or goods, by kind), **Part B2** (value and tax at each rate) and **Deductions and tax payable** (items 13 and 14).
 3. Sales tax is counted when the goods are sold, by the invoice date. Service tax is counted on the basis you chose.
 
-**Payment basis is not ready yet.** If service tax is counted on **Payment received**, the service tax return shows **Not ready yet** in place of Parts B1 and B2 and items 12 to 14, with the note "Not ready yet: service tax on payment basis is counted from payments received, which comes in the next step." Its payable amount in **Periods** also reads "not ready yet".
+**Payment basis** counts the tax when the money arrives: the service return follows the receipts, and the note under Part A says so. A credit note issued since lowers what its invoice still owes, and that fall comes out as 13(a) rather than a smaller Part B2 line.
 
 Part D (sales / services exempted from tax / non-taxable service, item 18 on a sales return) is worked out once invoice lines can carry an exemption reason. Imported services and debit notes are not counted yet. Items 15 and 16 (late payment penalty) are worked out by Customs in MySST, so they are not shown.
 
@@ -51,7 +51,7 @@ In **Typed-in figures**, owners and admins can enter figures from Customs' appro
 - Service tax: **11(e) Credit and charge cards (number)**, **13(c) Approved service tax deduction (RM)** and **13(d) Bad debt relief (approved) (RM)**.
 - Sales tax: **13(b) Sales tax deduction (RM)**, **13A Adjustment under sales tax deduction (RM)** and **13(d) Bad debt relief (approved) (RM)**.
 
-This card is not shown while the service tax return is not ready.
+These figures save against the period and tax type they were typed for. Saving them on a return that is marked filed is refused until the mark is taken off.
 
 ### Mark a return as filed
 
@@ -59,11 +59,14 @@ Bendahara cannot see MySST, so you mark a return as filed yourself. In **Periods
 
 A voided invoice or credit note counts in no return. While a return is marked filed, its figures cannot change without anyone noticing: an invoice or credit note on it cannot be voided, and a draft dated inside its period cannot be posted or issued.
 
+On a workspace that counts service tax on **Payment received**, a receipt dated inside a filed period is refused the same way, because there the return follows the receipts: posting it would add its share of the invoice's tax, and voiding it would take the share away. On **Invoice issued** basis a receipt moves no return figure, so nothing is refused.
+
 - A sale that falls through after filing is corrected with a credit note, which goes in 13(a) of the period it is dated in.
 - An invoice or credit note that should never have been issued is an amended return (Pindaan): click **Undo** to take the mark off, void it, and file the amended return in MySST.
 - A credit taken back after filing is a debit note, which Bendahara does not issue yet.
 - A draft invoice dated inside a filed period: date it in the current period, or take the mark off and file an amended return.
 - A draft credit note dated inside a filed period: date it in the current period. A credit note for tax declared in an earlier return is deducted in the period it is issued.
+- A draft receipt dated inside a filed period, on payment basis: date it in the current period. A receipt already on a filed return is voided only after taking the mark off, and the amended return follows.
 
 ## Check before you file
 
@@ -82,6 +85,7 @@ The return follows what Bendahara does, which is not always the same as the offi
 - **"Only an owner or admin can mark a return as filed."**
 - **"This invoice is on the … return, which is marked filed. Issue a credit note instead. …"** or **"This credit note is on the … return, which is marked filed. …"** See **Mark a return as filed** above.
 - **"This invoice is dated in the … return, which is marked filed. …"** or **"This credit note is dated in the … return, which is marked filed. …"** when you post or issue a draft. See **Mark a return as filed** above.
+- **"This receipt is dated in the … return, which counts service tax on the money received. …"** or **"This receipt is on the … return, which counts service tax on the money received. …"** when you post or void a receipt, on a workspace that counts service tax on payment received. See **Mark a return as filed** above.
 
 ## Related
 
