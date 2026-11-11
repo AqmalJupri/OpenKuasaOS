@@ -6,7 +6,7 @@
  */
 import { monthYearLabel } from './dates';
 import { STATUTORY_FIELDS } from './statutory-fields';
-import { PAYSLIP_EARNING_TYPES, type PayrollRun, type PayslipEarningType, type StatutoryField } from './types';
+import { EARNING_TYPE_WAGES, PAYSLIP_EARNING_TYPES, type PayrollRun, type PayslipEarningType, type StatutoryField } from './types';
 
 type Converted<T> = { ok: true; input: T } | { ok: false; error: string };
 const bad = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -76,16 +76,25 @@ export function nextRunMonth(runs: Pick<PayrollRun, 'period_month'>[], today: st
 const LABEL_MAX = 80;
 
 /**
+ * What a line of that type counts towards, in one sentence, built from its two flags so the sentence cannot say
+ * something the flags do not.
+ */
+export function wagesNote({ inEpf, inSocso }: { inEpf: boolean; inSocso: boolean }): string {
+  if (inEpf && inSocso) return 'Counts towards EPF, SOCSO and EIS wages.';
+  if (inEpf) return 'Counts towards EPF wages only, not SOCSO or EIS.';
+  if (inSocso) return 'Counts towards SOCSO and EIS wages only, not EPF.';
+  return 'Not EPF, SOCSO or EIS wages.';
+}
+
+/**
  * The earning types an owner or admin can put on a line, in the order the form shows them, with what each one
  * counts towards. `overtime` is not here: those lines are the system's own, made from approved overtime.
  */
-export const EARNING_TYPE_OPTIONS = [
-  { value: 'ordinary', label: 'Ordinary pay', note: 'Counts towards EPF, SOCSO and EIS wages.' },
-  { value: 'bonus', label: 'Bonus', note: 'Counts towards EPF wages only, not SOCSO or EIS.' },
-  { value: 'travel_allowance', label: 'Travel allowance', note: 'Not EPF, SOCSO or EIS wages.' },
-  { value: 'service_charge', label: 'Service charge', note: 'Counts towards SOCSO and EIS wages only, not EPF.' },
-  { value: 'gratuity', label: 'Gratuity', note: 'Not EPF, SOCSO or EIS wages.' },
-] as const satisfies readonly { value: PayslipEarningType; label: string; note: string }[];
+export const EARNING_TYPE_OPTIONS = EARNING_TYPE_WAGES.map((row) => ({
+  value: row.value,
+  label: row.label,
+  note: wagesNote(row),
+})) satisfies readonly { value: PayslipEarningType; label: string; note: string }[];
 
 /** What a line of that type counts towards, in one sentence, or null for ordinary pay, which needs no note. */
 export function earningTypeNote(type: PayslipEarningType): string | null {
