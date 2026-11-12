@@ -12,6 +12,11 @@
 -- unchanged. The flag only takes effect from 57, so a tick on the wrong row
 -- cannot exempt someone still inside the scheme, and the band's own ceiling at
 -- 60 keeps working beside it.
+--
+-- This file runs after 20261203090000_people_payroll_earning_type_mapping, which
+-- rewrites the same function to read each line's wage base from
+-- hr_earning_type_wages. Both changes are carried in one body below: restating
+-- either one alone would be a silent revert of the other.
 
 -- ---- the fact ---------------------------------------------------------------
 alter table public.hr_employee_private
@@ -43,17 +48,19 @@ begin
   select p.* into slip from public.hr_payslips p where p.id = p_payslip;
   select coalesce(sum(l.amount_cents) filter (where l.kind = 'earning'), 0),
          coalesce(sum(l.amount_cents) filter (where l.kind = 'earning' and l.source <> 'overtime'
-           and l.earning_type not in ('service_charge','gratuity','travel_allowance')), 0),
-         coalesce(sum(l.amount_cents) filter (where l.kind = 'earning'
-           and l.earning_type not in ('bonus','gratuity','travel_allowance')), 0),
+           and w.in_epf), 0),
+         coalesce(sum(l.amount_cents) filter (where l.kind = 'earning' and w.in_socso), 0),
          coalesce(sum(l.amount_cents) filter (where l.kind = 'unpaid'), 0),
          coalesce(sum(l.amount_cents) filter (where l.kind = 'deduction'), 0)
   into earnings, earnings_epf, earnings_socso, unpaid, deductions
-  from public.hr_payslip_lines l where l.payslip_id = slip.id;
+  from public.hr_payslip_lines l
+  -- Which wage base takes a line is the row's own two flags, read here rather than restated.
+  join public.hr_earning_type_wages w on w.earning_type = l.earning_type
+  where l.payslip_id = slip.id;
   gross := greatest(slip.basic_cents + earnings - unpaid, 0);
-  -- EPF wages: no overtime, no service charge, no gratuity, no travel allowance.
+  -- EPF wages: every earning row whose in_epf is set, and no overtime line.
   epf_wages := greatest(slip.basic_cents + earnings_epf - unpaid, 0);
-  -- SOCSO and EIS wages: overtime and a service charge in, an annual bonus, a gratuity and a travel allowance out.
+  -- SOCSO and EIS wages: every earning row whose in_socso is set, overtime included.
   socso_wages := greatest(slip.basic_cents + earnings_socso - unpaid, 0);
   -- The age already reached before the month began: a birthday inside the month
   -- changes the shares from the next month.
