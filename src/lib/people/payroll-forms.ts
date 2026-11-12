@@ -86,6 +86,23 @@ export function wagesNote({ inEpf, inSocso }: { inEpf: boolean; inSocso: boolean
   return 'Not EPF, SOCSO or EIS wages.';
 }
 
+/** The same flags as a short phrase, for a sentence that lists every type at once: "EPF only", "none". */
+export function wagesPhrase({ inEpf, inSocso }: { inEpf: boolean; inSocso: boolean }): string {
+  if (inEpf && inSocso) return 'all three';
+  if (inEpf) return 'EPF only';
+  if (inSocso) return 'SOCSO and EIS only';
+  return 'none';
+}
+
+/**
+ * Every type with what it counts towards, in the mapping's order, for anything that has to name them all (the
+ * assistant's `earning_type` description). Built from the flags, so a type added to the mapping is described here
+ * without a second edit.
+ */
+export function earningTypeChoices(): string {
+  return EARNING_TYPE_WAGES.map((row) => `${row.value} towards ${wagesPhrase(row)}`).join('; ');
+}
+
 /**
  * The earning types an owner or admin can put on a line, in the order the form shows them, with what each one
  * counts towards. `overtime` is not here: those lines are the system's own, made from approved overtime.

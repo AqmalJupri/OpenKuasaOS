@@ -4,8 +4,9 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { createPeopleTools } from '@/lib/ai/people-tools';
 import { EARNING_TYPE_OPTIONS, earningTypeNote, wagesNote } from '@/lib/people/payroll-forms';
-import { EARNING_TYPE_WAGES, PAYSLIP_EARNING_TYPES } from '@/lib/people/types';
+import { EARNING_TYPE_WAGES, PAYSLIP_EARNING_TYPES, type PeopleData, type PeopleViewer } from '@/lib/people/types';
 
 const FILE = '20261203090000_people_payroll_earning_type_mapping.sql';
 
@@ -72,6 +73,34 @@ describe('the sentence built from the flags', () => {
         continue;
       }
       expect(earningTypeNote(row.value), row.value).toBe(wagesNote({ inEpf: row.inEpf, inSocso: row.inSocso }));
+    }
+  });
+});
+
+describe('the assistant is told the same mapping', () => {
+  const hrViewer: PeopleViewer = { employeeId: null, isHr: true, isDemo: false };
+  const hrWrite = {
+    ctx: { client: {} as never, orgId: 'org-1' },
+    tier: 'hr' as const,
+    employeeId: null,
+    receipt: null,
+    userId: 'u1',
+  };
+
+  /** What the payroll assistant's `earning_type` description says, on a tool set built from no data. */
+  const earningTypeDescription = () => {
+    const built = createPeopleTools({} as PeopleData, hrViewer, new Date('2026-10-15T00:00:00Z'), hrWrite);
+    return (
+      (built.savePayslipLine as unknown as { inputSchema: { shape: { earning_type: { description?: string } } } })
+        .inputSchema.shape.earning_type.description ?? ''
+    );
+  };
+
+  test('every type is described from its own flags, so a type added to the mapping is described too', () => {
+    const description = earningTypeDescription();
+    for (const row of EARNING_TYPE_WAGES) {
+      const phrase = row.inEpf && row.inSocso ? 'all three' : row.inEpf ? 'EPF only' : row.inSocso ? 'SOCSO and EIS only' : 'none';
+      expect(description, row.value).toContain(`${row.value} towards ${phrase}`);
     }
   });
 });
