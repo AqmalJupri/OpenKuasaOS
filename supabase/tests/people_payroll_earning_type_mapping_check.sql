@@ -11,8 +11,11 @@
 --   the bonus row says in_epf false      its EPF wages lose it, with the line untouched
 --   a type the table does not hold       refused at the column, not only by the save function
 --
--- The rates are the ones hr_statutory_rules holds (a rate and a cap); the banded
--- tables on #423 are a separate change and move only the money, not the mapping.
+-- EIS is read from the rule table rather than written here, because the banded tables
+-- on #423 move the printed figure for a wage (0.2% of RM3,000 is 600, and the
+-- schedule's band prints 590). A literal would tie this check to whichever of the two
+-- landed first, and EIS is not what this file asserts: the payslip's own answer only
+-- has to equal the rule's, and people_payroll_eis_bands_check pins the figures.
 do $$
 declare
   org uuid := gen_random_uuid();
@@ -26,6 +29,8 @@ declare
   who uuid := owner_id;
   fails text[] := '{}';
   want text;
+  eis_basic bigint;
+  eis_bonus bigint;
 begin
   begin
     -- ---- helpers (temporary, rolled back with the rest) ------------------
@@ -99,20 +104,25 @@ begin
     end if;
     r := pg_temp.et_try(owner_id, format('select public.hr_save_payslip_line(%L, null, ''earning'', ''Bonus'', 200000, ''bonus'')', slip));
     if r ? 'refused' then fails := array_append(fails, format('a bonus was refused: %s', r ->> 'refused')); end if;
+    -- The rule table's own figure for each EIS wage base: RM3,000 alone, then with the bonus.
+    eis_basic := private.hr_payroll_proposal('eis', 300000,
+      private.hr_payroll_age_on(emp, (mar - interval '1 month')::date), 'citizen');
+    eis_bonus := private.hr_payroll_proposal('eis', 500000,
+      private.hr_payroll_age_on(emp, (mar - interval '1 month')::date), 'citizen');
     fails := fails || pg_temp.et_expect('basic RM3,000 and a bonus RM2,000', pg_temp.et_slip(slip),
-      'gross 500000 epf 55000 socso 1500 eis 600 net 442900');
+      format('gross 500000 epf 55000 socso 1500 eis %s net %s', eis_basic, 500000 - 55000 - 1500 - eis_basic));
 
     -- ---- one row says a bonus is SOCSO and EIS wages too ------------------
     update public.hr_earning_type_wages set in_socso = true where earning_type = 'bonus';
     perform private.hr_payroll_refresh_payslip(slip);
     fails := fails || pg_temp.et_expect('the bonus row says in_socso: the same payslip, one row moved', pg_temp.et_slip(slip),
-      'gross 500000 epf 55000 socso 2500 eis 1000 net 441500');
+      format('gross 500000 epf 55000 socso 2500 eis %s net %s', eis_bonus, 500000 - 55000 - 2500 - eis_bonus));
 
     -- ---- and one says it is not EPF wages --------------------------------
     update public.hr_earning_type_wages set in_epf = false where earning_type = 'bonus';
     perform private.hr_payroll_refresh_payslip(slip);
     fails := fails || pg_temp.et_expect('the bonus row says in_epf false: the line is untouched', pg_temp.et_slip(slip),
-      'gross 500000 epf 33000 socso 2500 eis 1000 net 463500');
+      format('gross 500000 epf 33000 socso 2500 eis %s net %s', eis_bonus, 500000 - 33000 - 2500 - eis_bonus));
     update public.hr_earning_type_wages set in_epf = true, in_socso = false where earning_type = 'bonus';
 
     -- ---- a type the table does not hold cannot be stored -----------------
