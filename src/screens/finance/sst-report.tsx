@@ -157,12 +157,13 @@ function notesOf(
     if (filedOn) {
       // A receipt with no invoice is neither an invoice nor a receipt that pays one, so neither FIN72 nor FIN77
       // refuses it: the two refusals below are what the step inside the filed period meets, and both clear in
-      // the current period.
+      // the current period. The note keeps the "if any of it" condition, because much of this money may be
+      // capital, a loan or interest, and names the refusals without their codes, because it is read by owners.
       const route =
         settings.service_tax_basis === 'payment'
-          ? 'an invoice dated inside it is refused (FIN72), and a receipt that pays one cannot be posted inside it (FIN77): void the receipt, issue the invoice in the current period and record the receipt against it there, so its tax is counted in the current return, or take the filed mark off the return and file an amended return (Pindaan).'
-          : 'an invoice dated inside it is refused (FIN72): issue it in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).';
-      notes.push(`${head} This period is filed, so ${route}`);
+          ? 'If any of it is payment for a taxable service: this period is filed, so neither an invoice nor a receipt that pays one can be dated inside it. Void the receipt, issue the invoice in the current period and record the receipt against it there, so its tax is counted in the current return, or take the filed mark off the return and file an amended return (Pindaan).'
+          : 'If any of it is payment for a taxable service that has no invoice yet: this period is filed, so an invoice cannot be dated inside it. Issue the invoice in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).';
+      notes.push(`${head} ${route}`);
     } else {
       const fix =
         settings.service_tax_basis === 'payment'

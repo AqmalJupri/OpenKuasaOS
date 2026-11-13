@@ -435,9 +435,11 @@ describe('money received with no invoice on the SST Report (#222)', () => {
     state.filed = async () => ({ '2026-09-01': '2026-11-02' });
     const text = textOf(await html());
     expect(text).toContain(
-      'RM 1,500.00 received with no invoice. This period is filed, so an invoice dated inside it is refused (FIN72), and a receipt that pays one cannot be posted inside it (FIN77): void the receipt, issue the invoice in the current period and record the receipt against it there, so its tax is counted in the current return, or take the filed mark off the return and file an amended return (Pindaan).',
+      'RM 1,500.00 received with no invoice. If any of it is payment for a taxable service: this period is filed, so neither an invoice nor a receipt that pays one can be dated inside it. Void the receipt, issue the invoice in the current period and record the receipt against it there, so its tax is counted in the current return, or take the filed mark off the return and file an amended return (Pindaan).',
     );
     expect(text).not.toContain('void the receipt and record it again');
+    // The note is for owners, so it names the refusal rather than its code.
+    expect(text).not.toMatch(/FIN7[27]/);
   });
 
   it('on a filed period, invoice basis, says the invoice cannot be dated inside it', async () => {
@@ -447,9 +449,10 @@ describe('money received with no invoice on the SST Report (#222)', () => {
     state.filed = async () => ({ '2026-09-01': '2026-11-02' });
     const text = textOf(await html());
     expect(text).toContain(
-      'RM 2,800.00 received with no invoice, across 2 receipts. This period is filed, so an invoice dated inside it is refused (FIN72): issue it in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).',
+      'RM 2,800.00 received with no invoice, across 2 receipts. If any of it is payment for a taxable service that has no invoice yet: this period is filed, so an invoice cannot be dated inside it. Issue the invoice in the current period, so its tax is counted there, or take the filed mark off the return and file an amended return (Pindaan).',
     );
     expect(text).not.toContain('issue one so its tax is counted');
+    expect(text).not.toMatch(/FIN72/);
   });
 
   it('says nothing when every receipt in the period settles an invoice', async () => {
