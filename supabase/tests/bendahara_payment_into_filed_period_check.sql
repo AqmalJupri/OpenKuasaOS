@@ -245,8 +245,18 @@ begin
   got := public.bendahara_paid_post(org, rcpt);
   if got <> 'ok' then fails := fails || format('12: on invoice basis the post answered %s', got); end if;
 
-  -- ---- 13: back on payment basis, the same receipt is refused ====================
+  -- ---- 13: the basis cannot move while the return is filed, and the way through ===
+  begin
+    update public.finance_sst_settings set service_tax_basis = 'payment' where org_id = org;
+    fails := fails || '13: the basis changed while the return was filed'::text;
+  exception when sqlstate 'FIN79' then
+    null;
+  end;
+  -- The app's own way through, which 20261202110000 names in that sentence: the
+  -- mark off, the setting changed, the mark back on.
+  delete from public.finance_sst_returns where org_id = org and tax_type = 'service' and period_start = '2026-09-01';
   update public.finance_sst_settings set service_tax_basis = 'payment' where org_id = org;
+  insert into public.finance_sst_returns (org_id, tax_type, period_start, filed_on) values (org, 'service', '2026-09-01', '2026-11-21');
   rcpt := public.bendahara_paid_receipt(org, bank, '2026-10-22', jsonb_build_array(jsonb_build_object('invoice_id', s6, 'amount', 500)));
   got := public.bendahara_paid_post(org, rcpt);
   if got not like 'FIN77:%' then fails := fails || format('13: back on payment basis the post answered %s', got); end if;
