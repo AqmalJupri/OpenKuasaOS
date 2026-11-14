@@ -41,10 +41,16 @@
 -- ---- the column a band's figure lives in --------------------------------
 -- rate keeps its range and loses only its NOT NULL: a band row has no rate, and a
 -- row that carried a meaningless one would be read as a rate by anything that
--- looked at the column instead of the amount.
+-- looked at the column instead of the amount. The NOT NULL was the only thing
+-- saying a row has to carry a figure at all, so a check takes its place: without
+-- one, a row with neither column is accepted, wins the wage lookup, and pays 0
+-- through the function's closing coalesce, so the wage it covers contributes
+-- nothing to EPF, SOCSO or EIS and nothing reports it.
 alter table public.hr_statutory_rules
   alter column rate drop not null,
-  add column amount_cents bigint check (amount_cents is null or amount_cents >= 0);
+  add column amount_cents bigint check (amount_cents is null or amount_cents >= 0),
+  add constraint hr_statutory_rules_rate_or_amount
+    check (rate is not null or amount_cents is not null);
 
 -- The rate rows this migration replaces. Every EPF row is rewritten below, so the
 -- delete takes all of them, not only the ones a band supersedes.

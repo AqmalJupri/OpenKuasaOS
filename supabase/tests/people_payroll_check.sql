@@ -197,6 +197,16 @@ begin
    and a.employee_from_age < coalesce(b.employee_until_age, 1000)
    and b.employee_from_age < coalesce(a.employee_until_age, 1000);
   if n <> 0 then fails := array_append(fails, format('%s pairs of statutory bands overlap', n)); end if;
+  -- A rule has to carry a figure. rate lost its NOT NULL so a band could hold the
+  -- schedule's amount instead, and without a check a row with neither is accepted,
+  -- wins the wage lookup, and pays 0 through the function's closing coalesce.
+  begin
+    insert into public.hr_statutory_rules
+      (scheme, payer, citizenship, employee_from_age, wage_from_cents, rate, amount_cents, round_to_cents, note)
+    values ('socso', 'employee', 'citizen', 0, 6000, null, null, 1, 'a rule with neither figure');
+    fails := array_append(fails, 'a statutory rule carrying neither a rate nor an amount was accepted');
+  exception when check_violation then null;
+  end;
   if t is distinct from 'eis citizen 18-60 0.00200 1190; eis permanent_resident 18-60 0.00200 1190; '
        || 'epf citizen 0-60 0.11000 none; epf non_citizen 0-75 0.02000 none; '
        || 'epf non_citizen_before_1998 0-60 0.11000 none; epf non_citizen_before_1998 60-75 0.05500 none; '
