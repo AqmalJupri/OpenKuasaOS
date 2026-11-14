@@ -132,7 +132,7 @@ function notesOf(ret: SstReturn): string[] {
 function basisNote(type: SstReturn['type'], settings: SstSettings): string {
   if (type === 'sales') return 'Sales tax is counted when the goods are sold, by the invoice date.';
   return settings.service_tax_basis === 'payment'
-    ? 'Service tax is counted when the payment is received (payment basis), less any credit note issued since.'
+    ? 'Service tax is counted when the payment is received (payment basis), less any credit note issued since. The ledger still puts service tax into SST Payable (2100) when the invoice is issued, so that account reads ahead of item 14 by the tax on invoices not yet paid.'
     : 'Service tax is counted when the invoice is issued (invoice basis, approved by Customs).';
 }
 

@@ -206,6 +206,15 @@ describe('the SST Report return (#222 stage 2)', () => {
     expect(paidReads).toBe(0);
   });
 
+  it('says on a payment-basis service return that SST Payable is ahead of item 14', async () => {
+    state.settings = async () => ({ ...SAVED, service_tax_basis: 'payment' });
+    const payment = await render({ tax: 'service' });
+    expect(payment).toContain('The ledger still puts service tax into SST Payable (2100) when the invoice is issued');
+    // On invoice basis the ledger and the return agree, so the note would be noise.
+    state.settings = async () => ({ ...SAVED });
+    expect(await render({ tax: 'service' })).not.toContain('SST Payable');
+  });
+
   it('says a line the form has no item for may be the rate or a sales Part C good', async () => {
     state.settings = async () => SAVED;
     state.rows = async () => ({ lines: [line({ id: 'a', sst_rate: 7 }), line({ id: 'b', sst_rate: 7 })], credits: [] });
