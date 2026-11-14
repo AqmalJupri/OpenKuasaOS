@@ -287,6 +287,16 @@ describe('writeFailed and the settings refusals', () => {
     log.mockRestore();
   });
 
+  it('answers FIN79 with the database sentence, which names the period', () => {
+    const message =
+      'The 1 Sep – 31 Oct 2026 service tax return is marked filed, so the basis it counted on cannot change. Take the filed mark off that return first, then change it.';
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(writeFailed('saveSstSettings', { code: 'FIN79', message })).toEqual({ ok: false, error: message });
+    expect(writeFailed('saveSstSettings', { code: 'FIN79', message: '' })).toEqual({ ok: false, error: WRITE_FAILED });
+    expect(log).toHaveBeenCalledTimes(1);
+    log.mockRestore();
+  });
+
   it('leaves every other code as it was', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(writeFailed('x', { code: 'FIN62', message: 'discount' })).toEqual({ ok: false, error: WRITE_FAILED });

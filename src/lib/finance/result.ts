@@ -77,6 +77,14 @@ export const FIN_BAD_PREFIX = 'FIN66';
 /** A numbering prefix another document of the workspace already uses (`finance_set_sequence`). */
 export const FIN_PREFIX_TAKEN = 'FIN67';
 
+/**
+ * The service tax basis cannot change while a service return is filed (`finance_sst_settings_basis_after_filed`,
+ * 20261202110000): that return was worked out on the saved basis, so switching it leaves the return on a rule the
+ * workspace no longer uses. The database words this refusal itself, naming the period and the way through (take
+ * the mark off, change the basis, mark it filed again), so its own sentence is passed through.
+ */
+export const FIN_BASIS_FILED = 'FIN79';
+
 export const LOCKED = (date: string) => `This date is in a closed period: the books are locked to ${date}.`;
 export const LOCKED_NO_DATE = 'This date is in a closed period: the books are locked.';
 export const FUTURE_LOCK = "The books can't be locked to a date in the future.";
@@ -95,9 +103,16 @@ function errorText(error: unknown): string[] {
   return [e.message, e.details, e.hint].filter((t): t is string => typeof t === 'string');
 }
 
-/** The sentence for a settings refusal (FIN63–FIN67), or null for any other error. */
+/**
+ * The sentence for a settings refusal (FIN63–FIN67, FIN79), or null for any other error. FIN79 is worded by the
+ * database, so its own message is the sentence; without one it falls through to the general message.
+ */
 export function settingsRefusal(error: unknown): string | null {
   switch (pgCode(error)) {
+    case FIN_BASIS_FILED: {
+      const message = (error as { message?: unknown } | null)?.message;
+      return typeof message === 'string' && message ? message : null;
+    }
     case FIN_LOCKED: {
       // The lock date as the database writes it: 30 Sep 2026.
       for (const text of errorText(error)) {
