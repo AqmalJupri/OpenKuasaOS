@@ -27,7 +27,7 @@ Your account must be linked to your employee record. See [Link an account to an 
 
 Your payslips are also listed on **My Documents**.
 
-Your EPF is KWSP's own figure for your wage band, and the employer's SOCSO share is PERKESO's. The SOCSO and EIS figures on your side start as estimates in Lekiu, and HR checks everything before the run is paid. PCB is entered by HR. To check what was paid in for you, look at your own KWSP and PERKESO records, and LHDN for PCB.
+Your EPF is KWSP's own figure for your wage band, and both SOCSO shares are PERKESO's. The EIS figure on your side starts as an estimate in Lekiu, and HR checks everything before the run is paid. PCB is entered by HR. To check what was paid in for you, look at your own KWSP and PERKESO records, and LHDN for PCB.
 
 ## Common problems
 

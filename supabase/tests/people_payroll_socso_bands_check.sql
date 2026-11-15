@@ -1,5 +1,5 @@
--- Lekiu SOCSO employer check: the employer's share comes from PERKESO's Akta 4 band
--- table, not as a rate of wages (#423, part 1).
+-- Lekiu SOCSO check: both shares come from PERKESO's Akta 4 band table, not as a rate
+-- of wages (#423, part 1).
 -- Read-only: every statement below is a select, and the block ends with RAISE, so
 -- even if it grew a write nothing would survive. Read the message:
 --   PEOPLE_PAYROLL_SOCSO_BANDS_CHECK PASSED ...   or   ... FAILED (n): <what went wrong>
@@ -8,15 +8,17 @@
 -- there is no rate to re-derive it from: 1.75% of the band's midpoint reproduces the
 -- ceiling row and misses the first bands, which is exactly why the schedule has to be
 -- stored. What this check does instead is pin every one of the 65 printed figures for
--- one citizenship, prove the other three citizenships carry the same figures, and then
--- call the proposal function at the band edges, inside the bands and at the ceiling.
+-- one citizenship and one payer, prove the other three citizenships carry the same
+-- figures, and then call the proposal function at the band edges, inside the bands and
+-- at the ceiling.
 --
 -- The rows come from PERKESO's schedule including SKBBK
 -- (NewContributionRateIncludingSKBBK.pdf), 65 rows of 7 figures, 455 in total, where
 -- every row satisfies employer + invalidity + SKBBK = its total and second-category
--- employer + SKBBK = its total. Only the employer column is loaded here: the employee's
--- SOCSO share is three components and whether a Malaysian pays SKBBK is contested, so
--- that half waits on the decision the issue records and the employee rows keep their rate.
+-- employer + SKBBK = its total. Two of those columns are loaded: the employer's share
+-- (520 rows, first and second category) and the employee's invalidity share (260 rows,
+-- below 60). SKBBK is the third and is not loaded, because whether a Malaysian pays it
+-- is contested, so the employee's deduction is the invalidity share alone.
 do $$
 declare
   fails text[] := '{}';
@@ -150,16 +152,66 @@ begin
     fails := array_append(fails, 'the second-category SOCSO employer figure is not the band the wage falls in');
   end if;
 
-  -- ==== 7. the employee's share is untouched =======================================
-  -- This migration rewrites the employer rows only, so the employee still pays the rate
-  -- it paid before, capped at RM 29.75 above RM 5,950.00.
+  -- ==== 7. the employee's share is the invalidity column ===========================
+  -- 260 rows: 65 bands for each of four citizenships, below 60, each an amount and no
+  -- rate, in place of the four rate rows the table carried.
+  select count(*), count(*) filter (where amount_cents is not null) into n, n2
+  from public.hr_statutory_rules where scheme = 'socso' and payer = 'employee';
+  if n <> 260 or n2 <> 260 then
+    fails := array_append(fails, format('the SOCSO employee rows are %s, %s of them bands, expected 260 and 260', n, n2));
+  end if;
   select count(*) into n from public.hr_statutory_rules
-  where scheme = 'socso' and payer = 'employee' and amount_cents is null and rate = 0.005 and max_cents = 2975;
-  if n <> 4 then fails := array_append(fails, format('%s employee SOCSO rows are the rate they were, expected 4', n)); end if;
-  if private.hr_payroll_proposal('socso', 300000, 30, 'citizen') <> 1500
-     or private.hr_payroll_proposal('socso', 595000, 30, 'citizen') <> 2975
-     or private.hr_payroll_proposal('socso', 600000, 30, 'citizen') <> 2975 then
-    fails := array_append(fails, 'the employee SOCSO share moved with the employer bands');
+  where scheme = 'socso' and payer = 'employee' and (rate is not null or max_cents is not null
+    or round_to_cents <> 1 or employee_from_age <> 0 or employee_until_age <> 60);
+  if n <> 0 then
+    fails := array_append(fails, format('%s employee SOCSO bands still carry a rate, a maximum, a rounding step or another age band', n));
+  end if;
+  -- The invalidity column, one figure per band, in band order.
+  select string_agg(s.amount_cents::text, '; ' order by s.wage_from_cents) into t
+  from public.hr_statutory_rules s
+  where s.scheme = 'socso' and s.payer = 'employee' and s.citizenship = 'citizen';
+  if t is distinct from '10; 20; 30; 40; 60; 85; '
+        || '125; 175; 225; 275; 325; 375; '
+        || '425; 475; 525; 575; 625; 675; '
+        || '725; 775; 825; 875; 925; 975; '
+        || '1025; 1075; 1125; 1175; 1225; 1275; '
+        || '1325; 1375; 1425; 1475; 1525; 1575; '
+        || '1625; 1675; 1725; 1775; 1825; 1875; '
+        || '1925; 1975; 2025; 2075; 2125; 2175; '
+        || '2225; 2275; 2325; 2375; 2425; 2475; '
+        || '2525; 2575; 2625; 2675; 2725; 2775; '
+        || '2825; 2875; 2925; 2975; 2975'
+  then fails := array_append(fails, format('the employee SOCSO figures are %s', t)); end if;
+  select count(*) into n from (
+    select s.wage_from_cents, count(distinct s.amount_cents) as distinct_amounts, count(*) as rows_here
+    from public.hr_statutory_rules s
+    where s.scheme = 'socso' and s.payer = 'employee'
+    group by 1
+  ) g where g.distinct_amounts <> 1 or g.rows_here <> 4;
+  if n <> 0 then fails := array_append(fails, format('%s employee SOCSO bands differ between citizenships', n)); end if;
+  select count(*) into n from (
+    select s.amount_cents,
+           lag(s.amount_cents) over (partition by s.citizenship order by s.wage_from_cents) as previous
+    from public.hr_statutory_rules s where s.scheme = 'socso' and s.payer = 'employee'
+  ) g where g.previous is not null and g.amount_cents < g.previous;
+  if n <> 0 then fails := array_append(fails, format('%s employee SOCSO bands fall as the wage rises', n)); end if;
+  -- The function reads the band at its first sen, its top, a sen either side, and zero
+  -- for a wage that matches no band. A wage of one sen is inside the first band, so a
+  -- share is due there; from 60 there is no employee share at all.
+  if private.hr_payroll_proposal('socso', 1, 30, 'citizen') <> 10
+     or private.hr_payroll_proposal('socso', 3000, 30, 'citizen') <> 10
+     or private.hr_payroll_proposal('socso', 3001, 30, 'citizen') <> 20
+     or private.hr_payroll_proposal('socso', 29901, 30, 'citizen') <> 125
+     or private.hr_payroll_proposal('socso', 30001, 30, 'citizen') <> 175
+     or private.hr_payroll_proposal('socso', 300000, 30, 'citizen') <> 1475
+     or private.hr_payroll_proposal('socso', 300001, 30, 'citizen') <> 1525
+     or private.hr_payroll_proposal('socso', 313327, 30, 'citizen') <> 1575
+     or private.hr_payroll_proposal('socso', 600000, 30, 'citizen') <> 2975
+     or private.hr_payroll_proposal('socso', 600001, 30, 'citizen') <> 2975
+     or private.hr_payroll_proposal('socso', 100000000, 30, 'citizen') <> 2975
+     or private.hr_payroll_proposal('socso', 0, 30, 'citizen') <> 0
+     or private.hr_payroll_proposal('socso', 500000, 60, 'citizen') <> 0 then
+    fails := array_append(fails, 'the employee SOCSO figure is not the band the wage falls in');
   end if;
 
   raise exception 'PEOPLE_PAYROLL_SOCSO_BANDS_CHECK %', case
