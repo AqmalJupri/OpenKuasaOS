@@ -341,7 +341,7 @@ begin
   -- the 4,411 Third Schedule band rows of 20261203090000 and the 520 Akta 4 employer
   -- bands of 20261203100000 (20261128090000, 20261203090000, 20261203100000).
   select count(*) into n from public.hr_statutory_rules;
-  if n <> 5208 then fails := array_append(fails, format('a member reads %s statutory rules, expected 5208', n)); end if;
+  if n <> 5464 then fails := array_append(fails, format('a member reads %s statutory rules, expected 5464', n)); end if;
   foreach t in array hr_only loop
     execute format('select count(*) from public.%I where org_id = %L', t, org) into n;
     if n <> 0 then fails := array_append(fails, format('a member reads %s rows of HR-only %s', n, t)); end if;
