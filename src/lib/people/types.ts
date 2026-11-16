@@ -66,6 +66,8 @@ export type EmployeePrivate = {
   date_of_birth: string | null;
   /** KWSP's category; null is not recorded, paid as a citizen. */
   citizenship: Citizenship | null;
+  /** No EIS: an employee who reached 57 without having been insured before. */
+  eis_exempt: boolean;
   phone: string | null;
   address: string | null;
   base_salary_cents: number | null;

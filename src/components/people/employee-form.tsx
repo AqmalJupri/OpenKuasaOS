@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   CITIZENSHIP_LABEL,
@@ -262,6 +263,21 @@ export function EmployeeForm({
                     ))}
                   </SelectContent>
                 </Select>
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="EIS (PERKESO) exemption">
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    aria-label="Exempt from EIS"
+                    className="mt-0.5"
+                    checked={values.eis_exempt}
+                    onCheckedChange={(checked) => set('eis_exempt', checked === true)}
+                  />
+                  <span className="text-muted-foreground">
+                    No EIS contribution, for an employee who reaches 57 without ever having paid it. Read only from 57.
+                  </span>
+                </label>
               </Field>
             </div>
             {text('phone', 'Phone')}
