@@ -86,7 +86,13 @@ import {
   savePayslipLine as capSavePayslipLine,
   setPayslipStatutory as capSetPayslipStatutory,
 } from '@/lib/people/payroll-writes';
-import { monthLabel as payrollMonthLabel, ringgitToCents, toLineInput, toStatutoryInput } from '@/lib/people/payroll-forms';
+import {
+  earningTypeChoices,
+  monthLabel as payrollMonthLabel,
+  ringgitToCents,
+  toLineInput,
+  toStatutoryInput,
+} from '@/lib/people/payroll-forms';
 import { earlierOvertimeLine, employerOf, SKIPPED_REASON_WORDS } from '@/lib/people/payroll';
 import { STATUTORY_FIELDS } from '@/lib/people/statutory-fields';
 import { listWorkspaceMembers } from '@/lib/people/members';
@@ -411,9 +417,8 @@ const savePayslipLineToolInput = z.object({
     .enum(PAYSLIP_EARNING_TYPES)
     .optional()
     .describe(
-      'For an earning: what kind it is, which decides the EPF and the SOCSO and EIS wages it joins. ordinary pay ' +
-        '(the default) counts towards all three; bonus towards EPF only; service_charge towards SOCSO and EIS only; ' +
-        'travel_allowance and gratuity towards none. Leave out for ordinary pay on a new line; leave out when changing ' +
+      'For an earning: what kind it is, which decides the EPF and the SOCSO and EIS wages it joins. ' +
+        `${earningTypeChoices()}. Leave out for ordinary pay on a new line; leave out when changing ` +
         'a line to keep the type it has (listPayslips shows it).',
     ),
   label: z
