@@ -254,6 +254,19 @@ export type SkippedReason = 'no_salary' | 'left';
  */
 export const PAYSLIP_EARNING_TYPES = ['ordinary', 'bonus', 'gratuity', 'travel_allowance', 'service_charge'] as const;
 export type PayslipEarningType = (typeof PAYSLIP_EARNING_TYPES)[number];
+
+/**
+ * What each earning type counts towards, in one place: the migration that seeds `hr_earning_type_wages`
+ * carries these same rows, and `tests/people-payroll-earning-type-mapping.test.ts` fails if the two
+ * disagree. In the order the payroll form offers them.
+ */
+export const EARNING_TYPE_WAGES = [
+  { value: 'ordinary', label: 'Ordinary pay', inEpf: true, inSocso: true },
+  { value: 'bonus', label: 'Bonus', inEpf: true, inSocso: false },
+  { value: 'travel_allowance', label: 'Travel allowance', inEpf: false, inSocso: false },
+  { value: 'service_charge', label: 'Service charge', inEpf: false, inSocso: true },
+  { value: 'gratuity', label: 'Gratuity', inEpf: false, inSocso: false },
+] as const satisfies readonly { value: PayslipEarningType; label: string; inEpf: boolean; inSocso: boolean }[];
 export type PayslipLine = {
   id: string;
   payslip_id: string;
