@@ -13,7 +13,7 @@
 -- cannot exempt someone still inside the scheme, and the band's own ceiling at
 -- 60 keeps working beside it.
 --
--- This file runs after 20261203090000_people_payroll_earning_type_mapping, which
+-- This file runs after 20261203080000_people_payroll_earning_type_mapping, which
 -- rewrites the same function to read each line's wage base from
 -- hr_earning_type_wages. Both changes are carried in one body below: restating
 -- either one alone would be a silent revert of the other.

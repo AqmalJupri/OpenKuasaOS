@@ -8,7 +8,7 @@ import { createPeopleTools } from '@/lib/ai/people-tools';
 import { EARNING_TYPE_OPTIONS, earningTypeNote, wagesNote } from '@/lib/people/payroll-forms';
 import { EARNING_TYPE_WAGES, PAYSLIP_EARNING_TYPES, type PeopleData, type PeopleViewer } from '@/lib/people/types';
 
-const FILE = '20261203090000_people_payroll_earning_type_mapping.sql';
+const FILE = '20261203080000_people_payroll_earning_type_mapping.sql';
 
 /** The migration without its comment lines, so a promise in a comment cannot satisfy a check. */
 const sql = () =>
