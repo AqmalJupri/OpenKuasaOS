@@ -57,7 +57,7 @@ This card is not shown while the service tax return is not ready.
 
 Bendahara cannot see MySST, so you mark a return as filed yourself. In **Periods**, each period shows its due date and what is payable, with **Open**, **Not filed** or **Marked filed**. Once a period has ended, click **Mark as filed**. Click **Undo** to take the mark off.
 
-A voided invoice or credit note counts in no return. While a return is marked filed, its figures cannot change without anyone noticing: an invoice or credit note on it cannot be voided, and a draft dated inside its period cannot be posted or issued.
+A voided invoice or credit note counts in no return. While a return is marked filed, its figures cannot change without anyone noticing: an invoice or credit note on it cannot be voided, a draft dated inside its period cannot be posted or issued, and **Service tax counted on** cannot be saved differently in **SST settings**, because a filed service return was worked out on the basis it was filed with. To switch it, click **Undo** on every filed service period first, change it in **SST settings**, then mark those periods filed again and file a Pindaan in MySST for any whose figures moved.
 
 - A sale that falls through after filing is corrected with a credit note, which goes in 13(a) of the period it is dated in.
 - An invoice or credit note that should never have been issued is an amended return (Pindaan): click **Undo** to take the mark off, void it, and file the amended return in MySST.
@@ -79,6 +79,7 @@ The return follows what Bendahara does, which is not always the same as the offi
 
 - **"You can mark a return as filed once its period has ended."**
 - **"This return is marked filed. Undo the mark to change its figures."**
+- **"The … return is marked filed, so the basis it counted on cannot change. …"** See **Mark a return as filed** above.
 - **"Only an owner or admin can mark a return as filed."**
 - **"This invoice is on the … return, which is marked filed. Issue a credit note instead. …"** or **"This credit note is on the … return, which is marked filed. …"** See **Mark a return as filed** above.
 - **"This invoice is dated in the … return, which is marked filed. …"** or **"This credit note is dated in the … return, which is marked filed. …"** when you post or issue a draft. See **Mark a return as filed** above.
